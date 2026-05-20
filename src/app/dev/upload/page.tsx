@@ -2,8 +2,6 @@
 
 import React, { useState } from 'react';
 
-const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost';
-
 export default function DevUploadPage() {
   const [examJson, setExamJson] = useState<File | null>(null);
   const [audioFile, setAudioFile] = useState<File | null>(null);
@@ -11,7 +9,7 @@ export default function DevUploadPage() {
   const [images, setImages] = useState<File[]>([]);
   const [folderName, setFolderName] = useState<string>('');
   
-  const [apiUrl, setApiUrl] = useState<string>(GATEWAY_URL);
+  const [apiUrl, setApiUrl] = useState<string>('/api/exams');
   
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -40,7 +38,9 @@ export default function DevUploadPage() {
     }
 
     try {
-      const res = await fetch(`${apiUrl}/api/core/exams/upload_full_exam/`, {
+      // Build the target endpoint url
+      const endpoint = apiUrl.endsWith('/') ? `${apiUrl}upload_full_exam/` : `${apiUrl}/upload_full_exam/`;
+      const res = await fetch(endpoint, {
         method: 'POST',
         body: formData,
       });
@@ -67,8 +67,8 @@ export default function DevUploadPage() {
           {/* API URL Config */}
           <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
             <label className="block text-primary font-bold mb-2">
-              API Gateway URL
-              <span className="text-sm font-normal text-secondary ml-2">(Sửa thành http://127.0.0.1 nếu bị lỗi ALPN/localhost)</span>
+              API Route / URL
+              <span className="text-sm font-normal text-secondary ml-2">(Mặc định dùng proxy route để ẩn backend)</span>
             </label>
             <input 
               type="text" 

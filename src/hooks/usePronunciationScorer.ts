@@ -3,12 +3,9 @@
 import { useState, useCallback } from 'react';
 import type { ScoringResponse, ScoringErrorResponse } from '@/types/scoring';
 
-/** Base URL for the AI scoring microservice */
-const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8000';
-
 interface UsePronunciationScorerReturn {
   /** Triggers the scoring request */
-  scoreAudio: (audioBlob: Blob, targetText?: string) => Promise<ScoringResponse | null>;
+  scoreAudio: (audioBlob: Blob, targetText?: string, language?: 'en' | 'zh') => Promise<ScoringResponse | null>;
   /** The latest successful response from the API */
   result: ScoringResponse | null;
   /** Whether a request is currently in-flight */
@@ -44,7 +41,8 @@ export function usePronunciationScorer(): UsePronunciationScorerReturn {
 
   const scoreAudio = useCallback(async (
     audioBlob: Blob,
-    targetText?: string
+    targetText?: string,
+    language?: 'en' | 'zh'
   ): Promise<ScoringResponse | null> => {
     setIsLoading(true);
     setError(null);
@@ -54,6 +52,9 @@ export function usePronunciationScorer(): UsePronunciationScorerReturn {
       // ── Build multipart form ──────────────────────────────────────────
       const formData = new FormData();
       formData.append('audio_file', audioBlob, 'recording.wav');
+      if (language) {
+        formData.append('language', language);
+      }
 
       // Conditionally append target_text for Read-Aloud (Branch A) routing
       if (targetText && targetText.trim() !== '') {
@@ -63,7 +64,7 @@ export function usePronunciationScorer(): UsePronunciationScorerReturn {
       // ── Send request ──────────────────────────────────────────────────
       // Do NOT set Content-Type manually — the browser auto-generates
       // the correct `multipart/form-data; boundary=----...` header.
-      const response = await fetch(`${AI_SERVICE_URL}/api/v1/score`, {
+      const response = await fetch(`/api/score`, {
         method: 'POST',
         body: formData,
       });

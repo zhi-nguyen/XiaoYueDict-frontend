@@ -1,0 +1,54 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+/**
+ * Generic handler to proxy incoming Next.js API requests to the backend server.
+ * Streams the request and response body to support file uploads and downloads.
+ */
+export async function handleProxy(
+  request: NextRequest,
+  targetBaseUrl: string,
+  prefixToRemove: string,
+  prefixToAdd: string
+) {
+  const { pathname, search } = request.nextUrl;
+  const relativePath = pathname.substring(prefixToRemove.length);
+  const targetUrl = `${targetBaseUrl}${prefixToAdd}${relativePath}${search}`;
+
+  const headers = new Headers();
+  // Copy safe headers from the client request
+  const headersToCopy = ['content-type', 'accept', 'authorization'];
+  for (const h of headersToCopy) {
+    const val = request.headers.get(h);
+    if (val) headers.set(h, val);
+  }
+
+  const fetchOptions: RequestInit = {
+    method: request.method,
+    headers,
+  };
+
+  // Only attach body for mutations
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    fetchOptions.body = request.body;
+    // Required in Node fetch when body is a ReadableStream
+    // @ts-ignore
+    fetchOptions.duplex = 'half';
+  }
+
+  try {
+    const res = await fetch(targetUrl, fetchOptions);
+    const responseHeaders = new Headers();
+    const contentType = res.headers.get('content-type');
+    if (contentType) responseHeaders.set('content-type', contentType);
+
+    // Return the backend's response body directly as a stream
+    return new NextResponse(res.body, {
+      status: res.status,
+      statusText: res.statusText,
+      headers: responseHeaders,
+    });
+  } catch (err) {
+    console.error(`[Proxy Error] Failed to proxy from ${pathname} to ${targetUrl}:`, err);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}

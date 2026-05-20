@@ -7,9 +7,6 @@ import type {
   ScoringResponse,
 } from '@/types/scoring';
 
-/** Base URL for the Django Gateway API */
-const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost';
-
 export type QueuePhase =
   | 'idle'
   | 'uploading'
@@ -97,7 +94,7 @@ export function useSmartQueue(): UseSmartQueueReturn {
       if (!isMountedRef.current) return;
 
       try {
-        const res = await fetch(`${GATEWAY_URL}/api/core/assessments/status/${id}/`);
+        const res = await fetch(`/api/assessments/status/${id}/`);
 
         if (!res.ok) {
           throw new Error(`Status check failed (${res.status})`);
@@ -165,7 +162,7 @@ export function useSmartQueue(): UseSmartQueueReturn {
         formData.append('target_text', targetText.trim());
       }
 
-      const res = await fetch(`${GATEWAY_URL}/api/core/assessments/submit/`, {
+      const res = await fetch(`/api/assessments/submit/`, {
         method: 'POST',
         body: formData,
       });

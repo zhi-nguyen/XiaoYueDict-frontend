@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { useSmartQueue } from '@/hooks/useSmartQueue';
+import { useSpellCheck } from '@/hooks/useSpellCheck';
 import SmartQueueStatus from '@/components/SmartQueueStatus';
 import ScoreDisplay from '@/components/ScoreDisplay';
 import AudioWaveform from '@/components/AudioWaveform';
@@ -46,6 +47,7 @@ function audioBufferToWav(buffer: AudioBuffer): Blob {
 
 export default function SpeakingPage() {
   const queue = useSmartQueue();
+  const spellCheck = useSpellCheck();
   const { language } = useLanguage();
 
   // ── Local State ──
@@ -53,13 +55,39 @@ export default function SpeakingPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [activeStream, setActiveStream] = useState<MediaStream | null>(null);
+  const [selectedMisspelled, setSelectedMisspelled] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // ── Spellcheck ──
+  const hasSpellErrors = spellCheck.result && !spellCheck.result.is_valid;
+  const misspelledWords = useMemo(() => {
+    if (!spellCheck.result?.misspelled) return new Set<string>();
+    return new Set(spellCheck.result.misspelled.map((m) => m.word));
+  }, [spellCheck.result]);
+
+  const handleCheckText = useCallback(async () => {
+    if (!targetText.trim()) return;
+    setSelectedMisspelled(null);
+    await spellCheck.checkText(targetText);
+  }, [targetText, spellCheck]);
+
+  const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setTargetText(e.target.value);
+    // Reset spellcheck when text changes
+    if (spellCheck.result) {
+      spellCheck.reset();
+      setSelectedMisspelled(null);
+    }
+  }, [spellCheck]);
+
   // ── Recording ──
   const startRecording = useCallback(async () => {
+    // Block recording if there are spelling errors
+    if (hasSpellErrors) return;
+
     try {
       queue.reset();
       setAudioBlob(null);
@@ -97,7 +125,7 @@ export default function SpeakingPage() {
     } catch {
       alert('Không thể truy cập microphone. Vui lòng kiểm tra quyền truy cập.');
     }
-  }, [queue]);
+  }, [queue, hasSpellErrors]);
 
   const stopRecording = useCallback(() => {
     mediaRecorderRef.current?.stop();
@@ -116,12 +144,105 @@ export default function SpeakingPage() {
   // ── Submit ──
   const handleSubmit = useCallback(async () => {
     if (!audioBlob) return;
+    if (hasSpellErrors) return;
     await queue.submit(audioBlob, language, targetText || undefined);
-  }, [audioBlob, language, targetText, queue]);
+  }, [audioBlob, language, targetText, queue, hasSpellErrors]);
 
   const isIdle = queue.phase === 'idle';
   const isBusy = queue.phase !== 'idle' && queue.phase !== 'completed' && queue.phase !== 'error';
   const showResult = queue.phase === 'completed' && queue.resultData;
+
+  // ── Build highlighted text for display ──
+  const renderHighlightedText = () => {
+    if (!spellCheck.result?.misspelled?.length || !targetText.trim()) return null;
+
+    const words = targetText.trim().split(/(\s+)/); // preserve whitespace
+    let wordIndex = 0;
+
+    return (
+      <div className="mt-3 p-4 bg-hover-bg rounded-xl border border-outline text-sm leading-relaxed">
+        <p className="text-xs font-semibold text-red-500 mb-2 flex items-center gap-1.5">
+          <span className="material-symbols-outlined text-sm">spellcheck</span>
+          Phát hiện {spellCheck.result.misspelled.length} lỗi chính tả — Vui lòng sửa trước khi ghi âm
+        </p>
+        <div className="flex flex-wrap gap-0 text-primary">
+          {words.map((segment, i) => {
+            // whitespace-only segment
+            if (/^\s+$/.test(segment)) {
+              return <span key={`ws-${i}`}>{segment}</span>;
+            }
+
+            const currentWordIndex = wordIndex;
+            wordIndex++;
+
+            const isMisspelled = spellCheck.result!.misspelled.some(
+              (m) => m.index === currentWordIndex
+            );
+
+            if (isMisspelled) {
+              const misspelledInfo = spellCheck.result!.misspelled.find(
+                (m) => m.index === currentWordIndex
+              );
+              const isSelected = selectedMisspelled === segment;
+
+              return (
+                <span key={`w-${i}`} className="relative inline-block">
+                  <span
+                    onClick={() => setSelectedMisspelled(isSelected ? null : segment)}
+                    className="cursor-pointer px-0.5 py-0.5 rounded-md font-semibold transition-all
+                               bg-red-100 text-red-700 decoration-wavy decoration-red-400 underline underline-offset-4
+                               hover:bg-red-200 hover:text-red-800"
+                  >
+                    {segment}
+                  </span>
+                  {/* Suggestion tooltip */}
+                  {isSelected && misspelledInfo && misspelledInfo.suggestions.length > 0 && (
+                    <span className="absolute left-0 top-full mt-1 z-20 bg-white border border-outline rounded-lg shadow-lg p-2
+                                     flex flex-wrap gap-1.5 min-w-[120px] animate-fade-in">
+                      <span className="w-full text-[10px] text-secondary font-semibold uppercase tracking-wider mb-0.5">
+                        Gợi ý sửa:
+                      </span>
+                      {misspelledInfo.suggestions.map((s, si) => (
+                        <button
+                          key={si}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Replace the misspelled word in the text
+                            const textWords = targetText.split(/(\s+)/);
+                            let wIdx = 0;
+                            const newParts = textWords.map((part) => {
+                              if (/^\s+$/.test(part)) return part;
+                              const curr = wIdx;
+                              wIdx++;
+                              if (curr === misspelledInfo.index) return s;
+                              return part;
+                            });
+                            setTargetText(newParts.join(''));
+                            setSelectedMisspelled(null);
+                            spellCheck.reset();
+                          }}
+                          className="px-2.5 py-1 bg-green-50 hover:bg-green-100 text-green-700 text-xs font-semibold
+                                     rounded-md border border-green-200 transition-colors"
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </span>
+                  )}
+                </span>
+              );
+            }
+
+            return (
+              <span key={`w-${i}`} className="text-primary">
+                {segment}
+              </span>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="flex-1 overflow-y-auto w-full p-8 pb-16">
@@ -138,37 +259,102 @@ export default function SpeakingPage() {
         {/* ── Main Card ── */}
         <div className="bg-surface border border-outline rounded-[1.5rem] p-8 shadow-sm space-y-6">
 
-          {/* Target Text */}
+          {/* Target Text + Check Text Button */}
           <div>
-            <label
-              htmlFor="target-text"
-              className="block text-sm font-semibold text-primary mb-2"
-            >
-              {language === 'en' ? 'Câu mẫu' : '目标文本'}
-              <span className="font-normal text-secondary ml-2">
-                (để trống = chế độ tự do)
-              </span>
-            </label>
+            <div className="flex items-end justify-between mb-2">
+              <label
+                htmlFor="target-text"
+                className="block text-sm font-semibold text-primary"
+              >
+                {language === 'en' ? 'Câu mẫu' : '目标文本'}
+                <span className="font-normal text-secondary ml-2">
+                  (để trống = chế độ tự do)
+                </span>
+              </label>
+
+              {/* Check Text button — English mode only */}
+              {language === 'en' && targetText.trim() && (
+                <button
+                  id="check-text-btn"
+                  type="button"
+                  onClick={handleCheckText}
+                  disabled={spellCheck.isChecking || isBusy}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold
+                             transition-all focus:outline-none focus:ring-2 focus:ring-offset-1
+                             disabled:opacity-40 disabled:cursor-not-allowed
+                             ${hasSpellErrors
+                      ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 focus:ring-red-300'
+                      : spellCheck.result?.is_valid
+                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 focus:ring-emerald-300'
+                        : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 focus:ring-amber-300'
+                    }`}
+                >
+                  {spellCheck.isChecking ? (
+                    <>
+                      <svg className="animate-spin w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Đang kiểm tra…
+                    </>
+                  ) : hasSpellErrors ? (
+                    <>
+                      <span className="material-symbols-outlined text-sm">error</span>
+                      Có lỗi chính tả
+                    </>
+                  ) : spellCheck.result?.is_valid ? (
+                    <>
+                      <span className="material-symbols-outlined text-sm">check_circle</span>
+                      Hợp lệ
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-sm">spellcheck</span>
+                      Kiểm tra chính tả
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+
             <textarea
               id="target-text"
               rows={3}
               value={targetText}
-              onChange={(e) => setTargetText(e.target.value)}
+              onChange={handleTextChange}
               disabled={isBusy}
               placeholder={
                 language === 'en'
                   ? 'e.g. The quick brown fox jumps over the lazy dog'
                   : '例如：今天天气很好，我想出去散步。'
               }
-              className="w-full rounded-xl border border-outline bg-hover-bg px-4 py-3 text-sm text-primary
-                         placeholder:text-secondary/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent-gradient-start)]
-                         focus:border-transparent resize-none transition-shadow disabled:opacity-50"
+              className={`w-full rounded-xl border px-4 py-3 text-sm text-primary
+                         placeholder:text-secondary/50 focus:outline-none focus:ring-2
+                         focus:border-transparent resize-none transition-shadow disabled:opacity-50
+                         ${hasSpellErrors
+                  ? 'border-red-300 bg-red-50/30 focus:ring-red-300'
+                  : 'border-outline bg-hover-bg focus:ring-[var(--accent-gradient-start)]'
+                }`}
             />
-            <p className="mt-1.5 text-xs text-secondary">
-              {targetText.trim()
-                ? `📖 Chế độ Read-Aloud — Chấm điểm GOP từng ${language === 'zh' ? 'ký tự' : 'từ'}`
-                : '🎤 Chế độ tự do — Nhận diện giọng nói + điểm lưu loát'}
-            </p>
+
+            {/* Spellcheck error display */}
+            {spellCheck.error && (
+              <p className="mt-1.5 text-xs text-red-500">
+                ⚠️ Không thể kiểm tra: {spellCheck.error}
+              </p>
+            )}
+
+            {/* Highlighted misspelled words */}
+            {renderHighlightedText()}
+
+            {/* Mode indicator — only show when no spell errors */}
+            {!hasSpellErrors && (
+              <p className="mt-1.5 text-xs text-secondary">
+                {targetText.trim()
+                  ? `📖 Chế độ Read-Aloud — Chấm điểm GOP từng ${language === 'zh' ? 'ký tự' : 'từ'}`
+                  : '🎤 Chế độ tự do — Nhận diện giọng nói + điểm lưu loát'}
+              </p>
+            )}
           </div>
 
           {/* Waveform */}
@@ -185,7 +371,7 @@ export default function SpeakingPage() {
               id="record-btn"
               type="button"
               onClick={isRecording ? stopRecording : startRecording}
-              disabled={isBusy}
+              disabled={isBusy || (!!hasSpellErrors && !isRecording)}
               className={`relative flex-1 flex items-center justify-center gap-2.5 px-4 py-3.5 rounded-xl font-semibold text-sm
                          transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-40
                          ${isRecording
@@ -219,7 +405,7 @@ export default function SpeakingPage() {
               id="upload-btn"
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={isBusy || isRecording}
+              disabled={isBusy || isRecording || !!hasSpellErrors}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl font-semibold text-sm
                          bg-hover-bg hover:bg-outline/50 text-secondary transition-all focus:outline-none
                          focus:ring-2 focus:ring-offset-2 focus:ring-primary/30 disabled:opacity-40
@@ -230,8 +416,18 @@ export default function SpeakingPage() {
             </button>
           </div>
 
+          {/* Spell Error Warning — blocks submission */}
+          {hasSpellErrors && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl animate-fade-in">
+              <span className="material-symbols-outlined text-red-500 text-lg">warning</span>
+              <p className="text-xs font-semibold text-red-600">
+                Hãy sửa lỗi chính tả trước khi ghi âm hoặc tải file lên
+              </p>
+            </div>
+          )}
+
           {/* Audio Ready Indicator */}
-          {audioBlob && isIdle && (
+          {audioBlob && isIdle && !hasSpellErrors && (
             <div className="flex items-center gap-2 animate-fade-in">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <p className="text-xs font-medium text-emerald-600">
@@ -246,7 +442,7 @@ export default function SpeakingPage() {
               id="submit-btn"
               type="button"
               onClick={handleSubmit}
-              disabled={!audioBlob}
+              disabled={!audioBlob || !!hasSpellErrors}
               className="w-full py-3.5 rounded-xl font-bold text-sm transition-all focus:outline-none
                          focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent-gradient-start)] disabled:opacity-30
                          disabled:cursor-not-allowed bg-primary hover:bg-primary/90 text-white shadow-md

@@ -11,7 +11,15 @@ export async function handleProxy(
   prefixToAdd: string
 ) {
   const { pathname, search } = request.nextUrl;
-  const relativePath = pathname.substring(prefixToRemove.length);
+  let relativePath = pathname.substring(prefixToRemove.length);
+  
+  // Django API endpoints expect a trailing slash. Next.js router automatically
+  // strips trailing slashes, which breaks POST/PUT/PATCH/DELETE requests.
+  // We append a trailing slash if it doesn't already have one, and it's not a file.
+  if (pathname.startsWith('/api') && !relativePath.endsWith('/') && !relativePath.includes('.')) {
+    relativePath += '/';
+  }
+
   const targetUrl = `${targetBaseUrl}${prefixToAdd}${relativePath}${search}`;
 
   const headers = new Headers();

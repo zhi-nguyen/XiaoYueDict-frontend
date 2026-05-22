@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import type { ScoringResponse, ScoringErrorResponse } from '@/types/scoring';
+import { validateTextInput } from '@/lib/inputValidation';
 
 interface UsePronunciationScorerReturn {
   /** Triggers the scoring request */
@@ -49,6 +50,15 @@ export function usePronunciationScorer(): UsePronunciationScorerReturn {
     setResult(null);
 
     try {
+      // ── Validate text input ("Warm welcome" layer) ─────────────────
+      if (targetText && targetText.trim() !== '') {
+        const lang = language || 'en';
+        const validation = validateTextInput(targetText.trim(), lang);
+        if (!validation.isValid) {
+          throw new Error(validation.errorMessage || 'Invalid text input.');
+        }
+      }
+
       // ── Build multipart form ──────────────────────────────────────────
       const formData = new FormData();
       formData.append('audio_file', audioBlob, 'recording.wav');

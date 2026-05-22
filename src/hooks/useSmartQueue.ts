@@ -6,6 +6,7 @@ import type {
   TaskStatusResponse,
   ScoringResponse,
 } from '@/types/scoring';
+import { validateTextInput } from '@/lib/inputValidation';
 
 export type QueuePhase =
   | 'idle'
@@ -154,6 +155,14 @@ export function useSmartQueue(): UseSmartQueueReturn {
     setPhase('uploading');
 
     try {
+      // ── Validate text input ("Warm welcome" layer) ─────────────────
+      if (targetText && targetText.trim()) {
+        const validation = validateTextInput(targetText.trim(), language);
+        if (!validation.isValid) {
+          throw new Error(validation.errorMessage || 'Invalid text input.');
+        }
+      }
+
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.wav');
       formData.append('language', language);

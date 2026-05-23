@@ -1,6 +1,15 @@
 import { Exam } from '@/types/exam';
 
-const API_BASE = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost';
+const isServer = typeof window === 'undefined';
+
+const getUrl = (path: string) => {
+  if (isServer) {
+    const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost';
+    const serverPath = path.replace(/^\/api\/exams\//, '/api/core/exams/');
+    return `${GATEWAY_URL}${serverPath}`;
+  }
+  return path;
+};
 
 export async function fetchExams(level?: string, language?: string): Promise<Exam[]> {
   const params = new URLSearchParams();
@@ -8,9 +17,10 @@ export async function fetchExams(level?: string, language?: string): Promise<Exa
   if (language) params.append('language', language);
   
   const queryStr = params.toString();
-  const url = queryStr 
-    ? `${API_BASE}/api/core/exams/?${queryStr}` 
-    : `${API_BASE}/api/core/exams/`;
+  const path = queryStr 
+    ? `/api/exams/?${queryStr}` 
+    : `/api/exams/`;
+  const url = getUrl(path);
     
   const res = await fetch(url, {
     method: 'GET',
@@ -29,7 +39,7 @@ export async function fetchExams(level?: string, language?: string): Promise<Exa
 }
 
 export async function fetchExamDetails(examId: number): Promise<Exam> {
-  const url = `${API_BASE}/api/core/exams/${examId}/full_exam/`;
+  const url = getUrl(`/api/exams/${examId}/full_exam/`);
   
   const res = await fetch(url, {
     method: 'GET',
@@ -45,3 +55,4 @@ export async function fetchExamDetails(examId: number): Promise<Exam> {
 
   return res.json();
 }
+

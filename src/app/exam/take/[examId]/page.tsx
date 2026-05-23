@@ -7,12 +7,9 @@ import { Exam } from '@/types/exam';
 import ConfirmModal from '@/components/ConfirmModal';
 import { saveExamState, loadExamState, clearExamState, ExamState } from '@/lib/examState';
 
-const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost';
-
 const getMediaUrl = (url: string) => {
   if (!url) return url;
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  if (url.startsWith('/')) return `${GATEWAY_URL}${url}`;
   return url;
 };
 

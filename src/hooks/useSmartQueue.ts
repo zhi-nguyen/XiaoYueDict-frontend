@@ -6,9 +6,7 @@ import type {
   TaskStatusResponse,
   ScoringResponse,
 } from '@/types/scoring';
-
-/** Base URL for the Django Gateway API */
-const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost';
+import { validateTextInput } from '@/lib/inputValidation';
 
 export type QueuePhase =
   | 'idle'
@@ -97,7 +95,7 @@ export function useSmartQueue(): UseSmartQueueReturn {
       if (!isMountedRef.current) return;
 
       try {
-        const res = await fetch(`${GATEWAY_URL}/api/core/assessments/status/${id}/`);
+        const res = await fetch(`/api/assessments/status/${id}/`);
 
         if (!res.ok) {
           throw new Error(`Status check failed (${res.status})`);
@@ -157,6 +155,14 @@ export function useSmartQueue(): UseSmartQueueReturn {
     setPhase('uploading');
 
     try {
+      // ── Validate text input ("Warm welcome" layer) ─────────────────
+      if (targetText && targetText.trim()) {
+        const validation = validateTextInput(targetText.trim(), language);
+        if (!validation.isValid) {
+          throw new Error(validation.errorMessage || 'Invalid text input.');
+        }
+      }
+
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.wav');
       formData.append('language', language);
@@ -165,7 +171,7 @@ export function useSmartQueue(): UseSmartQueueReturn {
         formData.append('target_text', targetText.trim());
       }
 
-      const res = await fetch(`${GATEWAY_URL}/api/core/assessments/submit/`, {
+      const res = await fetch(`/api/assessments/submit/`, {
         method: 'POST',
         body: formData,
       });

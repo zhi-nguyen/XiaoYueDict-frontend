@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useRef, useEffect, useCallback } from 'react';
+import type { ScoringResponse } from '@/types/scoring';
+import { isReadAloudAny, getScoreLevel } from '@/types/scoring';
 
 interface AudioWaveformProps {
   /** Whether we are actively recording */
@@ -11,24 +13,36 @@ interface AudioWaveformProps {
   height?: number;
   /** Color of the waveform bars */
   color?: string;
+  /** The scoring result to overlay/display when idle */
+  result?: ScoringResponse | null;
 }
+
+/** Maps score levels to solid hex colors for canvas drawing */
+const SCORE_HEX_COLORS = {
+  excellent: '#10B981', // Emerald 500
+  good: '#3B82F6',      // Blue 500
+  moderate: '#F59E0B',  // Amber 500
+  poor: '#EF4444',      // Red 500
+};
 
 /**
  * Real-time audio waveform visualization using the Web Audio API.
- * Renders animated frequency bars from a live MediaStream.
+ * Renders animated frequency bars from a live MediaStream,
+ * or an audio timeline mapped to word scores when a result is provided.
  */
 export default function AudioWaveform({
   isRecording,
   stream,
   height = 64,
   color,
+  result,
 }: AudioWaveformProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  const draw = useCallback(() => {
+  const drawLive = useCallback(() => {
     const canvas = canvasRef.current;
     const analyser = analyserRef.current;
 
@@ -75,38 +89,76 @@ export default function AudioWaveform({
     }
 
     ctx.globalAlpha = 1;
-    animationRef.current = requestAnimationFrame(draw);
+    animationRef.current = requestAnimationFrame(drawLive);
   }, [color]);
 
   useEffect(() => {
     if (!isRecording || !stream) {
-      // Draw idle state
+      // Draw idle state or timeline result
       const canvas = canvasRef.current;
       if (canvas) {
         const ctx = canvas.getContext('2d');
         if (ctx) {
           const dpr = window.devicePixelRatio || 1;
-          canvas.width = canvas.clientWidth * dpr;
-          canvas.height = canvas.clientHeight * dpr;
+          const width = canvas.clientWidth;
+          const drawHeight = canvas.clientHeight;
+
+          canvas.width = width * dpr;
+          canvas.height = drawHeight * dpr;
           ctx.scale(dpr, dpr);
-          ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+          ctx.clearRect(0, 0, width, drawHeight);
 
-          // Draw subtle idle bars
-          const barCount = 40;
-          const gap = 3;
-          const barWidth = (canvas.clientWidth - gap * (barCount - 1)) / barCount;
+          if (result && isReadAloudAny(result) && result.word_scores.length > 0) {
+            // Draw result timeline
+            const scores = result.word_scores;
+            const lastEndTime = scores[scores.length - 1].end_time;
+            const totalDuration = lastEndTime + 0.5; // Add 0.5s padding
 
-          for (let i = 0; i < barCount; i++) {
-            const idleHeight = 3 + Math.sin(i * 0.5) * 2;
-            const x = i * (barWidth + gap);
-            const y = (canvas.clientHeight - idleHeight) / 2;
-
+            // Draw a visible background track
             ctx.fillStyle = getComputedStyle(document.documentElement)
-              .getPropertyValue('--color-outline').trim() || '#E2E8F0';
-            ctx.globalAlpha = 0.5;
+              .getPropertyValue('--color-outline').trim() || '#000000ff';
+            ctx.globalAlpha = 0.8;
             ctx.beginPath();
-            ctx.roundRect(x, y, barWidth, idleHeight, barWidth / 2);
+            ctx.roundRect(0, drawHeight / 2 - 12, width, 24, 4);
             ctx.fill();
+
+            // Draw each word's segment
+            ctx.globalAlpha = 1;
+            scores.forEach((ws) => {
+              const startX = (ws.start_time / totalDuration) * width;
+              const endX = (ws.end_time / totalDuration) * width;
+              let segWidth = Math.max(endX - startX, 4); // Minimum width of 4px for visibility
+
+              // Prevent segment from overflowing the canvas
+              if (startX + segWidth > width) {
+                segWidth = width - startX;
+              }
+
+              const level = getScoreLevel(ws.score);
+              ctx.fillStyle = SCORE_HEX_COLORS[level];
+
+              ctx.beginPath();
+              ctx.roundRect(startX, drawHeight / 2 - 12, segWidth, 24, 4);
+              ctx.fill();
+            });
+          } else {
+            // Draw subtle idle bars
+            const barCount = 40;
+            const gap = 3;
+            const barWidth = (width - gap * (barCount - 1)) / barCount;
+
+            for (let i = 0; i < barCount; i++) {
+              const idleHeight = 3 + Math.sin(i * 0.5) * 2;
+              const x = i * (barWidth + gap);
+              const y = (drawHeight - idleHeight) / 2;
+
+              ctx.fillStyle = getComputedStyle(document.documentElement)
+                .getPropertyValue('--color-outline').trim() || '#E2E8F0';
+              ctx.globalAlpha = 0.5;
+              ctx.beginPath();
+              ctx.roundRect(x, y, barWidth, idleHeight, barWidth / 2);
+              ctx.fill();
+            }
           }
         }
       }
@@ -126,14 +178,14 @@ export default function AudioWaveform({
     source.connect(analyser);
 
     // Start animation loop
-    animationRef.current = requestAnimationFrame(draw);
+    animationRef.current = requestAnimationFrame(drawLive);
 
     return () => {
       cancelAnimationFrame(animationRef.current);
       source.disconnect();
       audioContext.close();
     };
-  }, [isRecording, stream, draw]);
+  }, [isRecording, stream, drawLive, result]);
 
   return (
     <div className="w-full rounded-xl bg-hover-bg border border-outline/30 overflow-hidden" style={{ height }}>

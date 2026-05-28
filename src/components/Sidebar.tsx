@@ -8,6 +8,7 @@ import { useLanguage } from '@/context/LanguageContext';
 const navItems = [
   { href: '/', icon: 'home', label: 'Trang chủ' },
   { href: '/study', icon: 'book', label: 'Tra từ & Học tập' },
+  { href: '/translate', icon: 'g_translate', label: 'Dịch thông minh' },
   { href: '/speaking', icon: 'mic', label: 'Luyện Nói AI' },
   { href: '/writing', icon: 'edit', label: 'Luyện Viết AI' },
   { href: '/exam', icon: 'emoji_events', label: 'Luyện Thi' },

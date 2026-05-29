@@ -71,7 +71,7 @@ export default function SmartQueueStatus({
                   Đang phân tích phát âm...
                 </p>
                 <p className="text-secondary text-xs mt-0.5">
-                  AI đang chấm điểm từng từ trong câu của bạn
+                  Đang chấm điểm từng từ trong câu của bạn
                 </p>
               </div>
             </div>

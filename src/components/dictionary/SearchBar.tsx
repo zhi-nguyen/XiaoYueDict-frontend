@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, X, Loader2, Quote } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
+import { djangoClient } from '@/lib/apiClient';
 import { ZhWord } from '@/types/dictionary';
 
 interface SearchBarProps {
@@ -15,8 +16,8 @@ interface ExactExample {
 
 export default function SearchBar({ onSelectWord }: SearchBarProps) {
   const [query, setQuery] = useState('');
-  const debouncedQuery = useDebounce(query, 400);
-  
+  const debouncedQuery = useDebounce(query, 800);
+
   const [results, setResults] = useState<ZhWord[]>([]);
   const [exactExample, setExactExample] = useState<ExactExample | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -45,8 +46,8 @@ export default function SearchBar({ onSelectWord }: SearchBarProps) {
 
       setIsLoading(true);
       try {
-        const res = await fetch(`http://localhost/api/core/dictionary/zh/search/?q=${encodeURIComponent(debouncedQuery)}`);
-        const data = await res.json();
+        const res = await djangoClient.get(`/dictionary/zh/search/?q=${encodeURIComponent(debouncedQuery)}`);
+        const data = res.data;
         setResults(data.results || []);
         setExactExample(data.exact_example_match || null);
         setIsOpen(true);
@@ -67,14 +68,14 @@ export default function SearchBar({ onSelectWord }: SearchBarProps) {
   };
 
   return (
-    <div className="relative w-full max-w-2xl mx-auto mb-8 z-50" ref={wrapperRef}>
+    <div className="relative w-full max-w-2xl mx-auto mb-8 z-30" ref={wrapperRef}>
       <div className={`relative flex items-center w-full h-14 rounded-full bg-surface border-2 transition-all duration-300 shadow-sm
         ${isOpen && (results.length > 0 || exactExample) ? 'border-primary shadow-md' : 'border-outline hover:border-primary/50'}`}>
-        
+
         <div className="pl-5 pr-2 text-secondary">
           {isLoading ? <Loader2 className="w-5 h-5 animate-spin text-primary" /> : <Search className="w-5 h-5" />}
         </div>
-        
+
         <input
           type="text"
           className="flex-1 h-full bg-transparent outline-none text-lg text-primary placeholder:text-secondary font-medium"
@@ -85,9 +86,9 @@ export default function SearchBar({ onSelectWord }: SearchBarProps) {
             if (results.length > 0 || exactExample) setIsOpen(true);
           }}
         />
-        
+
         {query && (
-          <button 
+          <button
             onClick={() => { setQuery(''); setResults([]); setExactExample(null); }}
             className="px-4 text-secondary hover:text-primary transition-colors"
           >
@@ -99,12 +100,12 @@ export default function SearchBar({ onSelectWord }: SearchBarProps) {
       {/* Dropdown Results */}
       {isOpen && (debouncedQuery.trim() !== '') && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-surface border border-outline rounded-2xl shadow-xl overflow-hidden max-h-[400px] overflow-y-auto animate-in fade-in slide-in-from-top-4 duration-200">
-          
+
           {isLoading ? (
-             <div className="p-8 flex flex-col items-center justify-center space-y-3 text-secondary animate-pulse">
-               <Loader2 className="w-8 h-8 animate-spin text-primary/50" />
-               <p className="text-sm font-medium">Đang tìm kiếm dữ liệu...</p>
-             </div>
+            <div className="p-8 flex flex-col items-center justify-center space-y-3 text-secondary animate-pulse">
+              <Loader2 className="w-8 h-8 animate-spin text-primary/50" />
+              <p className="text-sm font-medium">Đang tìm kiếm dữ liệu...</p>
+            </div>
           ) : results.length === 0 && !exactExample ? (
             <div className="p-6 text-center text-secondary">
               Không tìm thấy kết quả nào cho "{debouncedQuery}".
@@ -114,7 +115,7 @@ export default function SearchBar({ onSelectWord }: SearchBarProps) {
               {/* Exact Example Block */}
               {exactExample && (
                 <div className="mx-2 mb-2 animate-in slide-in-from-top-2">
-                  <button 
+                  <button
                     onClick={() => handleSelect({
                       id: 'exact-example-match',
                       word: exactExample.chinese,
@@ -173,7 +174,7 @@ export default function SearchBar({ onSelectWord }: SearchBarProps) {
                           {word.translation_vi}
                         </span>
                       </div>
-                      
+
                       <div className="flex flex-col items-end">
                         <span className="text-sm font-semibold text-primary">{word.pinyin}</span>
                         {word.hsk_level && (

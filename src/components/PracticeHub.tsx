@@ -108,18 +108,17 @@ export default function PracticeHub({ word }: PracticeHubProps) {
   const scoreNum = typeof displayScore === 'number' ? displayScore : 0;
   const dashOffset = circumference - (scoreNum / 100) * circumference;
 
-  const showHandwriting = !word || word.word.length <= 4;
 
   return (
     <div className="space-y-6">
       {/* Pronunciation Practice Card */}
-      <div className="bg-surface border border-outline rounded-[1.5rem] p-8 shadow-sm">
+      <div className="bg-surface border border-outline rounded-[1.5rem] p-4 md:p-8 shadow-sm">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-hover-bg flex items-center justify-center text-primary">
               <span className="material-symbols-outlined text-[20px]">graphic_eq</span>
             </div>
-            <h2 className="text-xl font-bold text-primary">Chấm điểm phát âm AI</h2>
+            <h2 className="text-xl font-bold text-primary">Chấm điểm phát âm</h2>
           </div>
           <span className="px-3 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded-full uppercase tracking-wider">
             Đang hoạt động
@@ -258,45 +257,7 @@ export default function PracticeHub({ word }: PracticeHubProps) {
 
       </div>
 
-      {/* Handwriting Practice Card */}
-      {showHandwriting && (
-        <div className="bg-surface border border-outline rounded-[1.5rem] p-8 shadow-sm">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-hover-bg flex items-center justify-center text-primary">
-                <span className="material-symbols-outlined text-[20px]">draw</span>
-              </div>
-              <h2 className="text-xl font-bold text-primary">Chấm điểm nét chữ AI</h2>
-            </div>
-            <div className="px-3 py-1 bg-hover-bg text-primary text-[10px] font-bold rounded-full uppercase tracking-wider">
-              85% Chính xác
-            </div>
-          </div>
 
-          <div className="mb-6 relative w-full aspect-[2/1] rounded-2xl overflow-hidden border border-outline bg-hover-bg grid-canvas flex items-center justify-center">
-            <svg className="absolute inset-0 w-full h-full opacity-40" viewBox="0 0 400 200">
-              <path d="M 120 50 C 180 40, 240 45, 280 55 M 200 40 L 200 160 M 150 160 C 180 155, 220 165, 250 155" fill="none" stroke="var(--color-primary)" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"></path>
-            </svg>
-            <span className="text-primary/20 font-bold text-4xl pointer-events-none select-none z-10">
-              Viết tại đây
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex gap-2">
-              <button className="px-5 py-2.5 bg-hover-bg text-secondary font-semibold text-sm rounded-full hover:bg-outline/50 transition-colors">
-                Xóa
-              </button>
-              <button className="px-5 py-2.5 bg-hover-bg text-secondary font-semibold text-sm rounded-full hover:bg-outline/50 transition-colors">
-                Hoàn tác
-              </button>
-            </div>
-            <button className="px-6 py-2.5 bg-primary text-white font-bold text-sm rounded-full hover:opacity-90 transition-opacity">
-              Kiểm tra nét chữ
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

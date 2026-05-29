@@ -2,16 +2,16 @@ import type { Metadata } from 'next'
 import './globals.css'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
-import { LanguageProvider } from '@/context/LanguageContext'
+
 import { Analytics } from "@vercel/analytics/next"
 
 export const metadata: Metadata = {
-  title: 'XiaoYueDict — AI Pronunciation Assessment',
-  description: 'AI-powered pronunciation scoring for English and Chinese. Get word-level feedback in 5 seconds.',
-  keywords: ['pronunciation', 'AI', 'scoring', 'English', 'Chinese', 'Mandarin', 'HSK', 'IELTS'],
+  title: 'XiaoYueDict — Pronunciation Assessment',
+  description: 'Pronunciation scoring for English and Chinese. Get word-level feedback in 5 seconds.',
+  keywords: ['pronunciation', 'scoring', 'English', 'Chinese', 'Mandarin', 'HSK', 'IELTS'],
   openGraph: {
-    title: 'XiaoYueDict — AI Pronunciation Assessment',
-    description: 'AI-powered pronunciation scoring for English and Chinese.',
+    title: 'XiaoYueDict — Pronunciation Assessment',
+    description: 'Pronunciation scoring for English and Chinese.',
     type: 'website',
   },
 }
@@ -30,7 +30,6 @@ export default function RootLayout({
         <meta name="theme-color" content="#334155" />
       </head>
       <body className="font-lexend text-primary bg-content-bg">
-        <LanguageProvider>
           <div className="flex h-screen w-full bg-content-bg overflow-hidden font-lexend text-primary">
             <Sidebar />
             <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
@@ -39,7 +38,6 @@ export default function RootLayout({
               {children}
             </div>
           </div>
-        </LanguageProvider>
       </body>
     </html>
   )

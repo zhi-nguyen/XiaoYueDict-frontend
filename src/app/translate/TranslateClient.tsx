@@ -97,7 +97,7 @@ export default function TranslateClient() {
     setTimeout(() => {
       clearInterval(interval);
       if (isLoading) {
-        setErrorMsg('Quá thời gian chờ phản hồi từ AI');
+        setErrorMsg('Quá thời gian chờ phản hồi');
         setIsLoading(false);
       }
     }, 30000);
@@ -223,7 +223,7 @@ export default function TranslateClient() {
               ) : (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium bg-purple-100 text-purple-700 border border-purple-200">
                   <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
-                  AI dịch tham khảo
+                  Dịch tham khảo
                 </span>
               )}
             </div>
@@ -256,7 +256,7 @@ export default function TranslateClient() {
                       </span>
                     ) : (
                       <span className="text-[10px] uppercase font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded flex items-center gap-1 shrink-0">
-                        AI
+                        Hệ thống
                       </span>
                     )}
                   </div>

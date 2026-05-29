@@ -10,7 +10,7 @@ export default function StudyPage() {
   const [selectedWord, setSelectedWord] = useState<ZhWord | null>(null);
 
   return (
-    <main className="flex-1 overflow-y-auto w-full p-8 pb-16 bg-surface-alt min-h-screen">
+    <main className="flex-1 overflow-y-auto w-full p-4 md:p-8 pb-16 bg-surface-alt h-full">
       <div className="max-w-[1280px] mx-auto">
         
         {/* Search Bar Section */}

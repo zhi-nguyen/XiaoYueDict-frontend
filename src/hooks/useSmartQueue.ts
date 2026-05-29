@@ -7,6 +7,7 @@ import type {
   ScoringResponse,
 } from '@/types/scoring';
 import { validateTextInput } from '@/lib/inputValidation';
+import { djangoClient } from '@/lib/apiClient';
 
 export type QueuePhase =
   | 'idle'
@@ -95,13 +96,8 @@ export function useSmartQueue(): UseSmartQueueReturn {
       if (!isMountedRef.current) return;
 
       try {
-        const res = await fetch(`/api/assessments/status/${id}/`);
-
-        if (!res.ok) {
-          throw new Error(`Status check failed (${res.status})`);
-        }
-
-        const data: TaskStatusResponse = await res.json();
+        const res = await djangoClient.get(`/assessments/status/${id}/`);
+        const data: TaskStatusResponse = res.data;
 
         if (!isMountedRef.current) return;
 
@@ -171,17 +167,12 @@ export function useSmartQueue(): UseSmartQueueReturn {
         formData.append('target_text', targetText.trim());
       }
 
-      const res = await fetch(`/api/assessments/submit/`, {
-        method: 'POST',
-        body: formData,
+      const res = await djangoClient.post(`/assessments/submit/`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        }
       });
-
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => ({ error: 'Upload failed' }));
-        throw new Error(errBody.error || `Server error (${res.status})`);
-      }
-
-      const data: TaskSubmitResponse = await res.json();
+      const data: TaskSubmitResponse = res.data;
 
       if (!isMountedRef.current) return;
 

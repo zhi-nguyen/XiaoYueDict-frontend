@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { djangoClient } from '@/lib/apiClient';
 
 interface TranslationRecord {
   original: string;
@@ -39,19 +40,8 @@ export default function TranslateClient() {
     setErrorMsg('');
 
     try {
-      const response = await fetch('/api/dictionary/zh/translate/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ text: trimmedInput })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok && response.status !== 202) {
-        throw new Error(data.error || 'Đã xảy ra lỗi khi gửi yêu cầu dịch thuật');
-      }
+      const response = await djangoClient.post('/dictionary/zh/translate/', { text: trimmedInput });
+      const data = response.data;
 
       if (data.status === 'SUCCESS') {
         // Fallback or immediate return
@@ -65,7 +55,7 @@ export default function TranslateClient() {
       }
       
     } catch (error: any) {
-      setErrorMsg(error.message || 'Lỗi kết nối máy chủ');
+      setErrorMsg(error.response?.data?.error || error.message || 'Lỗi kết nối máy chủ');
       setIsLoading(false);
     }
   };
@@ -73,10 +63,10 @@ export default function TranslateClient() {
   const pollTranslationStatus = (taskId: string, originalText: string) => {
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/dictionary/zh/translate/status/${taskId}/`);
-        const data = await response.json();
+        const response = await djangoClient.get(`/dictionary/zh/translate/status/${taskId}/`);
+        const data = response.data;
 
-        if (response.ok && data.status === 'SUCCESS') {
+        if (data.status === 'SUCCESS') {
           clearInterval(interval);
           setTranslationResult(data, originalText);
           setIsLoading(false);

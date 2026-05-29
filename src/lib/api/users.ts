@@ -1,5 +1,4 @@
-import { apiClient } from '@/lib/apiClient';
-
+import { apiClient, djangoClient } from '@/lib/apiClient';
 export interface UserProfilePayload {
   first_name?: string;
   last_name?: string;
@@ -23,8 +22,7 @@ export const updateUserProfile = async (payload: FormData) => {
 };
 
 export const changeUserPassword = async (payload: ChangePasswordPayload) => {
-  // Using apiClient directly for PUT requires matching Next.js rewriting without causing 308 drop
-  // We call apiClient (which has Next.js BFF base URL) but use the path matching Next.js rewrite rule.
-  const response = await apiClient.put('/users/password/change', payload);
+  // Use djangoClient since it automatically routes to /api/core and is handled by next.config.mjs proxy
+  const response = await djangoClient.put('/users/password/change', payload);
   return response.data;
 };

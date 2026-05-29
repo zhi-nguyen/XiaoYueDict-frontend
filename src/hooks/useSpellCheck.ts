@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { djangoClient } from '@/lib/apiClient';
 
 export interface MisspelledWord {
   /** The misspelled word as it appears in the text */
@@ -56,18 +57,8 @@ export function useSpellCheck(): UseSpellCheckReturn {
     setError(null);
 
     try {
-      const res = await fetch('/api/assessments/spellcheck/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: text.trim() }),
-      });
-
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => ({ error: 'Spellcheck failed' }));
-        throw new Error(errBody.error || `Server error (${res.status})`);
-      }
-
-      const data: SpellCheckResult = await res.json();
+      const res = await djangoClient.post('/assessments/spellcheck/', { text: text.trim() });
+      const data: SpellCheckResult = res.data;
       setResult(data);
       return data;
     } catch (err) {

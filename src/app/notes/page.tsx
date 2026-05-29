@@ -1,14 +1,29 @@
 import React from 'react';
-import { fetchNotebooks } from '@/lib/api/notes';
 import { Notebook } from '@/types/note';
 import NotesClient from './NotesClient';
+import { getServerAuthToken } from '@/lib/serverAuth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function NotesPage() {
   let initialNotebooks: Notebook[] = [];
   try {
-    initialNotebooks = await fetchNotebooks();
+    const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost';
+    const token = await getServerAuthToken();
+    const headers = new Headers({ 'Content-Type': 'application/json' });
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+
+    const res = await fetch(`${GATEWAY_URL}/api/core/notes/notebooks/`, {
+      method: 'GET',
+      headers,
+      cache: 'no-store'
+    });
+
+    if (res.ok) {
+      initialNotebooks = await res.json();
+    }
   } catch (err) {
     console.error('[NotesPage Server] Failed to pre-fetch notebooks:', err);
   }

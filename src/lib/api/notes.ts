@@ -1,110 +1,49 @@
 import { Notebook, Word } from '@/types/note';
-
-const isServer = typeof window === 'undefined';
-
-const getUrl = (path: string) => {
-  if (isServer) {
-    const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost';
-    const serverPath = path.replace(/^\/api\/notes\//, '/api/core/notes/');
-    return `${GATEWAY_URL}${serverPath}`;
-  }
-  return path;
-};
+import { djangoClient } from '@/lib/apiClient';
 
 export async function fetchNotebooks(): Promise<Notebook[]> {
-  const url = getUrl('/api/notes/notebooks/');
-  const res = await fetch(url, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
-    cache: 'no-store',
-  });
-  if (!res.ok) throw new Error('Failed to fetch notebooks');
-  return res.json();
+  const res = await djangoClient.get('/notes/notebooks');
+  return res.data;
 }
 
 export async function createNotebook(data: { name: string; description?: string }): Promise<Notebook> {
-  const url = getUrl('/api/notes/notebooks/');
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error('Failed to create notebook');
-  return res.json();
+  const res = await djangoClient.post('/notes/notebooks', data);
+  return res.data;
 }
 
 export async function fetchNotebook(id: number): Promise<Notebook> {
-  const url = getUrl(`/api/notes/notebooks/${id}/`);
-  const res = await fetch(url, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
-    cache: 'no-store',
-  });
-  if (!res.ok) throw new Error('Failed to fetch notebook details');
-  return res.json();
+  const res = await djangoClient.get(`/notes/notebooks/${id}`);
+  return res.data;
 }
 
 export async function updateNotebook(id: number, data: { name?: string; description?: string }): Promise<Notebook> {
-  const url = getUrl(`/api/notes/notebooks/${id}/`);
-  const res = await fetch(url, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error('Failed to update notebook');
-  return res.json();
+  const res = await djangoClient.patch(`/notes/notebooks/${id}`, data);
+  return res.data;
 }
 
 export async function deleteNotebook(id: number): Promise<void> {
-  const url = getUrl(`/api/notes/notebooks/${id}/`);
-  const res = await fetch(url, {
-    method: 'DELETE',
-  });
-  if (!res.ok) throw new Error('Failed to delete notebook');
+  await djangoClient.delete(`/notes/notebooks/${id}`);
 }
 
 export async function fetchWords(notebookId: number, search?: string): Promise<Word[]> {
-  let path = `/api/notes/notebooks/${notebookId}/words/`;
+  let path = `/notes/notebooks/${notebookId}/words`;
   if (search) {
     path += `?search=${encodeURIComponent(search)}`;
   }
-  const url = getUrl(path);
-  const res = await fetch(url, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
-    cache: 'no-store',
-  });
-  if (!res.ok) throw new Error('Failed to fetch words');
-  return res.json();
+  const res = await djangoClient.get(path);
+  return res.data;
 }
 
 export async function createWord(notebookId: number, data: { vocabulary: string; pinyin?: string; meaning: string; notes?: string }): Promise<Word> {
-  const url = getUrl(`/api/notes/notebooks/${notebookId}/words/`);
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error('Failed to create word');
-  return res.json();
+  const res = await djangoClient.post(`/notes/notebooks/${notebookId}/words`, data);
+  return res.data;
 }
 
 export async function updateWord(notebookId: number, wordId: number, data: { vocabulary?: string; pinyin?: string; meaning?: string; notes?: string }): Promise<Word> {
-  const url = getUrl(`/api/notes/notebooks/${notebookId}/words/${wordId}/`);
-  const res = await fetch(url, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error('Failed to update word');
-  return res.json();
+  const res = await djangoClient.patch(`/notes/notebooks/${notebookId}/words/${wordId}`, data);
+  return res.data;
 }
 
 export async function deleteWord(notebookId: number, wordId: number): Promise<void> {
-  const url = getUrl(`/api/notes/notebooks/${notebookId}/words/${wordId}/`);
-  const res = await fetch(url, {
-    method: 'DELETE',
-  });
-  if (!res.ok) throw new Error('Failed to delete word');
+  await djangoClient.delete(`/notes/notebooks/${notebookId}/words/${wordId}`);
 }
-

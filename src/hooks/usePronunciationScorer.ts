@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import type { ScoringResponse, ScoringErrorResponse } from '@/types/scoring';
 import { validateTextInput } from '@/lib/inputValidation';
+import { apiClient } from '@/lib/apiClient';
 
 interface UsePronunciationScorerReturn {
   /** Triggers the scoring request */
@@ -72,27 +73,12 @@ export function usePronunciationScorer(): UsePronunciationScorerReturn {
       }
 
       // ── Send request ──────────────────────────────────────────────────
-      // Do NOT set Content-Type manually — the browser auto-generates
-      // the correct `multipart/form-data; boundary=----...` header.
-      const response = await fetch(`/api/score`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      // ── Handle HTTP errors ────────────────────────────────────────────
-      if (!response.ok) {
-        let errorMessage = `Server error (${response.status})`;
-        try {
-          const errorData: ScoringErrorResponse = await response.json();
-          errorMessage = errorData.detail || errorMessage;
-        } catch {
-          // Response body wasn't JSON, use the generic error
+      const response = await apiClient.post('/score', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
         }
-        throw new Error(errorMessage);
-      }
-
-      // ── Parse successful response ─────────────────────────────────────
-      const data: ScoringResponse = await response.json();
+      });
+      const data: ScoringResponse = response.data;
       setResult(data);
       return data;
 

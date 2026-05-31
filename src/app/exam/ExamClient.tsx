@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { fetchExams } from '@/lib/api/exams';
-import { useLanguage } from '@/context/LanguageContext';
+import { useLanguageStore } from '@/store/useLanguageStore';
 import { Exam } from '@/types/exam';
 import { getAllSavedExamIds, clearExamState } from '@/lib/examState';
 import { useRouter } from 'next/navigation';
@@ -14,7 +14,7 @@ interface ExamClientProps {
 
 export default function ExamClient({ initialExams }: ExamClientProps) {
   const router = useRouter();
-  const { language } = useLanguage();
+  const language = useLanguageStore((state) => state.language);
   const [exams, setExams] = useState<Exam[]>(initialExams);
   const [savedExamIds, setSavedExamIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);

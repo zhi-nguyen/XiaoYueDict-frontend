@@ -2,13 +2,13 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useLanguage } from '@/context/LanguageContext';
+import { useLanguageStore } from '@/store/useLanguageStore';
 
 export default function HomePage() {
-  const { language } = useLanguage();
+  const language = useLanguageStore((state) => state.language);
 
   return (
-    <div className="flex-1 overflow-y-auto w-full p-8 pb-16">
+    <div className="flex-1 overflow-y-auto w-full p-4 md:p-8 pb-16">
       <div className="max-w-[1280px] mx-auto space-y-8">
 
         {/* ── Welcome Banner ── */}
@@ -108,7 +108,7 @@ export default function HomePage() {
               <span className="material-symbols-outlined text-[28px]">record_voice_over</span>
             </div>
             <div>
-              <h3 className="font-bold text-lg text-primary">Luyện Phát Âm AI</h3>
+              <h3 className="font-bold text-lg text-primary">Luyện Phát Âm</h3>
               <p className="text-secondary text-sm mt-0.5">
                 {language === 'zh'
                   ? 'Ghi âm và nhận điểm từng từ/ký tự trong 5 giây'
@@ -125,11 +125,11 @@ export default function HomePage() {
               <span className="material-symbols-outlined text-[28px]">edit_note</span>
             </div>
             <div>
-              <h3 className="font-bold text-lg text-primary">Luyện Viết AI</h3>
+              <h3 className="font-bold text-lg text-primary">Luyện Viết</h3>
               <p className="text-secondary text-sm mt-0.5">
                 {language === 'zh'
-                  ? 'Viết văn tiếng Trung và nhờ AI chấm chữa ngữ pháp'
-                  : 'Viết văn tiếng Anh và nhờ AI chấm chữa ngữ pháp'}
+                  ? 'Viết văn tiếng Trung và nhờ hệ thống chấm chữa ngữ pháp'
+                  : 'Viết văn tiếng Anh và nhờ hệ thống chấm chữa ngữ pháp'}
               </p>
             </div>
           </Link>

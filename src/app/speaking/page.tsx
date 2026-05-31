@@ -6,7 +6,7 @@ import { useSpellCheck } from '@/hooks/useSpellCheck';
 import SmartQueueStatus from '@/components/SmartQueueStatus';
 import ScoreDisplay from '@/components/ScoreDisplay';
 import AudioWaveform from '@/components/AudioWaveform';
-import { useLanguage } from '@/context/LanguageContext';
+import { useLanguageStore } from '@/store/useLanguageStore';
 
 /** Convert AudioBuffer to 16-bit PCM WAV Blob */
 function audioBufferToWav(buffer: AudioBuffer): Blob {
@@ -47,8 +47,8 @@ function audioBufferToWav(buffer: AudioBuffer): Blob {
 
 export default function SpeakingPage() {
   const queue = useSmartQueue();
+  const language = useLanguageStore((state) => state.language);
   const spellCheck = useSpellCheck();
-  const { language } = useLanguage();
 
   // ── Local State ──
   const [targetText, setTargetText] = useState('');
@@ -250,9 +250,9 @@ export default function SpeakingPage() {
 
         {/* ── Header ── */}
         <div className="text-center mb-2">
-          <h1 className="text-3xl font-bold text-primary">Luyện Phát Âm AI</h1>
+          <h1 className="text-3xl font-bold text-primary">Luyện Phát Âm</h1>
           <p className="text-secondary mt-1">
-            Ghi âm hoặc tải file — AI chấm điểm từng từ trong 5-10 giây
+            Ghi âm hoặc tải file — Chấm điểm từng từ trong 5-10 giây
           </p>
         </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { djangoClient } from '@/lib/apiClient';
 
 interface TranslationRecord {
   original: string;
@@ -39,19 +40,8 @@ export default function TranslateClient() {
     setErrorMsg('');
 
     try {
-      const response = await fetch('/api/dictionary/zh/translate/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ text: trimmedInput })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok && response.status !== 202) {
-        throw new Error(data.error || 'Đã xảy ra lỗi khi gửi yêu cầu dịch thuật');
-      }
+      const response = await djangoClient.post('/dictionary/zh/translate/', { text: trimmedInput });
+      const data = response.data;
 
       if (data.status === 'SUCCESS') {
         // Fallback or immediate return
@@ -65,7 +55,7 @@ export default function TranslateClient() {
       }
       
     } catch (error: any) {
-      setErrorMsg(error.message || 'Lỗi kết nối máy chủ');
+      setErrorMsg(error.response?.data?.error || error.message || 'Lỗi kết nối máy chủ');
       setIsLoading(false);
     }
   };
@@ -73,10 +63,10 @@ export default function TranslateClient() {
   const pollTranslationStatus = (taskId: string, originalText: string) => {
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/dictionary/zh/translate/status/${taskId}/`);
-        const data = await response.json();
+        const response = await djangoClient.get(`/dictionary/zh/translate/status/${taskId}/`);
+        const data = response.data;
 
-        if (response.ok && data.status === 'SUCCESS') {
+        if (data.status === 'SUCCESS') {
           clearInterval(interval);
           setTranslationResult(data, originalText);
           setIsLoading(false);
@@ -97,7 +87,7 @@ export default function TranslateClient() {
     setTimeout(() => {
       clearInterval(interval);
       if (isLoading) {
-        setErrorMsg('Quá thời gian chờ phản hồi từ AI');
+        setErrorMsg('Quá thời gian chờ phản hồi');
         setIsLoading(false);
       }
     }, 30000);
@@ -223,7 +213,7 @@ export default function TranslateClient() {
               ) : (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium bg-purple-100 text-purple-700 border border-purple-200">
                   <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
-                  AI dịch tham khảo
+                  Dịch tham khảo
                 </span>
               )}
             </div>
@@ -256,7 +246,7 @@ export default function TranslateClient() {
                       </span>
                     ) : (
                       <span className="text-[10px] uppercase font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded flex items-center gap-1 shrink-0">
-                        AI
+                        Hệ thống
                       </span>
                     )}
                   </div>

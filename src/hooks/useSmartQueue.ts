@@ -8,6 +8,8 @@ import type {
 } from '@/types/scoring';
 import { validateTextInput } from '@/lib/inputValidation';
 import { djangoClient } from '@/lib/apiClient';
+import { useWebSocket, getGuestId } from './useWebSocket';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export type QueuePhase =
   | 'idle'
@@ -38,8 +40,6 @@ export interface UseSmartQueueReturn {
   reset: () => void;
 }
 
-const POLL_INTERVAL_MS = 2000;
-
 /**
  * Smart Queue hook — handles the full async scoring lifecycle:
  * 1. Upload audio to Django gateway
@@ -56,30 +56,53 @@ export function useSmartQueue(): UseSmartQueueReturn {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [taskId, setTaskId] = useState<string | null>(null);
 
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
+  const { isAuthenticated } = useAuthStore();
+
+  const handleWsMessage = useCallback((msg: any) => {
+    if (!isMountedRef.current || !taskId) return;
+
+    // Check if message belongs to our task
+    if (msg.payload?.task_id !== taskId) return;
+
+    if (msg.type === 'score_complete') {
+      setPhase('completed');
+      setScore(msg.payload.score);
+      // Optional: We might need to fetch the full result_data since WS only sends score
+      // but for now, we just rely on WS data or fetch status once
+      fetchFinalStatus(taskId);
+    } else if (msg.type === 'score_failed') {
+      setPhase('error');
+      setErrorMessage(msg.payload.error || 'Processing failed on the server.');
+    }
+  }, [taskId]);
+
+  const { isConnected } = useWebSocket({
+    onMessage: handleWsMessage
+  });
+
+  const fetchFinalStatus = async (id: string) => {
+    try {
+      const res = await djangoClient.get(`/assessments/status/${id}/`);
+      if (!isMountedRef.current) return;
+      const data = res.data;
+      setResultData(data.result_data);
+      setScore(data.score);
+    } catch (err) {
+      console.error('Failed to fetch final status', err);
+    }
+  };
 
   // Cleanup on unmount
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-        pollingRef.current = null;
-      }
     };
   }, []);
 
-  const stopPolling = useCallback(() => {
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current);
-      pollingRef.current = null;
-    }
-  }, []);
-
   const reset = useCallback(() => {
-    stopPolling();
+
     setPhase('idle');
     setQueuePosition(0);
     setEstimatedWait(0);
@@ -87,59 +110,7 @@ export function useSmartQueue(): UseSmartQueueReturn {
     setScore(null);
     setErrorMessage(null);
     setTaskId(null);
-  }, [stopPolling]);
-
-  const startPolling = useCallback((id: string) => {
-    stopPolling();
-
-    const poll = async () => {
-      if (!isMountedRef.current) return;
-
-      try {
-        const res = await djangoClient.get(`/assessments/status/${id}/`);
-        const data: TaskStatusResponse = res.data;
-
-        if (!isMountedRef.current) return;
-
-        // Update queue position
-        setQueuePosition(data.queue_position);
-        setEstimatedWait(data.estimated_wait_seconds);
-
-        switch (data.status) {
-          case 'PENDING':
-            setPhase(data.queue_position <= 4 ? 'processing' : 'queued');
-            break;
-
-          case 'PROCESSING':
-            setPhase('processing');
-            setQueuePosition(Math.min(data.queue_position, 1));
-            break;
-
-          case 'COMPLETED':
-            setPhase('completed');
-            setResultData(data.result_data);
-            setScore(data.score);
-            stopPolling();
-            break;
-
-          case 'FAILED':
-            setPhase('error');
-            setErrorMessage(data.error_message || 'Processing failed on the server.');
-            stopPolling();
-            break;
-        }
-      } catch (err) {
-        console.error('[useSmartQueue] Polling error:', err);
-        // Don't stop polling on transient network errors — retry next cycle
-      }
-    };
-
-    // Initial poll immediately
-    poll();
-
-    // Then poll on interval
-    pollingRef.current = setInterval(poll, POLL_INTERVAL_MS);
-  }, [stopPolling]);
+  }, []);
 
   const submit = useCallback(async (
     audioBlob: Blob,
@@ -162,6 +133,11 @@ export function useSmartQueue(): UseSmartQueueReturn {
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.wav');
       formData.append('language', language);
+
+      if (!isAuthenticated) {
+        const guestId = getGuestId();
+        if (guestId) formData.append('guest_id', guestId);
+      }
 
       if (targetText && targetText.trim()) {
         formData.append('target_text', targetText.trim());
@@ -187,8 +163,9 @@ export function useSmartQueue(): UseSmartQueueReturn {
         setPhase('queued');
       }
 
-      // Start polling for results
-      startPolling(data.task_id);
+      // Instead of polling, we wait for WS events via handleWsMessage
+      // Note: In case WS is not connected, a fallback might be needed later
+      // but for now we rely entirely on WS as requested.
 
     } catch (err) {
       if (!isMountedRef.current) return;
@@ -197,7 +174,7 @@ export function useSmartQueue(): UseSmartQueueReturn {
       setErrorMessage(message);
       console.error('[useSmartQueue] Submit failed:', err);
     }
-  }, [reset, startPolling]);
+  }, [reset, isAuthenticated]);
 
   return {
     submit,

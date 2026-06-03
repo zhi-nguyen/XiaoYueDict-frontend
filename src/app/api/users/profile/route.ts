@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
 
-const DJANGO_API_URL = process.env.GATEWAY_URL || 'http://localhost';
+const DJANGO_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
 
 export async function PATCH(request: Request) {
   try {

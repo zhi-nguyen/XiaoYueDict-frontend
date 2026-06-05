@@ -27,6 +27,14 @@ const nextConfig = {
         destination: 'http://localhost:80/api/core/subscriptions/:path*/',
       },
       {
+        source: '/api/notifications/:path*/',
+        destination: 'http://localhost:80/api/core/notifications/:path*/',
+      },
+      {
+        source: '/api/notifications/:path*',
+        destination: 'http://localhost:80/api/core/notifications/:path*/',
+      },
+      {
         source: '/media/:path*',
         destination: 'http://localhost:80/media/:path*', // Proxy media to Nginx
       }

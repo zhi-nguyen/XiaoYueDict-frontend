@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export default async function NotesPage() {
   let initialNotebooks: Notebook[] = [];
   try {
-    const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost';
+    const GATEWAY_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
     const token = await getServerAuthToken();
     const headers = new Headers({ 'Content-Type': 'application/json' });
     if (token) {

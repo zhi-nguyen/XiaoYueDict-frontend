@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const DJANGO_API_URL = process.env.GATEWAY_URL || 'http://localhost';
+const DJANGO_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
 
 export async function GET(request: Request) {
   try {

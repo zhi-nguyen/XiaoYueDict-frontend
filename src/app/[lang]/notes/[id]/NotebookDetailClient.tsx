@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { fetchWords, createWord, deleteWord, updateNotebook, deleteNotebook } from '@/lib/api/notes';
 import { Notebook, Word } from '@/types/note';
 
@@ -18,6 +18,8 @@ export default function NotebookDetailClient({
   initialWords,
 }: NotebookDetailClientProps) {
   const router = useRouter();
+  const params = useParams();
+  const language = (params?.lang as string) || 'zh';
 
   const [notebook, setNotebook] = useState<Notebook>(initialNotebook);
   const [words, setWords] = useState<Word[]>(initialWords);
@@ -115,7 +117,7 @@ export default function NotebookDetailClient({
     if (!confirm('Hành động này không thể hoàn tác. Bạn chắc chắn muốn xóa sổ tay này cùng với toàn bộ từ vựng bên trong?')) return;
     try {
       await deleteNotebook(notebookId);
-      router.push('/notes');
+      router.push(`/${language}/notes`);
     } catch (err) {
       alert("Lỗi khi xóa sổ tay");
     }
@@ -126,7 +128,7 @@ export default function NotebookDetailClient({
       {/* Header */}
       <div className="px-8 py-6 border-b border-outline flex items-center justify-between shrink-0 bg-white sticky top-0 z-10">
         <div className="flex items-center">
-          <Link href="/notes" className="mr-4 p-2 hover:bg-hover-bg rounded-full text-secondary transition-colors">
+          <Link href={`/${language}/notes`} className="mr-4 p-2 hover:bg-hover-bg rounded-full text-secondary transition-colors">
             <span className="material-symbols-outlined">arrow_back</span>
           </Link>
           <div>

@@ -3,10 +3,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { fetchExams } from '@/lib/api/exams';
-import { useLanguageStore } from '@/store/useLanguageStore';
 import { Exam } from '@/types/exam';
 import { getAllSavedExamIds, clearExamState } from '@/lib/examState';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 
 interface ExamClientProps {
   initialExams: Exam[];
@@ -14,7 +13,8 @@ interface ExamClientProps {
 
 export default function ExamClient({ initialExams }: ExamClientProps) {
   const router = useRouter();
-  const language = useLanguageStore((state) => state.language);
+  const params = useParams();
+  const language = (params?.lang as string) || 'zh';
   const [exams, setExams] = useState<Exam[]>(initialExams);
   const [savedExamIds, setSavedExamIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -80,7 +80,7 @@ export default function ExamClient({ initialExams }: ExamClientProps) {
 
   const handleStartOver = (examId: number) => {
     clearExamState(examId);
-    router.push(`/exam/take/${examId}`);
+    router.push(`/${language}/exam/take/${examId}`);
   };
 
   // Group exams by level
@@ -205,7 +205,7 @@ export default function ExamClient({ initialExams }: ExamClientProps) {
                   <div className="mt-auto flex flex-col gap-2">
                     {savedExamIds.includes(exam.id.toString()) ? (
                       <>
-                        <Link href={`/exam/take/${exam.id}`} className="block text-center bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 transition-colors shadow-sm">
+                        <Link href={`/${language}/exam/take/${exam.id}`} className="block text-center bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 transition-colors shadow-sm">
                           Tiếp tục làm bài
                         </Link>
                         <button 
@@ -216,7 +216,7 @@ export default function ExamClient({ initialExams }: ExamClientProps) {
                         </button>
                       </>
                     ) : (
-                      <Link href={`/exam/take/${exam.id}`} className="block text-center bg-primary text-white font-bold py-3 rounded-xl hover:bg-primary-hover transition-colors shadow-sm">
+                      <Link href={`/${language}/exam/take/${exam.id}`} className="block text-center bg-primary text-white font-bold py-3 rounded-xl hover:bg-primary-hover transition-colors shadow-sm">
                         Bắt đầu làm bài
                       </Link>
                     )}

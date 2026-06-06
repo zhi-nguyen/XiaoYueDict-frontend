@@ -8,11 +8,13 @@ export const dynamic = 'force-dynamic';
 interface PageProps {
   params: {
     id: string;
+    lang: string;
   };
 }
 
 export default async function NotebookDetailPage({ params }: PageProps) {
   const notebookId = parseInt(params.id, 10);
+  const language = params.lang || 'zh';
 
   if (isNaN(notebookId)) {
     return (
@@ -20,7 +22,7 @@ export default async function NotebookDetailPage({ params }: PageProps) {
         <div className="bg-red-50 text-red-500 p-4 rounded-xl mb-6">
           ID Sổ tay không hợp lệ
         </div>
-        <Link href="/notes" className="text-primary hover:underline">&larr; Quay lại danh sách</Link>
+        <Link href={`/${language}/notes`} className="text-primary hover:underline">&larr; Quay lại danh sách</Link>
       </div>
     );
   }
@@ -42,7 +44,7 @@ export default async function NotebookDetailPage({ params }: PageProps) {
         <div className="bg-red-50 text-red-500 p-4 rounded-xl mb-6">
           Không thể tải dữ liệu sổ tay hoặc sổ tay không tồn tại.
         </div>
-        <Link href="/notes" className="text-primary hover:underline">&larr; Quay lại danh sách</Link>
+        <Link href={`/${language}/notes`} className="text-primary hover:underline">&larr; Quay lại danh sách</Link>
       </div>
     );
   }

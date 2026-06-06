@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useLanguageStore } from '@/store/useLanguageStore';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import { useUIStore } from '@/store/useUIStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useGamificationStore } from '@/store/useGamificationStore';
@@ -10,7 +10,18 @@ import Link from 'next/link';
 import AuthModal from '@/components/auth/AuthModal';
 
 export default function Header() {
-  const { language, setLanguage } = useLanguageStore();
+  const params = useParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const language = (params?.lang as string) || 'zh';
+
+  const switchLanguage = (newLang: string) => {
+    if (params?.lang) {
+      router.push(pathname.replace(`/${params.lang}`, `/${newLang}`));
+    } else {
+      router.push(`/${newLang}${pathname === '/' ? '' : pathname}`);
+    }
+  };
   const toggleSidebar = useUIStore((state) => state.toggleSidebar);
   const { isAuthenticated, user, logout, checkAuth } = useAuthStore();
   
@@ -84,7 +95,7 @@ export default function Header() {
         {/* Language Toggle */}
         <div className="flex bg-hover-bg rounded-full p-1 border border-outline shrink-0">
           <button
-            onClick={() => setLanguage('zh')}
+            onClick={() => switchLanguage('zh')}
             className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${
               language === 'zh'
                 ? 'bg-primary text-white shadow-sm'
@@ -95,7 +106,7 @@ export default function Header() {
             <span className="hidden sm:inline">Trung</span>
           </button>
           <button
-            onClick={() => setLanguage('en')}
+            onClick={() => switchLanguage('en')}
             className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${
               language === 'en'
                 ? 'bg-primary text-white shadow-sm'

@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import { useSmartQueue } from '@/hooks/useSmartQueue';
+import { useParams } from 'next/navigation';
 import SmartQueueStatus from '@/components/SmartQueueStatus';
 import ScoreDisplay from '@/components/ScoreDisplay';
 import AudioWaveform from '@/components/AudioWaveform';
@@ -46,6 +47,8 @@ interface PracticeHubProps {
 
 export default function PracticeHub({ word }: PracticeHubProps) {
   const queue = useSmartQueue();
+  const params = useParams();
+  const lang = ((params?.lang as string) || 'zh') as 'en' | 'zh';
   const [isRecording, setIsRecording] = useState(false);
   const [activeStream, setActiveStream] = useState<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -81,9 +84,9 @@ export default function PracticeHub({ word }: PracticeHubProps) {
           const decoded = await ctx.decodeAudioData(ab);
           const wavBlob = audioBufferToWav(decoded);
           // Auto-submit after recording
-          await queue.submit(wavBlob, 'zh', target);
+          await queue.submit(wavBlob, lang, target);
         } catch {
-          await queue.submit(webmBlob, 'zh', target);
+          await queue.submit(webmBlob, lang, target);
         }
       };
 
@@ -201,7 +204,7 @@ export default function PracticeHub({ word }: PracticeHubProps) {
                     if (target && isSentence && !target.endsWith('。')) {
                       target += '。';
                     }
-                    await queue.submit(file, 'zh', target);
+                    await queue.submit(file, lang, target);
                   }
                 }}
                 className="mt-4 text-xs"

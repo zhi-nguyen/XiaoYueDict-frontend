@@ -2,10 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useLanguageStore } from '@/store/useLanguageStore';
+import { useParams } from 'next/navigation';
 
 export default function HomePage() {
-  const language = useLanguageStore((state) => state.language);
+  const params = useParams();
+  const language = (params?.lang as string) || 'zh';
 
   return (
     <div className="flex-1 overflow-y-auto w-full p-4 md:p-8 pb-16">
@@ -22,14 +23,14 @@ export default function HomePage() {
             </p>
             <div className="flex gap-3 mt-6">
               <Link
-                href="/speaking"
+                href={`/${language}/speaking`}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-white text-[var(--accent-gradient-start)] font-bold rounded-full hover:bg-white/90 transition-colors shadow-md text-sm"
               >
                 <span className="material-symbols-outlined text-lg">mic</span>
                 Luyện phát âm
               </Link>
               <Link
-                href="/study"
+                href={`/${language}/study`}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-white/15 text-white font-semibold rounded-full hover:bg-white/25 transition-colors border border-white/20 text-sm"
               >
                 <span className="material-symbols-outlined text-lg">book</span>
@@ -89,7 +90,7 @@ export default function HomePage() {
               {language === 'zh' ? 'Ôn tập HSK 3 — Phần thi nghe' : 'Ôn tập IELTS — Listening Section'}
             </p>
             <Link
-              href="/exam"
+              href={`/${language}/exam`}
               className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
             >
               Bắt đầu ôn tập
@@ -101,7 +102,7 @@ export default function HomePage() {
         {/* ── Quick Actions ── */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Link
-            href="/speaking"
+            href={`/${language}/speaking`}
             className="group bg-surface border border-outline rounded-[1.5rem] p-6 shadow-sm card-hover flex items-center gap-5"
           >
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--accent-gradient-start)] to-[var(--accent-gradient-end)] flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform">
@@ -118,7 +119,7 @@ export default function HomePage() {
           </Link>
 
           <Link
-            href="/writing"
+            href={`/${language}/writing`}
             className="group bg-surface border border-outline rounded-[1.5rem] p-6 shadow-sm card-hover flex items-center gap-5"
           >
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform">

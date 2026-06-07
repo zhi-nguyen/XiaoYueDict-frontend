@@ -1,21 +1,21 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-type Language = 'zh' | 'en';
+type UiLanguage = 'vi' | 'en';
 
 interface LanguageState {
-  language: Language;
-  setLanguage: (lang: Language) => void;
+  uiLanguage: UiLanguage;
+  setUiLanguage: (lang: UiLanguage) => void;
 }
 
 export const useLanguageStore = create<LanguageState>()(
   persist(
     (set) => ({
-      language: 'zh', // Default language
-      setLanguage: (lang) => set({ language: lang }),
+      uiLanguage: 'vi', // Default UI language
+      setUiLanguage: (lang) => set({ uiLanguage: lang }),
     }),
     {
-      name: 'selected_language', // Matches previous localStorage key for continuity
+      name: 'ui_language', 
     }
   )
 );

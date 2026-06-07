@@ -1,13 +1,15 @@
 import { Notebook, Word } from '@/types/note';
 import { djangoClient } from '@/lib/apiClient';
 
-export async function fetchNotebooks(): Promise<Notebook[]> {
-  const res = await djangoClient.get('/notes/notebooks');
+export async function fetchNotebooks(lang?: string): Promise<Notebook[]> {
+  const path = lang ? `/notes/notebooks?lang=${lang}` : '/notes/notebooks';
+  const res = await djangoClient.get(path);
   return res.data;
 }
 
-export async function createNotebook(data: { name: string; description?: string }): Promise<Notebook> {
-  const res = await djangoClient.post('/notes/notebooks', data);
+export async function createNotebook(data: { name: string; description?: string }, lang?: string): Promise<Notebook> {
+  const path = lang ? `/notes/notebooks?lang=${lang}` : '/notes/notebooks';
+  const res = await djangoClient.post(path, data);
   return res.data;
 }
 

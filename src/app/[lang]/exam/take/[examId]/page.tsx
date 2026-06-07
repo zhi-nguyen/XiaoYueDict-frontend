@@ -25,6 +25,7 @@ export default function ExamTakePage() {
   const params = useParams();
   const router = useRouter();
   const examId = parseInt(params.examId as string, 10);
+  const language = (params?.lang as string) || 'zh';
 
   const [exam, setExam] = useState<Exam | null>(null);
   const [loading, setLoading] = useState(true);
@@ -246,7 +247,7 @@ export default function ExamTakePage() {
 
   const handleLeave = () => {
     if (isSubmitted) {
-      router.push('/exam');
+      router.push(`/${language}/exam`);
       return;
     }
 
@@ -264,7 +265,7 @@ export default function ExamTakePage() {
         isDestructive: true,
         onConfirm: () => {
           clearExamState(examId);
-          router.push('/exam');
+          router.push(`/${language}/exam`);
         }
       });
       return;
@@ -278,13 +279,13 @@ export default function ExamTakePage() {
         confirmText: 'Vẫn thoát',
         isDestructive: true,
         onConfirm: () => {
-          router.push('/exam');
+          router.push(`/${language}/exam`);
         }
       });
       return;
     }
 
-    router.push('/exam');
+    router.push(`/${language}/exam`);
   };
 
   const handlePlayMainAudio = () => {

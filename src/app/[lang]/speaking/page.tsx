@@ -6,7 +6,7 @@ import { useSpellCheck } from '@/hooks/useSpellCheck';
 import SmartQueueStatus from '@/components/SmartQueueStatus';
 import ScoreDisplay from '@/components/ScoreDisplay';
 import AudioWaveform from '@/components/AudioWaveform';
-import { useLanguageStore } from '@/store/useLanguageStore';
+import { useParams } from 'next/navigation';
 
 /** Convert AudioBuffer to 16-bit PCM WAV Blob */
 function audioBufferToWav(buffer: AudioBuffer): Blob {
@@ -47,7 +47,8 @@ function audioBufferToWav(buffer: AudioBuffer): Blob {
 
 export default function SpeakingPage() {
   const queue = useSmartQueue();
-  const language = useLanguageStore((state) => state.language);
+  const params = useParams();
+  const language = ((params?.lang as string) || 'zh') as 'en' | 'zh';
   const spellCheck = useSpellCheck();
 
   // ── Local State ──

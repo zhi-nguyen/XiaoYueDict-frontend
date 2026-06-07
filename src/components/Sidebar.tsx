@@ -2,8 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useLanguageStore } from '@/store/useLanguageStore';
+import { usePathname, useParams } from 'next/navigation';
 import { useUIStore } from '@/store/useUIStore';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 
@@ -19,7 +18,8 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const language = useLanguageStore((state) => state.language);
+  const params = useParams();
+  const language = (params?.lang as string) || 'zh';
   const { isSidebarOpen, setSidebarOpen, isDesktopSidebarCollapsed, toggleDesktopSidebar } = useUIStore();
   const { tier: subscriptionTier } = useSubscriptionStore();
 
@@ -60,11 +60,12 @@ export default function Sidebar() {
       {/* Main Navigation */}
       <nav className="flex-1 px-4 space-y-1 sidebar-scroll overflow-y-auto overflow-x-hidden pt-4">
         {items.map(item => {
-          const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+          const targetHref = `/${language}${item.href}`;
+          const isActive = pathname === targetHref || (item.href !== '/' && pathname.startsWith(targetHref));
           return (
             <Link 
               key={item.href}
-              href={item.href}
+              href={targetHref}
               onClick={() => setSidebarOpen(false)}
               className={`flex items-center h-12 rounded-full transition-all ${isDesktopSidebarCollapsed ? 'md:justify-center px-3 md:px-0' : 'px-3 justify-start'} ${isActive ? 'bg-primary text-white' : 'text-secondary hover:bg-hover-bg hover:text-primary'}`}
             >

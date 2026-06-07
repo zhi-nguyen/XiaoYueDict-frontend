@@ -1,10 +1,11 @@
 "use client";
 
 import React from 'react';
-import { useLanguageStore } from '@/store/useLanguageStore';
+import { useParams } from 'next/navigation';
 
 export default function WritingPage() {
-  const language = useLanguageStore((state) => state.language);
+  const params = useParams();
+  const language = (params?.lang as string) || 'zh';
 
   return (
     <div className="flex-1 overflow-y-auto w-full p-4 md:p-8 pb-16">

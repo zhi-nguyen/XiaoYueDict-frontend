@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { createNotebook, deleteNotebook } from '@/lib/api/notes';
 import { Notebook } from '@/types/note';
 
@@ -10,6 +11,8 @@ interface NotesClientProps {
 }
 
 export default function NotesClient({ initialNotebooks }: NotesClientProps) {
+  const params = useParams();
+  const language = (params?.lang as string) || 'zh';
   const [notebooks, setNotebooks] = useState<Notebook[]>(initialNotebooks);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newName, setNewName] = useState('');
@@ -75,7 +78,7 @@ export default function NotesClient({ initialNotebooks }: NotesClientProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {notebooks.map(nb => (
               <div key={nb.id} className="relative group">
-                <Link href={`/notes/${nb.id}`} className="bg-surface border border-outline rounded-[1.5rem] p-6 shadow-sm hover:border-outline-variant hover:shadow-md transition-all flex flex-col cursor-pointer h-full">
+                <Link href={`/${language}/notes/${nb.id}`} className="bg-surface border border-outline rounded-[1.5rem] p-6 shadow-sm hover:border-outline-variant hover:shadow-md transition-all flex flex-col cursor-pointer h-full">
                   <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
                     <span className="material-symbols-outlined">menu_book</span>
                   </div>

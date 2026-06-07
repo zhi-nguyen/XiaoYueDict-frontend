@@ -1,10 +1,10 @@
 import { Exam } from '@/types/exam';
 import { djangoClient } from '@/lib/apiClient';
 
-export async function fetchExams(level?: string, language?: string): Promise<Exam[]> {
+export async function fetchExams(level?: string, lang?: string): Promise<Exam[]> {
   const params = new URLSearchParams();
   if (level) params.append('level', level);
-  if (language) params.append('language', language);
+  if (lang) params.append('language', lang);
   
   const queryStr = params.toString();
   const path = queryStr ? `/exams?${queryStr}` : `/exams`;

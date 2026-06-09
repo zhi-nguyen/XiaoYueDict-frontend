@@ -167,9 +167,18 @@ export function useSmartQueue(): UseSmartQueueReturn {
       // Note: In case WS is not connected, a fallback might be needed later
       // but for now we rely entirely on WS as requested.
 
-    } catch (err) {
+    } catch (err: any) {
       if (!isMountedRef.current) return;
-      const message = err instanceof Error ? err.message : 'Failed to submit audio.';
+      
+      let message = 'Failed to submit audio.';
+      if (err && err.isRateLimited) {
+        message = err.message;
+      } else if (err instanceof Error) {
+        message = err.message;
+      } else if (err?.message) {
+        message = err.message;
+      }
+      
       setPhase('error');
       setErrorMessage(message);
       console.error('[useSmartQueue] Submit failed:', err);

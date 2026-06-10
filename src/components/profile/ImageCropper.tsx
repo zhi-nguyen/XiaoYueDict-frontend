@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import Cropper from 'react-easy-crop';
+import AlertModal from '@/components/AlertModal';
 
 export const createImage = (url: string): Promise<HTMLImageElement> =>
   new Promise((resolve, reject) => {
@@ -61,6 +62,17 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel }: Ima
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'error'
+  });
 
   const onCropCompleteInternal = useCallback((croppedArea: any, croppedAreaPixels: any) => {
     setCroppedAreaPixels(croppedAreaPixels);
@@ -73,7 +85,12 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel }: Ima
       onCropComplete(croppedImage);
     } catch (e) {
       console.error(e);
-      alert('Có lỗi khi xử lý ảnh!');
+      setAlertConfig({
+        isOpen: true,
+        title: 'Lỗi',
+        message: 'Có lỗi khi xử lý ảnh!',
+        type: 'error'
+      });
     }
   };
 
@@ -123,6 +140,14 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel }: Ima
           </div>
         </div>
       </div>
+
+      <AlertModal
+        isOpen={alertConfig.isOpen}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onClose={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

@@ -7,8 +7,9 @@ import SmartQueueStatus from '@/components/SmartQueueStatus';
 import ScoreDisplay from '@/components/ScoreDisplay';
 import AudioWaveform from '@/components/AudioWaveform';
 import { useParams } from 'next/navigation';
-import { djangoClient } from '@/lib/apiClient';
-import { getGuestId } from '@/hooks/useWebSocket';
+import AlertModal from '@/components/AlertModal';
+import ConfirmModal from '@/components/ConfirmModal';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 
 /** Convert AudioBuffer to 16-bit PCM WAV Blob */
 function audioBufferToWav(buffer: AudioBuffer): Blob {
@@ -53,30 +54,8 @@ export default function SpeakingPage() {
   const language = ((params?.lang as string) || 'zh') as 'en' | 'zh';
   const spellCheck = useSpellCheck();
 
-  // ── Subscription Usage & Rate Limiting State ──
-  const [usageData, setUsageData] = useState<{
-    tier: string;
-    limit_min: number;
-    limit_hr: number;
-    limit_day: number;
-    used_min: number;
-    used_hr: number;
-    used_day: number;
-  } | null>(null);
-
-  const fetchUsage = useCallback(async () => {
-    try {
-      const guestId = getGuestId();
-      const headers: Record<string, string> = {};
-      if (guestId) {
-        headers['X-Guest-ID'] = guestId;
-      }
-      const res = await djangoClient.get('/subscriptions/usage/', { headers });
-      setUsageData(res.data);
-    } catch (err) {
-      console.error('Failed to fetch subscription usage:', err);
-    }
-  }, []);
+  // ── Subscription Usage & Rate Limiting (Zustand Store) ──
+  const { usageData, fetchUsage } = useSubscriptionStore();
 
   useEffect(() => {
     fetchUsage();
@@ -87,6 +66,17 @@ export default function SpeakingPage() {
       fetchUsage();
     }
   }, [queue.phase, fetchUsage]);
+
+  useEffect(() => {
+    if (queue.phase === 'error' && queue.errorMessage) {
+      setAlertConfig({
+        isOpen: true,
+        title: 'Đã xảy ra lỗi',
+        message: queue.errorMessage,
+        type: 'error'
+      });
+    }
+  }, [queue.phase, queue.errorMessage]);
 
   // Helper to format bytes to MB
   const formatMB = useCallback((bytes: number) => {
@@ -99,10 +89,62 @@ export default function SpeakingPage() {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [activeStream, setActiveStream] = useState<MediaStream | null>(null);
   const [selectedMisspelled, setSelectedMisspelled] = useState<string | null>(null);
+  const [isPlayingPlayback, setIsPlayingPlayback] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'error'
+  });
+
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const playbackAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const isIdle = queue.phase === 'idle';
+  const isBusy = queue.phase !== 'idle' && queue.phase !== 'completed' && queue.phase !== 'error';
+  const showResult = queue.phase === 'completed' && queue.resultData;
+
+  const handleResetAudio = useCallback(() => {
+    setAudioBlob(null);
+    if (playbackAudioRef.current) {
+      playbackAudioRef.current.pause();
+      playbackAudioRef.current.currentTime = 0;
+      playbackAudioRef.current = null;
+    }
+    setIsPlayingPlayback(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (playbackAudioRef.current) {
+        playbackAudioRef.current.pause();
+        playbackAudioRef.current.currentTime = 0;
+        playbackAudioRef.current = null;
+      }
+    };
+  }, []);
 
   // ── Spellcheck ──
   const hasSpellErrors = spellCheck.result && !spellCheck.result.is_valid;
@@ -133,7 +175,7 @@ export default function SpeakingPage() {
 
     try {
       queue.reset();
-      setAudioBlob(null);
+      handleResetAudio();
       chunksRef.current = [];
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -166,34 +208,104 @@ export default function SpeakingPage() {
       recorder.start();
       setIsRecording(true);
     } catch {
-      alert('Không thể truy cập microphone. Vui lòng kiểm tra quyền truy cập.');
+      setAlertConfig({
+        isOpen: true,
+        title: 'Lỗi thiết bị',
+        message: 'Không thể truy cập microphone. Vui lòng kiểm tra quyền truy cập.',
+        type: 'error'
+      });
     }
-  }, [queue, hasSpellErrors]);
+  }, [queue, hasSpellErrors, handleResetAudio]);
 
   const stopRecording = useCallback(() => {
-    mediaRecorderRef.current?.stop();
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
     setIsRecording(false);
   }, []);
+
+  // ── Gesture Event Handlers ──
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isBusy || hasSpellErrors) return;
+    startRecording();
+  }, [isBusy, hasSpellErrors, startRecording]);
+
+  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isRecording) stopRecording();
+  }, [isRecording, stopRecording]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    if (isBusy || hasSpellErrors) return;
+    startRecording();
+  }, [isBusy, hasSpellErrors, startRecording]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    if (isRecording) stopRecording();
+  }, [isRecording, stopRecording]);
 
   // ── File Upload ──
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       queue.reset();
+      if (playbackAudioRef.current) {
+        playbackAudioRef.current.pause();
+        playbackAudioRef.current.currentTime = 0;
+        playbackAudioRef.current = null;
+      }
+      setIsPlayingPlayback(false);
       setAudioBlob(file);
     }
   }, [queue]);
 
-  // ── Submit ──
-  const handleSubmit = useCallback(async () => {
+  // ── Toggle Replay Playback ──
+  const handleTogglePlayback = useCallback(() => {
+    if (!audioBlob) return;
+
+    if (!playbackAudioRef.current) {
+      const url = URL.createObjectURL(audioBlob);
+      const audio = new Audio(url);
+      playbackAudioRef.current = audio;
+      audio.onended = () => {
+        setIsPlayingPlayback(false);
+      };
+    }
+
+    if (isPlayingPlayback) {
+      playbackAudioRef.current.pause();
+      setIsPlayingPlayback(false);
+    } else {
+      playbackAudioRef.current.currentTime = 0;
+      playbackAudioRef.current.play();
+      setIsPlayingPlayback(true);
+    }
+  }, [audioBlob, isPlayingPlayback]);
+
+  // ── Submit with confirmation ──
+  const handleSubmitAudio = useCallback(() => {
     if (!audioBlob) return;
     if (hasSpellErrors) return;
-    await queue.submit(audioBlob, language, targetText || undefined);
-  }, [audioBlob, language, targetText, queue, hasSpellErrors]);
 
-  const isIdle = queue.phase === 'idle';
-  const isBusy = queue.phase !== 'idle' && queue.phase !== 'completed' && queue.phase !== 'error';
-  const showResult = queue.phase === 'completed' && queue.resultData;
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Xác nhận gửi',
+      message: 'Bạn có muốn gửi bản ghi âm này để chấm điểm phát âm không?',
+      onConfirm: async () => {
+        setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+        try {
+          await queue.submit(audioBlob, language, targetText || undefined);
+          useSubscriptionStore.getState().fetchUsage();
+          handleResetAudio();
+        } catch (err) {
+          console.error("Submit error:", err);
+        }
+      }
+    });
+  }, [audioBlob, language, targetText, queue, hasSpellErrors, handleResetAudio]);
 
   // ── Build highlighted text for display ──
   const renderHighlightedText = () => {
@@ -308,8 +420,8 @@ export default function SpeakingPage() {
               {/* Decorative radial gradient for depth */}
               <div className="absolute -right-10 -top-10 h-24 w-24 rounded-full bg-indigo-500/10 blur-xl pointer-events-none" />
               <div className="absolute -left-10 -bottom-10 h-24 w-24 rounded-full bg-violet-500/10 blur-xl pointer-events-none" />
-              
-              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+              <div className="relative z-10 flex flex-col gap-4">
                 {/* Left: Info */}
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-500/10 to-violet-500/10 border border-indigo-500/20 text-indigo-500">
@@ -318,13 +430,12 @@ export default function SpeakingPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold text-primary uppercase tracking-wider">Hạn Mức Tải Lên</span>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
-                        usageData.tier === 'PRO' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
-                        usageData.tier === 'PREMIUM' ? 'bg-purple-500/10 text-purple-600 border-purple-500/20' :
-                        usageData.tier === 'PLUS' ? 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20' :
-                        'bg-gray-500/10 text-gray-500 border-gray-500/20'
-                      }`}>
-                        Gói {usageData.tier}
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${usageData.tier === 'PRO' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
+                          usageData.tier === 'PREMIUM' ? 'bg-purple-500/10 text-purple-600 border-purple-500/20' :
+                            usageData.tier === 'PLUS' ? 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20' :
+                              'bg-gray-500/10 text-gray-500 border-gray-500/20'
+                        }`}>
+                        {usageData.tier}
                       </span>
                     </div>
                     <p className="text-[11px] text-secondary mt-0.5">Dung lượng ghi âm đã dùng trong 1 giờ qua</p>
@@ -332,7 +443,7 @@ export default function SpeakingPage() {
                 </div>
 
                 {/* Right: Bar & Details */}
-                <div className="flex-1 max-w-full md:max-w-sm w-full">
+                <div className="w-full">
                   <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
                     <span className="text-primary font-bold">
                       {formatMB(usageData.used_hr)} MB <span className="text-secondary/60 font-normal">/ {formatMB(usageData.limit_hr)} MB</span>
@@ -341,15 +452,15 @@ export default function SpeakingPage() {
                       {((usageData.used_hr / usageData.limit_hr) * 100).toFixed(1)}%
                     </span>
                   </div>
-                  
+
                   {/* Progress track */}
                   <div className="h-2 w-full rounded-full bg-outline/40 overflow-hidden">
-                    <div 
+                    <div
                       className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-1000 ease-out"
                       style={{ width: `${Math.min(100, (usageData.used_hr / usageData.limit_hr) * 100)}%` }}
                     />
                   </div>
-                  
+
                   {/* Additional info */}
                   <div className="flex items-center justify-between text-[10px] text-secondary mt-1.5 font-semibold">
                     <span>Theo phút: {formatMB(usageData.used_min)} / {formatMB(usageData.limit_min)} MB</span>
@@ -466,56 +577,106 @@ export default function SpeakingPage() {
           />
 
           {/* Recording & Upload Controls */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            {/* Record button */}
-            <button
-              id="record-btn"
-              type="button"
-              onClick={isRecording ? stopRecording : startRecording}
-              disabled={isBusy || (!!hasSpellErrors && !isRecording)}
-              className={`relative flex-1 flex items-center justify-center gap-2.5 px-4 py-3.5 rounded-xl font-semibold text-sm
-                         transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-40
-                         ${isRecording
-                  ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-400'
-                  : 'bg-gradient-to-r from-[var(--accent-gradient-start)] to-[var(--accent-gradient-end)] text-white hover:opacity-90 focus:ring-[var(--accent-gradient-start)] shadow-md hover:shadow-lg'
-                }`}
-            >
-              {isRecording && <span className="absolute inset-0 rounded-xl animate-pulse-ring text-red-300" />}
-              {isRecording ? (
-                <>
-                  <span className="w-3.5 h-3.5 bg-white rounded-sm" />
-                  Dừng ghi âm
-                </>
-              ) : (
-                <>
-                  <span className="material-symbols-outlined text-lg">mic</span>
-                  Ghi âm
-                </>
-              )}
-            </button>
+          {!audioBlob ? (
+            <div className="flex flex-col sm:flex-row gap-3">
+              {/* Record button */}
+              <button
+                id="record-btn"
+                type="button"
+                onMouseDown={handleMouseDown}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+                onTouchCancel={handleTouchEnd}
+                disabled={isBusy || (!!hasSpellErrors && !isRecording)}
+                className={`relative flex-1 flex items-center justify-center gap-2.5 px-4 py-3.5 rounded-xl font-semibold text-sm
+                           transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-40 select-none
+                           ${isRecording
+                    ? 'bg-red-500 text-white ring-8 ring-red-500/20'
+                    : 'bg-gradient-to-r from-[var(--accent-gradient-start)] to-[var(--accent-gradient-end)] text-white hover:opacity-90 focus:ring-[var(--accent-gradient-start)] shadow-md hover:shadow-lg'
+                  }`}
+              >
+                {isRecording && <span className="absolute inset-0 rounded-xl animate-pulse-ring text-red-300 pointer-events-none" />}
+                <span className="material-symbols-outlined text-lg">mic</span>
+                {isRecording ? 'Thả tay để hoàn tất' : 'Nhấn giữ để nói'}
+              </button>
 
-            {/* Upload button */}
-            <input
-              type="file"
-              accept="audio/*"
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-            <button
-              id="upload-btn"
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isBusy || isRecording || !!hasSpellErrors}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl font-semibold text-sm
-                         bg-hover-bg hover:bg-outline/50 text-secondary transition-all focus:outline-none
-                         focus:ring-2 focus:ring-offset-2 focus:ring-primary/30 disabled:opacity-40
-                         border border-outline"
-            >
-              <span className="material-symbols-outlined text-lg">upload_file</span>
-              Tải file lên
-            </button>
-          </div>
+              {/* Upload button */}
+              <input
+                type="file"
+                accept="audio/*"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <button
+                id="upload-btn"
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isBusy || isRecording || !!hasSpellErrors}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl font-semibold text-sm
+                           bg-hover-bg hover:bg-outline/50 text-secondary transition-colors focus:outline-none
+                           focus:ring-2 focus:ring-offset-2 focus:ring-primary/30 disabled:opacity-40
+                           border border-outline"
+              >
+                <span className="material-symbols-outlined text-lg">upload_file</span>
+                Tải file lên
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4 w-full font-sans">
+              <div className="flex w-full gap-3">
+                <button
+                  type="button"
+                  onClick={handleTogglePlayback}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-outline bg-hover-bg text-primary font-bold text-sm transition-all hover:bg-outline/50 focus:outline-none"
+                >
+                  <span className="material-symbols-outlined text-lg">
+                    {isPlayingPlayback ? 'pause' : 'play_arrow'}
+                  </span>
+                  {isPlayingPlayback ? 'Tạm dừng' : 'Nghe lại'}
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={handleResetAudio}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-outline bg-hover-bg text-secondary font-bold text-sm transition-all hover:bg-outline/50 focus:outline-none"
+                >
+                  <span className="material-symbols-outlined text-lg">refresh</span>
+                  Ghi lại
+                </button>
+              </div>
+
+              {/* Audio Ready Indicator */}
+              {isIdle && !hasSpellErrors && (
+                <div className="flex items-center gap-2 animate-fade-in select-none">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <p className="text-xs font-semibold text-emerald-600">
+                    Sẵn sàng — {(audioBlob.size / 1024).toFixed(1)} KB
+                  </p>
+                </div>
+              )}
+
+              {/* Submit Button */}
+              {isIdle && (
+                <button
+                  id="submit-btn"
+                  type="button"
+                  onClick={handleSubmitAudio}
+                  disabled={!!hasSpellErrors}
+                  className="w-full py-3.5 rounded-xl font-bold text-sm transition-all focus:outline-none
+                             focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent-gradient-start)] disabled:opacity-30
+                             disabled:cursor-not-allowed bg-primary hover:bg-primary/90 text-white shadow-md
+                             hover:shadow-lg active:scale-[0.98]"
+                >
+                  {targetText.trim()
+                    ? `Chấm điểm Read-Aloud (${language === 'en' ? 'EN' : 'ZH'})`
+                    : `Chấm điểm tự do (${language === 'en' ? 'EN' : 'ZH'})`}
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Spell Error Warning — blocks submission */}
           {hasSpellErrors && (
@@ -526,34 +687,6 @@ export default function SpeakingPage() {
               </p>
             </div>
           )}
-
-          {/* Audio Ready Indicator */}
-          {audioBlob && isIdle && !hasSpellErrors && (
-            <div className="flex items-center gap-2 animate-fade-in">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-xs font-medium text-emerald-600">
-                Sẵn sàng — {(audioBlob.size / 1024).toFixed(1)} KB
-              </p>
-            </div>
-          )}
-
-          {/* Submit Button */}
-          {isIdle && (
-            <button
-              id="submit-btn"
-              type="button"
-              onClick={handleSubmit}
-              disabled={!audioBlob || !!hasSpellErrors}
-              className="w-full py-3.5 rounded-xl font-bold text-sm transition-all focus:outline-none
-                         focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent-gradient-start)] disabled:opacity-30
-                         disabled:cursor-not-allowed bg-primary hover:bg-primary/90 text-white shadow-md
-                         hover:shadow-lg active:scale-[0.98]"
-            >
-              {targetText.trim()
-                ? `Chấm điểm Read-Aloud (${language === 'en' ? 'EN' : 'ZH'})`
-                : `Chấm điểm tự do (${language === 'en' ? 'EN' : 'ZH'})`}
-            </button>
-          )}
         </div>
 
         {/* ── Smart Queue Status ── */}
@@ -563,24 +696,7 @@ export default function SpeakingPage() {
           estimatedWait={queue.estimatedWait}
         />
 
-        {/* ── Error Display ── */}
-        {queue.phase === 'error' && queue.errorMessage && (
-          <div className="animate-slide-up rounded-2xl border border-red-200 bg-red-50 p-5">
-            <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined text-red-500 text-xl mt-0.5">error</span>
-              <div>
-                <p className="text-sm font-semibold text-red-700">Đã xảy ra lỗi</p>
-                <p className="text-sm text-red-600 mt-1">{queue.errorMessage}</p>
-              </div>
-            </div>
-            <button
-              onClick={queue.reset}
-              className="mt-3 text-xs font-semibold text-red-700 hover:text-red-800 underline"
-            >
-              Thử lại
-            </button>
-          </div>
-        )}
+        {/* Error is now handled by the AlertModal popup */}
 
         {/* ── Score Result ── */}
         {showResult && queue.resultData && (
@@ -590,7 +706,7 @@ export default function SpeakingPage() {
               <button
                 onClick={() => {
                   queue.reset();
-                  setAudioBlob(null);
+                  handleResetAudio();
                 }}
                 className="px-6 py-2.5 bg-hover-bg hover:bg-outline/50 text-primary font-semibold text-sm rounded-full
                            transition-colors border border-outline"
@@ -601,6 +717,27 @@ export default function SpeakingPage() {
           </div>
         )}
       </div>
+
+      <AlertModal
+        isOpen={alertConfig.isOpen}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onClose={() => {
+          setAlertConfig(prev => ({ ...prev, isOpen: false }));
+          if (queue.phase === 'error') {
+            queue.reset();
+          }
+        }}
+      />
+
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        onConfirm={confirmConfig.onConfirm}
+        onCancel={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

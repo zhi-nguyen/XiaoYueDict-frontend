@@ -11,6 +11,69 @@ import { djangoClient } from '@/lib/apiClient';
 import { useWebSocket, getGuestId } from './useWebSocket';
 import { useAuthStore } from '@/store/useAuthStore';
 
+/**
+ * Translates common English error messages from the backend or browser to Vietnamese.
+ */
+function translateErrorMessage(msg: string): string {
+  if (!msg) return 'Đã xảy ra lỗi không xác định.';
+  
+  const msgLower = msg.toLowerCase();
+  
+  if (msgLower.includes('no speech detected in audio')) {
+    return 'Không phát hiện thấy giọng nói trong file ghi âm. Vui lòng thử lại.';
+  }
+  if (msgLower.includes('failed to submit audio')) {
+    return 'Không thể gửi file ghi âm lên hệ thống.';
+  }
+  if (msgLower.includes('audio file too short')) {
+    return 'File ghi âm quá ngắn. Vui lòng ghi âm lâu hơn.';
+  }
+  if (msgLower.includes('audio file too long')) {
+    return 'File ghi âm vượt quá thời lượng quy định.';
+  }
+  if (msgLower.includes('invalid audio input') || msgLower.includes('invalid audio format')) {
+    return 'Định dạng hoặc dữ liệu âm thanh không hợp lệ.';
+  }
+  if (msgLower.includes('processing failed on the server')) {
+    return 'Lỗi xử lý âm thanh trên máy chủ. Vui lòng thử lại sau.';
+  }
+  if (msgLower.includes('failed to fetch final status')) {
+    return 'Không thể lấy kết quả chấm điểm cuối cùng.';
+  }
+  if (msgLower.includes('no refresh token provided')) {
+    return 'Thiếu mã làm mới phiên đăng nhập.';
+  }
+  if (msgLower.includes('refresh token invalid or expired')) {
+    return 'Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.';
+  }
+  if (msgLower.includes('internal server error')) {
+    return 'Đã xảy ra lỗi hệ thống phía máy chủ.';
+  }
+  if (msgLower.includes('invalid text input')) {
+    return 'Văn bản mẫu không hợp lệ.';
+  }
+  if (msgLower.includes('vertex ai failed')) {
+    return 'Kết nối với dịch vụ AI bị gián đoạn.';
+  }
+  if (msgLower.includes('task execution failed')) {
+    return 'Tiến trình chấm điểm thất bại.';
+  }
+  if (msgLower.includes('audio file not found')) {
+    return 'Không tìm thấy file ghi âm trên máy chủ.';
+  }
+  if (msgLower.includes('max retries exceeded')) {
+    return 'Đã thử lại tối đa số lần cho phép nhưng vẫn thất bại.';
+  }
+  if (msgLower.includes('device error') || msgLower.includes('notallowederror')) {
+    return 'Không thể truy cập microphone. Vui lòng cấp quyền cho trình duyệt.';
+  }
+  if (msgLower.includes('network error') || msgLower.includes('failed to fetch') || msgLower.includes('network')) {
+    return 'Lỗi kết nối mạng. Vui lòng kiểm tra lại đường truyền internet.';
+  }
+
+  return msg;
+}
+
 export type QueuePhase =
   | 'idle'
   | 'uploading'
@@ -73,7 +136,7 @@ export function useSmartQueue(): UseSmartQueueReturn {
       fetchFinalStatus(taskId);
     } else if (msg.type === 'score_failed') {
       setPhase('error');
-      setErrorMessage(msg.payload.error || 'Processing failed on the server.');
+      setErrorMessage(translateErrorMessage(msg.payload.error || 'Processing failed on the server.'));
     }
   }, [taskId]);
 
@@ -180,7 +243,7 @@ export function useSmartQueue(): UseSmartQueueReturn {
       }
       
       setPhase('error');
-      setErrorMessage(message);
+      setErrorMessage(translateErrorMessage(message));
       console.error('[useSmartQueue] Submit failed:', err);
     }
   }, [reset, isAuthenticated]);

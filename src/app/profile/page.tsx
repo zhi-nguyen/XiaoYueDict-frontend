@@ -9,6 +9,7 @@ import { getStudyHistory, StudyHistoryResponse } from '@/lib/api/gamification';
 import CalendarHeatmap from 'react-calendar-heatmap';
 import 'react-calendar-heatmap/dist/styles.css';
 import ImageCropper from '@/components/profile/ImageCropper';
+import AlertModal from '@/components/AlertModal';
 
 // We need a helper to generate dates for heatmap
 const shiftDate = (date: Date, numDays: number) => {
@@ -45,6 +46,17 @@ export default function ProfilePage() {
   // History states
   const [subHistory, setSubHistory] = useState<SubscriptionHistoryItem[]>([]);
   const [studyHistory, setStudyHistory] = useState<{date: string, count: number}[]>([]);
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'error'
+  });
 
   useEffect(() => {
     if (user) {
@@ -104,17 +116,32 @@ export default function ProfilePage() {
       const res = await updateUserProfile(formDataToSend);
       updateProfile(res);
       setIsEditingInfo(false);
-      alert("Cập nhật thông tin thành công!");
+      setAlertConfig({
+        isOpen: true,
+        title: 'Thành công',
+        message: 'Cập nhật thông tin thành công!',
+        type: 'success'
+      });
     } catch (err) {
       console.error(err);
-      alert("Có lỗi xảy ra khi cập nhật!");
+      setAlertConfig({
+        isOpen: true,
+        title: 'Lỗi',
+        message: 'Có lỗi xảy ra khi cập nhật!',
+        type: 'error'
+      });
     }
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (passwordData.new_password !== passwordData.confirm_password) {
-      alert("Mật khẩu mới không khớp!");
+      setAlertConfig({
+        isOpen: true,
+        title: 'Lỗi bảo mật',
+        message: 'Mật khẩu mới không khớp!',
+        type: 'error'
+      });
       return;
     }
     try {
@@ -122,10 +149,20 @@ export default function ProfilePage() {
         old_password: passwordData.old_password,
         new_password: passwordData.new_password
       });
-      alert("Đổi mật khẩu thành công!");
+      setAlertConfig({
+        isOpen: true,
+        title: 'Thành công',
+        message: 'Đổi mật khẩu thành công!',
+        type: 'success'
+      });
       setPasswordData({ old_password: '', new_password: '', confirm_password: '' });
     } catch (err: any) {
-      alert(err.response?.data?.old_password?.[0] || "Đổi mật khẩu thất bại!");
+      setAlertConfig({
+        isOpen: true,
+        title: 'Lỗi',
+        message: err.response?.data?.old_password?.[0] || 'Đổi mật khẩu thất bại!',
+        type: 'error'
+      });
     }
   };
 
@@ -389,6 +426,14 @@ export default function ProfilePage() {
           onCancel={() => setSelectedImageSrc(null)} 
         />
       )}
+
+      <AlertModal
+        isOpen={alertConfig.isOpen}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onClose={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))}
+      />
     </>
   );
 }

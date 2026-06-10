@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { createNotebook, deleteNotebook } from '@/lib/api/notes';
 import { Notebook } from '@/types/note';
+import AlertModal from '@/components/AlertModal';
+import ConfirmModal from '@/components/ConfirmModal';
 
 interface NotesClientProps {
   initialNotebooks: Notebook[];
@@ -18,6 +20,29 @@ export default function NotesClient({ initialNotebooks }: NotesClientProps) {
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [creating, setCreating] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'error'
+  });
+
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -30,24 +55,39 @@ export default function NotesClient({ initialNotebooks }: NotesClientProps) {
       setNewName('');
       setNewDesc('');
     } catch (err) {
-      alert('Lỗi khi tạo sổ tay');
+      setAlertConfig({
+        isOpen: true,
+        title: 'Lỗi',
+        message: 'Lỗi khi tạo sổ tay',
+        type: 'error'
+      });
     } finally {
       setCreating(false);
     }
   }
 
-  async function handleDeleteNotebook(e: React.MouseEvent, id: number, name: string) {
+  function handleDeleteNotebook(e: React.MouseEvent, id: number, name: string) {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm(`Bạn có chắc chắn muốn xóa sổ tay "${name}"? Tất cả từ vựng bên trong sẽ bị xóa.`)) {
-      return;
-    }
-    try {
-      await deleteNotebook(id);
-      setNotebooks(notebooks.filter(nb => nb.id !== id));
-    } catch (err) {
-      alert('Lỗi khi xóa sổ tay');
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Xóa sổ tay',
+      message: `Bạn có chắc chắn muốn xóa sổ tay "${name}"? Tất cả từ vựng bên trong sẽ bị xóa.`,
+      onConfirm: async () => {
+        setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+        try {
+          await deleteNotebook(id);
+          setNotebooks(prev => prev.filter(nb => nb.id !== id));
+        } catch (err) {
+          setAlertConfig({
+            isOpen: true,
+            title: 'Lỗi',
+            message: 'Lỗi khi xóa sổ tay',
+            type: 'error'
+          });
+        }
+      }
+    });
   }
 
   return (
@@ -155,6 +195,23 @@ export default function NotesClient({ initialNotebooks }: NotesClientProps) {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        onConfirm={confirmConfig.onConfirm}
+        onCancel={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+        isDestructive={true}
+      />
+
+      <AlertModal
+        isOpen={alertConfig.isOpen}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onClose={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

@@ -9,9 +9,10 @@ import tagsVi from '@/data/tags_vi.json';
 
 interface WordCardProps {
   word: ZhWord | null;
+  onPracticeClick?: () => void;
 }
 
-export default function WordCard({ word }: WordCardProps) {
+export default function WordCard({ word, onPracticeClick }: WordCardProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   if (!word) {
@@ -85,6 +86,27 @@ export default function WordCard({ word }: WordCardProps) {
             </span>
           );
         })}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-4 mb-8">
+        <button
+          type="button"
+          onClick={playAudio}
+          disabled={!word.audio_url}
+          className="flex-1 flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-hover-bg hover:bg-outline/50 text-primary border border-outline font-bold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/20 disabled:opacity-40"
+        >
+          <span className="material-symbols-outlined text-lg">volume_up</span>
+          Phát audio (Loa)
+        </button>
+        <button
+          type="button"
+          onClick={onPracticeClick}
+          className="flex-1 flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-primary hover:opacity-90 text-white font-bold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/30"
+        >
+          <span className="material-symbols-outlined text-lg">mic</span>
+          Phát âm thử (Mic)
+        </button>
       </div>
 
       <hr className="border-outline/50 mb-8" />

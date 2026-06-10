@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import { fetchWords, createWord, deleteWord, updateNotebook, deleteNotebook } from '@/lib/api/notes';
 import { Notebook, Word } from '@/types/note';
+import AlertModal from '@/components/AlertModal';
+import ConfirmModal from '@/components/ConfirmModal';
 
 interface NotebookDetailClientProps {
   notebookId: number;
@@ -25,6 +27,29 @@ export default function NotebookDetailClient({
   const [words, setWords] = useState<Word[]>(initialWords);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'error'
+  });
+
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [newVocab, setNewVocab] = useState('');
@@ -79,24 +104,41 @@ export default function NotebookDetailClient({
         word_count_annotated: (prev.word_count_annotated || 0) + 1
       }));
     } catch (err) {
-      alert('Lỗi khi thêm từ vựng');
+      setAlertConfig({
+        isOpen: true,
+        title: 'Lỗi',
+        message: 'Lỗi khi thêm từ vựng',
+        type: 'error'
+      });
     } finally {
       setAdding(false);
     }
   }
 
-  async function handleDeleteWord(wordId: number) {
-    if (!confirm('Bạn có chắc muốn xóa từ này khỏi sổ tay?')) return;
-    try {
-      await deleteWord(notebookId, wordId);
-      setWords(words.filter(w => w.id !== wordId));
-      setNotebook(prev => ({
-        ...prev,
-        word_count_annotated: Math.max(0, (prev.word_count_annotated || 1) - 1)
-      }));
-    } catch (err) {
-      alert('Lỗi khi xóa từ vựng');
-    }
+  function handleDeleteWord(wordId: number) {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Xóa từ vựng',
+      message: 'Bạn có chắc muốn xóa từ này khỏi sổ tay?',
+      onConfirm: async () => {
+        setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+        try {
+          await deleteWord(notebookId, wordId);
+          setWords(prev => prev.filter(w => w.id !== wordId));
+          setNotebook(prev => ({
+            ...prev,
+            word_count_annotated: Math.max(0, (prev.word_count_annotated || 1) - 1)
+          }));
+        } catch (err) {
+          setAlertConfig({
+            isOpen: true,
+            title: 'Lỗi',
+            message: 'Lỗi khi xóa từ vựng',
+            type: 'error'
+          });
+        }
+      }
+    });
   }
 
   async function handleUpdateNotebook(e: React.FormEvent) {
@@ -109,18 +151,36 @@ export default function NotebookDetailClient({
       setNotebook(prev => ({ ...prev, ...updated }));
       setShowSettingsModal(false);
     } catch (err) {
-      alert("Lỗi khi cập nhật");
+      setAlertConfig({
+        isOpen: true,
+        title: 'Lỗi',
+        message: 'Lỗi khi cập nhật sổ tay',
+        type: 'error'
+      });
     }
   }
 
-  async function handleDeleteNotebook() {
-    if (!confirm('Hành động này không thể hoàn tác. Bạn chắc chắn muốn xóa sổ tay này cùng với toàn bộ từ vựng bên trong?')) return;
-    try {
-      await deleteNotebook(notebookId);
-      router.push(`/${language}/notes`);
-    } catch (err) {
-      alert("Lỗi khi xóa sổ tay");
-    }
+  function handleDeleteNotebook() {
+    setShowSettingsModal(false);
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Xóa sổ tay',
+      message: 'Hành động này không thể hoàn tác. Bạn chắc chắn muốn xóa sổ tay này cùng với toàn bộ từ vựng bên trong?',
+      onConfirm: async () => {
+        setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+        try {
+          await deleteNotebook(notebookId);
+          router.push(`/${language}/notes`);
+        } catch (err) {
+          setAlertConfig({
+            isOpen: true,
+            title: 'Lỗi',
+            message: 'Lỗi khi xóa sổ tay',
+            type: 'error'
+          });
+        }
+      }
+    });
   }
 
   return (
@@ -334,6 +394,23 @@ export default function NotebookDetailClient({
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        onConfirm={confirmConfig.onConfirm}
+        onCancel={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+        isDestructive={true}
+      />
+
+      <AlertModal
+        isOpen={alertConfig.isOpen}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onClose={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

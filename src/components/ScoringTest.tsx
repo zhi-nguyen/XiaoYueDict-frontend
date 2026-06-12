@@ -3,6 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { usePronunciationScorer } from '@/hooks/usePronunciationScorer';
 import { isReadAloudResponse } from '@/types/scoring';
+import AlertModal from '@/components/AlertModal';
 
 /**
  * Helper: Convert an AudioBuffer to a 16-bit PCM WAV Blob.
@@ -51,10 +52,32 @@ export default function ScoringTest() {
   const [targetText, setTargetText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'error'
+  });
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  React.useEffect(() => {
+    if (error) {
+      setAlertConfig({
+        isOpen: true,
+        title: 'Đã xảy ra lỗi',
+        message: error,
+        type: 'error'
+      });
+    }
+  }, [error]);
 
   // ── Microphone Recording ──────────────────────────────────────────────────
 
@@ -90,7 +113,12 @@ export default function ScoringTest() {
       recorder.start();
       setIsRecording(true);
     } catch {
-      alert('Microphone access denied or unavailable.');
+      setAlertConfig({
+        isOpen: true,
+        title: 'Lỗi thiết bị',
+        message: 'Không thể truy cập microphone. Vui lòng kiểm tra quyền thiết bị.',
+        type: 'error'
+      });
     }
   };
 
@@ -239,13 +267,7 @@ export default function ScoringTest() {
         </button>
       </div>
 
-      {/* ── Error Display ──────────────────────────────────────────────── */}
-      {error && (
-        <div id="scoring-error" className="bg-red-50 border border-red-200 rounded-xl px-5 py-4">
-          <p className="text-sm font-semibold text-red-700">❌ Error</p>
-          <p className="text-sm text-red-600 mt-1">{error}</p>
-        </div>
-      )}
+      {/* Error is now handled by the AlertModal popup */}
 
       {/* ── Result Display ─────────────────────────────────────────────── */}
       {result && (
@@ -294,6 +316,19 @@ export default function ScoringTest() {
           </details>
         </div>
       )}
+
+      <AlertModal
+        isOpen={alertConfig.isOpen}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onClose={() => {
+          setAlertConfig(prev => ({ ...prev, isOpen: false }));
+          if (error) {
+            reset();
+          }
+        }}
+      />
     </div>
   );
 }

@@ -99,6 +99,18 @@ const responseInterceptor = async (error: AxiosError) => {
     }
   }
 
+  if (error.response?.status === 429) {
+    const data = error.response.data as any;
+    const retryAfter = error.response.headers?.['retry-after'] || data?.retry_after_seconds || 60;
+    
+    return Promise.reject({
+      isRateLimited: true,
+      message: data?.message || 'Tài khoản đã vượt quá giới hạn dung lượng tải tệp quy định.',
+      limitType: data?.limit_type,
+      retryAfterSeconds: parseInt(retryAfter, 10),
+    });
+  }
+
   return Promise.reject(error);
 };
 

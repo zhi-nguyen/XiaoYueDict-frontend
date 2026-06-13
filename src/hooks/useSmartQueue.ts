@@ -122,6 +122,32 @@ export function useSmartQueue(): UseSmartQueueReturn {
   const isMountedRef = useRef(true);
   const { isAuthenticated } = useAuthStore();
 
+  // Smooth client-side ticking countdown for estimatedWait (EWT)
+  useEffect(() => {
+    if (phase !== 'queued' && phase !== 'processing') {
+      return;
+    }
+    if (estimatedWait <= 0) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setEstimatedWait((prev) => {
+        if (prev <= 1) {
+          // Keep it at 1 second while waiting for final WebSocket resolution event
+          return 1;
+        }
+        // Slow down the countdown if it's getting very close to 0 to avoid hitting it early
+        if (prev <= 5) {
+          return Math.random() < 0.25 ? prev - 1 : prev;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [phase, estimatedWait]);
+
   const handleWsMessage = useCallback((msg: any) => {
     if (!isMountedRef.current || !taskId) return;
 

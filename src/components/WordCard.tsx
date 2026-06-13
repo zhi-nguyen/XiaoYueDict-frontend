@@ -112,14 +112,16 @@ export default function WordCard({ word, onPracticeClick }: WordCardProps) {
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsAddModalOpen(true)}
-          className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600/30 shadow-sm"
-        >
-          <span className="material-symbols-outlined text-lg">bookmark_add</span>
-          Thêm vào sổ tay từ vựng
-        </button>
+        {word.word.length <= 14 && (
+          <button
+            type="button"
+            onClick={() => setIsAddModalOpen(true)}
+            className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600/30 shadow-sm"
+          >
+            <span className="material-symbols-outlined text-lg">bookmark_add</span>
+            Thêm vào sổ tay từ vựng
+          </button>
+        )}
       </div>
 
       <hr className="border-outline/50 mb-8" />

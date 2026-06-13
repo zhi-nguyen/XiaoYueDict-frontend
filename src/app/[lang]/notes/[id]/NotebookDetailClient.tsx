@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 import { fetchWords, createWord, deleteWord, updateNotebook, deleteNotebook } from '@/lib/api/notes';
 import { djangoClient } from '@/lib/apiClient';
 import { Notebook, Word } from '@/types/note';
@@ -97,7 +98,26 @@ export default function NotebookDetailClient({
       setIsLookupLoading(true);
       try {
         const res = await djangoClient.get(`/dictionary/zh/search/?q=${encodeURIComponent(lookupQuery)}`);
-        setLookupSuggestions(res.data.results || []);
+        const suggestions: any[] = [];
+        
+        if (res.data.exact_example_match) {
+          const sentenceText = res.data.exact_example_match.chinese || '';
+          if (sentenceText.length <= 14) {
+            suggestions.push({
+              id: 'exact-example',
+              word: sentenceText,
+              pinyin: res.data.exact_example_match.pinyin || '',
+              translation_vi: res.data.exact_example_match.vietnamese || '',
+              isExample: true
+            });
+          }
+        }
+        
+        if (res.data.results) {
+          suggestions.push(...res.data.results);
+        }
+        
+        setLookupSuggestions(suggestions);
       } catch (err) {
         console.error("Lỗi tra cứu gợi ý Sổ tay:", err);
       } finally {
@@ -310,7 +330,21 @@ export default function NotebookDetailClient({
       {showAddModal && mounted && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000] p-4 animate-in fade-in">
           <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
-            <h2 className="text-2xl font-bold text-primary mb-4 shrink-0">Thêm từ vựng mới</h2>
+            <div className="flex justify-between items-center mb-4 shrink-0">
+              <h2 className="text-2xl font-bold text-primary">Thêm từ vựng mới</h2>
+              <button 
+                type="button"
+                onClick={() => {
+                  setShowAddModal(false);
+                  setLookupQuery('');
+                  setLookupSuggestions([]);
+                }} 
+                className="text-secondary hover:text-primary transition-colors flex items-center justify-center p-1"
+                title="Đóng"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
             <form onSubmit={handleAddWord} className="flex-1 overflow-y-auto pr-1 space-y-4">
               
               {/* Dictionary Lookup Bar */}
@@ -328,9 +362,9 @@ export default function NotebookDetailClient({
                     placeholder="Gõ Chữ Hán, Pinyin hoặc nghĩa..."
                   />
                   {isLookupLoading && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 material-symbols-outlined animate-spin text-primary text-[20px]">
-                      progress_activity
-                    </span>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-primary">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    </div>
                   )}
                 </div>
 
@@ -351,7 +385,14 @@ export default function NotebookDetailClient({
                         className="w-full text-left px-4 py-2.5 hover:bg-hover-bg transition-colors flex justify-between items-center text-sm"
                       >
                         <div className="flex flex-col">
-                          <span className="font-bold text-primary text-base leading-tight">{item.word}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-primary text-base leading-tight">{item.word}</span>
+                            {item.isExample && (
+                              <span className="text-[10px] font-bold bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                                Câu ví dụ
+                              </span>
+                            )}
+                          </div>
                           <span className="text-secondary text-xs font-mono mt-0.5">[{item.pinyin}]</span>
                         </div>
                         <span className="text-secondary text-xs truncate max-w-[200px] text-right font-medium">

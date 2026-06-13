@@ -13,7 +13,8 @@ export interface Word {
   vocabulary: string;
   pinyin: string;
   meaning: string;
-  notes: string;
+  note: string;
   created_at: string;
   updated_at: string;
 }
+

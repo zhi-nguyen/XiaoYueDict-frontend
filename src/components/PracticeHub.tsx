@@ -6,6 +6,7 @@ import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useParams } from 'next/navigation';
 import SmartQueueStatus from '@/components/SmartQueueStatus';
+import { QUEUE_STRATEGIES } from '@/constants/queueStrategies';
 import ScoreDisplay from '@/components/ScoreDisplay';
 import AudioWaveform from '@/components/AudioWaveform';
 import { getScoreLevel, isReadAloudAny, isChineseReadAloudResponse } from '@/types/scoring';
@@ -111,16 +112,7 @@ export default function PracticeHub({ word }: PracticeHubProps) {
     handleResetAudio();
   }, [word, handleResetAudio]);
 
-  useEffect(() => {
-    if (queue.phase === 'error' && queue.errorMessage) {
-      setAlertConfig({
-        isOpen: true,
-        title: 'Đã xảy ra lỗi',
-        message: queue.errorMessage,
-        type: 'error'
-      });
-    }
-  }, [queue.phase, queue.errorMessage]);
+  // Error is handled inline in SmartQueueStatus component now
 
   const startRecording = async () => {
     try {
@@ -428,6 +420,15 @@ export default function PracticeHub({ word }: PracticeHubProps) {
               )}
             </div>
           </div>
+        </div>
+
+        <div className="mt-4 mb-6">
+          <SmartQueueStatus
+            phase={queue.phase}
+            strategy={lang === 'en' ? QUEUE_STRATEGIES.speaking_en : QUEUE_STRATEGIES.speaking_zh}
+            onRetry={queue.retry}
+            errorMessage={queue.errorMessage}
+          />
         </div>
 
         {showResult && queue.resultData && isReadAloudAny(queue.resultData) && queue.resultData.word_scores.length > 0 && (

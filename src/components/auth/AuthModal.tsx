@@ -55,7 +55,8 @@ export default function AuthModal({ isOpen, onClose }: { isOpen: boolean; onClos
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+
       <div className="bg-surface w-full max-w-md p-6 rounded-2xl shadow-xl relative animate-in fade-in zoom-in-95 duration-200">
         <button 
           onClick={onClose}

@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Volume2 } from 'lucide-react';
 import { ZhWord } from '@/types/dictionary';
+import AddToNotebookModal from './dictionary/AddToNotebookModal';
 
 // Mapping from tags_vi.json
 import tagsVi from '@/data/tags_vi.json';
@@ -14,6 +15,7 @@ interface WordCardProps {
 
 export default function WordCard({ word, onPracticeClick }: WordCardProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   if (!word) {
     return (
@@ -89,23 +91,34 @@ export default function WordCard({ word, onPracticeClick }: WordCardProps) {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-4 mb-8">
+      <div className="space-y-3 mb-8">
+        <div className="flex gap-4">
+          <button
+            type="button"
+            onClick={playAudio}
+            disabled={!word.audio_url}
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-hover-bg hover:bg-outline/50 text-primary border border-outline font-bold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/20 disabled:opacity-40"
+          >
+            <span className="material-symbols-outlined text-lg">volume_up</span>
+            Phát audio (Loa)
+          </button>
+          <button
+            type="button"
+            onClick={onPracticeClick}
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-primary hover:opacity-90 text-white font-bold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/30"
+          >
+            <span className="material-symbols-outlined text-lg">mic</span>
+            Phát âm thử (Mic)
+          </button>
+        </div>
+
         <button
           type="button"
-          onClick={playAudio}
-          disabled={!word.audio_url}
-          className="flex-1 flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-hover-bg hover:bg-outline/50 text-primary border border-outline font-bold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/20 disabled:opacity-40"
+          onClick={() => setIsAddModalOpen(true)}
+          className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600/30 shadow-sm"
         >
-          <span className="material-symbols-outlined text-lg">volume_up</span>
-          Phát audio (Loa)
-        </button>
-        <button
-          type="button"
-          onClick={onPracticeClick}
-          className="flex-1 flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-primary hover:opacity-90 text-white font-bold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/30"
-        >
-          <span className="material-symbols-outlined text-lg">mic</span>
-          Phát âm thử (Mic)
+          <span className="material-symbols-outlined text-lg">bookmark_add</span>
+          Thêm vào sổ tay từ vựng
         </button>
       </div>
 
@@ -148,6 +161,13 @@ export default function WordCard({ word, onPracticeClick }: WordCardProps) {
           </div>
         </div>
       )}
+
+      {/* Add To Notebook Modal */}
+      <AddToNotebookModal 
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        word={word}
+      />
     </div>
   );
 }

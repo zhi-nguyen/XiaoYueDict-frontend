@@ -4,6 +4,7 @@ import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { useSmartQueue } from '@/hooks/useSmartQueue';
 import { useSpellCheck } from '@/hooks/useSpellCheck';
 import SmartQueueStatus from '@/components/SmartQueueStatus';
+import { QUEUE_STRATEGIES } from '@/constants/queueStrategies';
 import ScoreDisplay from '@/components/ScoreDisplay';
 import AudioWaveform from '@/components/AudioWaveform';
 import { useParams } from 'next/navigation';
@@ -67,16 +68,7 @@ export default function SpeakingPage() {
     }
   }, [queue.phase, fetchUsage]);
 
-  useEffect(() => {
-    if (queue.phase === 'error' && queue.errorMessage) {
-      setAlertConfig({
-        isOpen: true,
-        title: 'Đã xảy ra lỗi',
-        message: queue.errorMessage,
-        type: 'error'
-      });
-    }
-  }, [queue.phase, queue.errorMessage]);
+  // Error is handled inline in SmartQueueStatus component now
 
   // Helper to format bytes to MB
   const formatMB = useCallback((bytes: number) => {
@@ -692,8 +684,9 @@ export default function SpeakingPage() {
         {/* ── Smart Queue Status ── */}
         <SmartQueueStatus
           phase={queue.phase}
-          queuePosition={queue.queuePosition}
-          estimatedWait={queue.estimatedWait}
+          strategy={language === 'en' ? QUEUE_STRATEGIES.speaking_en : QUEUE_STRATEGIES.speaking_zh}
+          onRetry={queue.retry}
+          errorMessage={queue.errorMessage}
         />
 
         {/* Error is now handled by the AlertModal popup */}

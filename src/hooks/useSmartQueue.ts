@@ -101,6 +101,8 @@ export interface UseSmartQueueReturn {
   taskId: string | null;
   /** Reset everything back to idle */
   reset: () => void;
+  /** Retry the last failed submission */
+  retry: () => Promise<void>;
 }
 
 /**
@@ -121,6 +123,11 @@ export function useSmartQueue(): UseSmartQueueReturn {
 
   const isMountedRef = useRef(true);
   const { isAuthenticated } = useAuthStore();
+  const lastSubmissionRef = useRef<{
+    audioBlob: Blob;
+    language: 'en' | 'zh';
+    targetText?: string;
+  } | null>(null);
 
   // Smooth client-side ticking countdown for estimatedWait (EWT)
   useEffect(() => {
@@ -206,6 +213,9 @@ export function useSmartQueue(): UseSmartQueueReturn {
     language: 'en' | 'zh',
     targetText?: string,
   ) => {
+    // Cache the submission arguments for retry capability
+    lastSubmissionRef.current = { audioBlob, language, targetText };
+
     // Reset state for new submission
     reset();
     setPhase('uploading');
@@ -274,6 +284,12 @@ export function useSmartQueue(): UseSmartQueueReturn {
     }
   }, [reset, isAuthenticated]);
 
+  const retry = useCallback(async () => {
+    if (!lastSubmissionRef.current) return;
+    const { audioBlob, language, targetText } = lastSubmissionRef.current;
+    await submit(audioBlob, language, targetText);
+  }, [submit]);
+
   return {
     submit,
     phase,
@@ -284,5 +300,6 @@ export function useSmartQueue(): UseSmartQueueReturn {
     errorMessage,
     taskId,
     reset,
+    retry,
   };
 }

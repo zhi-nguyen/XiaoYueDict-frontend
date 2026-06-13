@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import { fetchWords, createWord, deleteWord, updateNotebook, deleteNotebook } from '@/lib/api/notes';
+import { djangoClient } from '@/lib/apiClient';
 import { Notebook, Word } from '@/types/note';
 import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
@@ -55,7 +57,7 @@ export default function NotebookDetailClient({
   const [newVocab, setNewVocab] = useState('');
   const [newPinyin, setNewPinyin] = useState('');
   const [newMeaning, setNewMeaning] = useState('');
-  const [newNotes, setNewNotes] = useState('');
+  const [newNote, setNewNote] = useState('');
   const [adding, setAdding] = useState(false);
   
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -64,13 +66,47 @@ export default function NotebookDetailClient({
   
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Debounced search
+  // Auto-fill Dictionary search inside modal
+  const [lookupQuery, setLookupQuery] = useState('');
+  const [lookupSuggestions, setLookupSuggestions] = useState<any[]>([]);
+  const [isLookupLoading, setIsLookupLoading] = useState(false);
+
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  // Debounced word search within notebook list
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       loadWords(searchQuery);
     }, 300);
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);
+
+  // Debounced dictionary lookup inside add word modal (700ms)
+  useEffect(() => {
+    if (lookupQuery.trim().length < 1) {
+      setLookupSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsLookupLoading(true);
+      try {
+        const res = await djangoClient.get(`/dictionary/zh/search/?q=${encodeURIComponent(lookupQuery)}`);
+        setLookupSuggestions(res.data.results || []);
+      } catch (err) {
+        console.error("Lỗi tra cứu gợi ý Sổ tay:", err);
+      } finally {
+        setIsLookupLoading(false);
+      }
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [lookupQuery]);
 
   async function loadWords(search: string) {
     try {
@@ -90,14 +126,16 @@ export default function NotebookDetailClient({
         vocabulary: newVocab.trim(),
         pinyin: newPinyin.trim(),
         meaning: newMeaning.trim(),
-        notes: newNotes.trim()
+        note: newNote.trim()
       });
       setWords([newWord, ...words]);
       setShowAddModal(false);
       setNewVocab('');
       setNewPinyin('');
       setNewMeaning('');
-      setNewNotes('');
+      setNewNote('');
+      setLookupQuery('');
+      setLookupSuggestions([]);
       // update count
       setNotebook(prev => ({
         ...prev,
@@ -254,9 +292,9 @@ export default function NotebookDetailClient({
                       <div className="font-noto-sc text-2xl font-bold text-primary mb-1">{word.vocabulary}</div>
                       <div className="text-sm font-medium text-[#10b981] mb-2">{word.pinyin}</div>
                       <div className="text-base text-gray-800 font-medium">{word.meaning}</div>
-                      {word.notes && (
+                      {word.note && (
                         <div className="mt-3 text-sm text-secondary bg-gray-50 p-2.5 rounded-lg border border-gray-100">
-                          {word.notes}
+                          {word.note}
                         </div>
                       )}
                     </div>
@@ -269,11 +307,67 @@ export default function NotebookDetailClient({
       </div>
 
       {/* Add Word Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl">
-            <h2 className="text-2xl font-bold text-primary mb-4">Thêm từ vựng mới</h2>
-            <form onSubmit={handleAddWord}>
+      {showAddModal && mounted && createPortal(
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000] p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+            <h2 className="text-2xl font-bold text-primary mb-4 shrink-0">Thêm từ vựng mới</h2>
+            <form onSubmit={handleAddWord} className="flex-1 overflow-y-auto pr-1 space-y-4">
+              
+              {/* Dictionary Lookup Bar */}
+              <div className="bg-primary/5 p-4 rounded-xl border border-primary/10">
+                <label className="block text-sm font-bold text-primary mb-1.5 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-lg">find_in_page</span>
+                  Tra nhanh từ điển (Auto-fill)
+                </label>
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    value={lookupQuery}
+                    onChange={e => setLookupQuery(e.target.value)}
+                    className="w-full border border-outline rounded-xl pl-4 pr-10 py-2.5 bg-white focus:outline-none focus:border-primary transition-colors text-sm"
+                    placeholder="Gõ Chữ Hán, Pinyin hoặc nghĩa..."
+                  />
+                  {isLookupLoading && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 material-symbols-outlined animate-spin text-primary text-[20px]">
+                      progress_activity
+                    </span>
+                  )}
+                </div>
+
+                {/* Suggestions List */}
+                {lookupSuggestions.length > 0 && (
+                  <div className="mt-2 bg-white border border-outline rounded-xl shadow-lg max-h-48 overflow-y-auto divide-y divide-outline/50 z-20 relative">
+                    {lookupSuggestions.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          setNewVocab(item.word);
+                          setNewPinyin(item.pinyin);
+                          setNewMeaning(item.translation_vi);
+                          setLookupQuery('');
+                          setLookupSuggestions([]);
+                        }}
+                        className="w-full text-left px-4 py-2.5 hover:bg-hover-bg transition-colors flex justify-between items-center text-sm"
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-bold text-primary text-base leading-tight">{item.word}</span>
+                          <span className="text-secondary text-xs font-mono mt-0.5">[{item.pinyin}]</span>
+                        </div>
+                        <span className="text-secondary text-xs truncate max-w-[200px] text-right font-medium">
+                          {item.translation_vi}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {lookupQuery.trim() && !isLookupLoading && lookupSuggestions.length === 0 && (
+                  <p className="text-xs text-secondary/60 mt-1.5 italic">Không tìm thấy gợi ý nào...</p>
+                )}
+              </div>
+
+              <hr className="border-outline/50" />
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-secondary mb-1">Từ vựng (Tiếng Trung)</label>
@@ -281,7 +375,7 @@ export default function NotebookDetailClient({
                     type="text" 
                     value={newVocab}
                     onChange={e => setNewVocab(e.target.value)}
-                    className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors font-noto-sc text-lg"
+                    className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors font-noto-sc text-lg font-bold"
                     placeholder="VD: 学习"
                     required
                   />
@@ -292,7 +386,7 @@ export default function NotebookDetailClient({
                     type="text" 
                     value={newPinyin}
                     onChange={e => setNewPinyin(e.target.value)}
-                    className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors"
+                    className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors text-sm font-medium text-[#10b981]"
                     placeholder="VD: xuéxí"
                   />
                 </div>
@@ -302,7 +396,7 @@ export default function NotebookDetailClient({
                     type="text" 
                     value={newMeaning}
                     onChange={e => setNewMeaning(e.target.value)}
-                    className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors"
+                    className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors text-sm font-medium"
                     placeholder="VD: Học tập"
                     required
                   />
@@ -310,17 +404,22 @@ export default function NotebookDetailClient({
                 <div>
                   <label className="block text-sm font-medium text-secondary mb-1">Ghi chú (tùy chọn)</label>
                   <textarea 
-                    value={newNotes}
-                    onChange={e => setNewNotes(e.target.value)}
-                    className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors min-h-[80px]"
+                    value={newNote}
+                    onChange={e => setNewNote(e.target.value)}
+                    className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors min-h-[80px] text-sm"
                     placeholder="Ví dụ đặt câu, từ đồng nghĩa..."
                   />
                 </div>
               </div>
-              <div className="flex justify-end gap-3 mt-6">
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-outline/50 shrink-0">
                 <button 
                   type="button" 
-                  onClick={() => setShowAddModal(false)}
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setLookupQuery('');
+                    setLookupSuggestions([]);
+                  }}
                   className="px-5 py-2.5 rounded-xl font-medium text-secondary hover:bg-hover-bg transition-colors"
                 >
                   Hủy
@@ -336,12 +435,13 @@ export default function NotebookDetailClient({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Settings Modal */}
-      {showSettingsModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in">
+      {showSettingsModal && mounted && createPortal(
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000] p-4 animate-in fade-in">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
             <h2 className="text-2xl font-bold text-primary mb-4">Cài đặt sổ tay</h2>
             <form onSubmit={handleUpdateNotebook}>
@@ -352,7 +452,7 @@ export default function NotebookDetailClient({
                     type="text" 
                     value={editName}
                     onChange={e => setEditName(e.target.value)}
-                    className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors"
+                    className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors font-medium"
                     required
                   />
                 </div>
@@ -361,7 +461,7 @@ export default function NotebookDetailClient({
                   <textarea 
                     value={editDesc}
                     onChange={e => setEditDesc(e.target.value)}
-                    className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors min-h-[100px]"
+                    className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors min-h-[100px] text-sm"
                   />
                 </div>
               </div>
@@ -369,7 +469,7 @@ export default function NotebookDetailClient({
                 <button
                   type="button"
                   onClick={handleDeleteNotebook}
-                  className="text-red-500 hover:bg-red-50 px-4 py-2 rounded-lg font-medium transition-colors"
+                  className="text-red-500 hover:bg-red-50 px-4 py-2 rounded-lg font-medium transition-colors text-sm"
                 >
                   Xóa sổ tay
                 </button>
@@ -377,14 +477,14 @@ export default function NotebookDetailClient({
                   <button 
                     type="button" 
                     onClick={() => setShowSettingsModal(false)}
-                    className="px-4 py-2 rounded-xl font-medium text-secondary hover:bg-hover-bg transition-colors"
+                    className="px-4 py-2 rounded-xl font-medium text-secondary hover:bg-hover-bg transition-colors text-sm"
                   >
                     Hủy
                   </button>
                   <button 
                     type="submit" 
                     disabled={!editName.trim()}
-                    className="bg-primary text-white px-5 py-2 rounded-xl font-bold hover:bg-primary-hover transition-colors disabled:opacity-50"
+                    className="bg-primary text-white px-5 py-2 rounded-xl font-bold hover:bg-primary-hover transition-colors disabled:opacity-50 text-sm"
                   >
                     Lưu thay đổi
                   </button>
@@ -392,7 +492,8 @@ export default function NotebookDetailClient({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <ConfirmModal

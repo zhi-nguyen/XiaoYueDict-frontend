@@ -14,11 +14,19 @@ export async function POST(request: Request) {
       body: JSON.stringify(body),
     });
 
-    const data = await res.json();
+    let data;
+    const contentType = res.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      data = await res.json();
+    } else {
+      const text = await res.text();
+      data = { message: text || `HTTP Error ${res.status}: ${res.statusText}` };
+    }
 
     if (res.ok) {
       return NextResponse.json(data);
     } else {
+      console.error(`Backend register error: Status ${res.status}`, data);
       return NextResponse.json(data, { status: res.status });
     }
   } catch (error) {
@@ -26,3 +34,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
 }
+

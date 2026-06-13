@@ -1,0 +1,231 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { fetchNotebooks, createWord } from '@/lib/api/notes';
+import { Notebook } from '@/types/note';
+import { ZhWord } from '@/types/dictionary';
+
+interface AddToNotebookModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  word: ZhWord;
+}
+
+export default function AddToNotebookModal({ isOpen, onClose, word }: AddToNotebookModalProps) {
+  const [notebooks, setNotebooks] = useState<Notebook[]>([]);
+  const [selectedNotebookId, setSelectedNotebookId] = useState<number | ''>('');
+  const [vocab, setVocab] = useState(word.word);
+  const [pinyin, setPinyin] = useState(word.pinyin);
+  const [meaning, setMeaning] = useState(word.translation_vi);
+  const [note, setNote] = useState('');
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadNotebooks();
+      // Reset state for new word
+      setVocab(word.word);
+      setPinyin(word.pinyin);
+      setMeaning(word.translation_vi);
+      setNote('');
+      setErrorMsg('');
+      setSuccessMsg('');
+    }
+  }, [isOpen, word]);
+
+  async function loadNotebooks() {
+    try {
+      setIsLoading(true);
+      const list = await fetchNotebooks();
+      setNotebooks(list);
+      if (list.length > 0) {
+        setSelectedNotebookId(list[0].id);
+      } else {
+        setSelectedNotebookId('');
+      }
+    } catch (err) {
+      console.error("Lỗi khi tải danh sách sổ tay:", err);
+      setErrorMsg('Không thể tải danh sách sổ tay. Vui lòng thử lại.');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedNotebookId) {
+      setErrorMsg('Vui lòng chọn một sổ tay.');
+      return;
+    }
+    if (!vocab.trim() || !meaning.trim()) {
+      setErrorMsg('Từ vựng và nghĩa không được để trống.');
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      setErrorMsg('');
+      await createWord(selectedNotebookId, {
+        vocabulary: vocab.trim(),
+        pinyin: pinyin.trim(),
+        meaning: meaning.trim(),
+        note: note.trim(),
+      });
+      setSuccessMsg('Đã lưu từ vựng vào sổ tay thành công!');
+      setTimeout(() => {
+        onClose();
+      }, 1500);
+    } catch (err) {
+      console.error("Lỗi khi thêm từ vào sổ tay:", err);
+      setErrorMsg('Lỗi khi lưu từ vựng. Vui lòng thử lại.');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  if (!isOpen) return null;
+  if (!mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000] p-4 animate-in fade-in">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl flex flex-col max-h-[90vh]">
+        <div className="flex justify-between items-center mb-4 shrink-0">
+          <h2 className="text-2xl font-bold text-primary">Thêm vào Sổ Tay</h2>
+          <button 
+            onClick={onClose} 
+            className="text-secondary hover:text-primary transition-colors"
+            title="Đóng"
+          >
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        {errorMsg && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl text-center font-medium">
+            {errorMsg}
+          </div>
+        )}
+
+        {successMsg && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-600 text-sm rounded-xl text-center font-medium">
+            {successMsg}
+          </div>
+        )}
+
+        <form onSubmit={handleSave} className="flex-1 overflow-y-auto space-y-4 pr-1">
+          {/* Notebook Selector */}
+          <div>
+            <label className="block text-sm font-semibold text-secondary mb-1">Chọn Sổ Tay</label>
+            {isLoading ? (
+              <div className="py-2.5 px-4 border border-outline rounded-xl bg-hover-bg text-secondary text-sm flex items-center gap-2">
+                <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+                Đang tải danh sách sổ...
+              </div>
+            ) : notebooks.length === 0 ? (
+              <div className="p-3 border border-dashed border-outline rounded-xl text-center text-secondary text-sm">
+                Bạn chưa có sổ tay nào.
+                <a href={`/${word.hsk_level ? 'zh' : 'en'}/notes`} className="text-primary font-bold block mt-1 hover:underline">
+                  Tạo sổ tay mới
+                </a>
+              </div>
+            ) : (
+              <select
+                value={selectedNotebookId}
+                onChange={e => setSelectedNotebookId(Number(e.target.value))}
+                className="w-full border border-outline rounded-xl px-4 py-2.5 bg-white focus:outline-none focus:border-primary transition-colors text-sm font-medium"
+              >
+                {notebooks.map(nb => (
+                  <option key={nb.id} value={nb.id}>
+                    {nb.name} ({nb.word_count_annotated || 0} từ)
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <hr className="border-outline/50" />
+
+          {/* Word Fields Review */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-secondary">Xem lại thông tin</h3>
+            
+            <div>
+              <label className="block text-sm font-medium text-secondary mb-1">Từ vựng (Tiếng Trung)</label>
+              <input 
+                type="text" 
+                value={vocab}
+                onChange={e => setVocab(e.target.value)}
+                className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors font-noto-sc text-lg font-bold"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-secondary mb-1">Pinyin (Bính âm)</label>
+              <input 
+                type="text" 
+                value={pinyin}
+                onChange={e => setPinyin(e.target.value)}
+                className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors text-sm font-medium text-[#10b981]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-secondary mb-1">Nghĩa Tiếng Việt</label>
+              <input 
+                type="text" 
+                value={meaning}
+                onChange={e => setMeaning(e.target.value)}
+                className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors text-sm font-medium"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-secondary mb-1">Ghi chú (tùy chọn)</label>
+              <textarea 
+                value={note}
+                onChange={e => setNote(e.target.value)}
+                className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors min-h-[85px] text-sm"
+                placeholder="Ví dụ câu đặt, giải thích ngữ cảnh..."
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-outline/50 shrink-0">
+            <button 
+              type="button" 
+              onClick={onClose}
+              className="px-5 py-2.5 rounded-xl font-medium text-secondary hover:bg-hover-bg transition-colors"
+            >
+              Hủy
+            </button>
+            <button 
+              type="submit" 
+              disabled={isSaving || notebooks.length === 0 || !vocab.trim() || !meaning.trim()}
+              className="bg-primary text-white px-5 py-2.5 rounded-xl font-bold hover:bg-primary-hover transition-colors disabled:opacity-50 flex items-center"
+            >
+              {isSaving ? (
+                <span className="material-symbols-outlined animate-spin mr-2 text-[18px]">progress_activity</span>
+              ) : null}
+              Lưu từ vựng
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body
+  );
+}

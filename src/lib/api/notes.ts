@@ -28,7 +28,7 @@ export async function deleteNotebook(id: number): Promise<void> {
 }
 
 export async function fetchWords(notebookId: number, search?: string): Promise<Word[]> {
-  let path = `/notes/notebooks/${notebookId}/words`;
+  let path = `/notes/notebooks/${notebookId}/words/`;
   if (search) {
     path += `?search=${encodeURIComponent(search)}`;
   }
@@ -36,16 +36,35 @@ export async function fetchWords(notebookId: number, search?: string): Promise<W
   return res.data;
 }
 
-export async function createWord(notebookId: number, data: { vocabulary: string; pinyin?: string; meaning: string; notes?: string }): Promise<Word> {
-  const res = await djangoClient.post(`/notes/notebooks/${notebookId}/words`, data);
+export async function createWord(
+  notebookId: number,
+  data: { vocabulary: string; pinyin?: string; meaning: string; note?: string; notes?: string }
+): Promise<Word> {
+  const requestData = {
+    vocabulary: data.vocabulary,
+    pinyin: data.pinyin,
+    meaning: data.meaning,
+    note: data.note || data.notes || '',
+  };
+  const res = await djangoClient.post(`/notes/notebooks/${notebookId}/words/`, requestData);
   return res.data;
 }
 
-export async function updateWord(notebookId: number, wordId: number, data: { vocabulary?: string; pinyin?: string; meaning?: string; notes?: string }): Promise<Word> {
-  const res = await djangoClient.patch(`/notes/notebooks/${notebookId}/words/${wordId}`, data);
+export async function updateWord(
+  notebookId: number,
+  wordId: number,
+  data: { vocabulary?: string; pinyin?: string; meaning?: string; note?: string; notes?: string }
+): Promise<Word> {
+  const requestData: any = { ...data };
+  if ('notes' in data) {
+    requestData.note = data.note || data.notes;
+    delete requestData.notes;
+  }
+  const res = await djangoClient.patch(`/notes/notebooks/${notebookId}/words/${wordId}/`, requestData);
   return res.data;
 }
 
 export async function deleteWord(notebookId: number, wordId: number): Promise<void> {
-  await djangoClient.delete(`/notes/notebooks/${notebookId}/words/${wordId}`);
+  await djangoClient.delete(`/notes/notebooks/${notebookId}/words/${wordId}/`);
 }
+

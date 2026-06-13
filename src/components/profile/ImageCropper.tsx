@@ -95,7 +95,8 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel }: Ima
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4">
+
       <div className="bg-surface w-full max-w-md rounded-2xl overflow-hidden shadow-2xl flex flex-col">
         <div className="p-4 border-b border-outline flex justify-between items-center">
           <h3 className="font-bold text-primary text-lg">Chỉnh sửa ảnh đại diện</h3>

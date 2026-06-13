@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { createNotebook, deleteNotebook } from '@/lib/api/notes';
@@ -20,6 +21,14 @@ export default function NotesClient({ initialNotebooks }: NotesClientProps) {
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [creating, setCreating] = useState(false);
+  
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
   const [alertConfig, setAlertConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -144,8 +153,8 @@ export default function NotesClient({ initialNotebooks }: NotesClientProps) {
         )}
 
         {/* Create Modal */}
-        {showCreateModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in">
+        {showCreateModal && mounted && createPortal(
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000] p-4 animate-in fade-in">
             <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
               <h2 className="text-2xl font-bold text-primary mb-4">Tạo Sổ Tay Mới</h2>
               <form onSubmit={handleCreate}>
@@ -156,7 +165,7 @@ export default function NotesClient({ initialNotebooks }: NotesClientProps) {
                       type="text" 
                       value={newName}
                       onChange={e => setNewName(e.target.value)}
-                      className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors"
+                      className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors font-medium text-sm"
                       placeholder="VD: Từ vựng HSK 4..."
                       required
                     />
@@ -166,7 +175,7 @@ export default function NotesClient({ initialNotebooks }: NotesClientProps) {
                     <textarea 
                       value={newDesc}
                       onChange={e => setNewDesc(e.target.value)}
-                      className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors min-h-[100px]"
+                      className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors min-h-[100px] text-sm"
                       placeholder="Ghi chú thêm về sổ tay này..."
                     />
                   </div>
@@ -175,14 +184,14 @@ export default function NotesClient({ initialNotebooks }: NotesClientProps) {
                   <button 
                     type="button" 
                     onClick={() => setShowCreateModal(false)}
-                    className="px-5 py-2.5 rounded-xl font-medium text-secondary hover:bg-hover-bg transition-colors"
+                    className="px-5 py-2.5 rounded-xl font-medium text-secondary hover:bg-hover-bg transition-colors text-sm"
                   >
                     Hủy
                   </button>
                   <button 
                     type="submit" 
                     disabled={creating || !newName.trim()}
-                    className="bg-primary text-white px-5 py-2.5 rounded-xl font-bold hover:bg-primary-hover transition-colors disabled:opacity-50 flex items-center"
+                    className="bg-primary text-white px-5 py-2.5 rounded-xl font-bold hover:bg-primary-hover transition-colors disabled:opacity-50 flex items-center text-sm"
                   >
                     {creating ? (
                       <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
@@ -192,7 +201,8 @@ export default function NotesClient({ initialNotebooks }: NotesClientProps) {
                 </div>
               </form>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
 

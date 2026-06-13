@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { djangoClient } from '@/lib/apiClient';
+import SmartQueueStatus from '@/components/SmartQueueStatus';
+import { QUEUE_STRATEGIES } from '@/constants/queueStrategies';
 
 interface TranslationRecord {
   original: string;
@@ -17,6 +19,7 @@ export default function TranslateClient() {
   const [translationSource, setTranslationSource] = useState('');
   const [history, setHistory] = useState<TranslationRecord[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
+  const [translationPhase, setTranslationPhase] = useState<'idle' | 'processing' | 'error' | 'success'>('idle');
 
   // UseEffect for Hydration safe LocalStorage
   useEffect(() => {
@@ -35,6 +38,7 @@ export default function TranslateClient() {
     if (!trimmedInput) return;
 
     setIsLoading(true);
+    setTranslationPhase('processing');
     setTranslatedText('');
     setTranslationSource('');
     setErrorMsg('');
@@ -47,6 +51,7 @@ export default function TranslateClient() {
         // Fallback or immediate return
         setTranslationResult(data, trimmedInput);
         setIsLoading(false);
+        setTranslationPhase('success');
       } else if (data.status === 'PENDING' && data.task_id) {
         // Start polling
         pollTranslationStatus(data.task_id, trimmedInput);
@@ -57,6 +62,7 @@ export default function TranslateClient() {
     } catch (error: any) {
       setErrorMsg(error.response?.data?.error || error.message || 'Lỗi kết nối máy chủ');
       setIsLoading(false);
+      setTranslationPhase('error');
     }
   };
 
@@ -70,26 +76,33 @@ export default function TranslateClient() {
           clearInterval(interval);
           setTranslationResult(data, originalText);
           setIsLoading(false);
+          setTranslationPhase('success');
         } else if (data.status === 'FAILED') {
           clearInterval(interval);
           setErrorMsg(data.error || 'Dịch thuật thất bại');
           setIsLoading(false);
+          setTranslationPhase('error');
         }
         // If PENDING or anything else, keep polling
       } catch (error) {
         clearInterval(interval);
         setErrorMsg('Lỗi khi kiểm tra trạng thái dịch');
         setIsLoading(false);
+        setTranslationPhase('error');
       }
     }, 1000);
     
     // Stop polling after 30 seconds to prevent infinite loops
     setTimeout(() => {
       clearInterval(interval);
-      if (isLoading) {
-        setErrorMsg('Quá thời gian chờ phản hồi');
-        setIsLoading(false);
-      }
+      setTranslationPhase((prev) => {
+        if (prev === 'processing') {
+          setErrorMsg('Quá thời gian chờ phản hồi');
+          setIsLoading(false);
+          return 'error';
+        }
+        return prev;
+      });
     }, 30000);
   };
 
@@ -123,6 +136,7 @@ export default function TranslateClient() {
     setTranslatedText('');
     setTranslationSource('');
     setErrorMsg('');
+    setTranslationPhase('idle');
   };
 
   return (
@@ -189,14 +203,18 @@ export default function TranslateClient() {
               <span className="material-symbols-outlined text-[20px]">content_copy</span>
             </button>
           </div>
-          <div className="flex-1 w-full p-4 overflow-y-auto">
-            {errorMsg ? (
-              <div className="flex items-start gap-2 text-error bg-error/10 p-4 rounded-xl">
-                <span className="material-symbols-outlined">error</span>
-                <p>{errorMsg}</p>
+          <div className={`flex-1 w-full p-4 overflow-y-auto ${(!translatedText || (translationPhase !== 'idle' && translationPhase !== 'success')) ? 'flex flex-col justify-center items-center' : ''}`}>
+            {translationPhase !== 'idle' && translationPhase !== 'success' ? (
+              <div className="w-full max-w-md">
+                <SmartQueueStatus
+                  phase={translationPhase}
+                  strategy={QUEUE_STRATEGIES.translation_zh}
+                  onRetry={handleTranslate}
+                  errorMessage={errorMsg}
+                />
               </div>
             ) : translatedText ? (
-              <p className="text-[16px] text-primary whitespace-pre-wrap">{translatedText}</p>
+              <p className="text-[16px] text-primary whitespace-pre-wrap w-full">{translatedText}</p>
             ) : (
               <p className="text-secondary/40 italic">Kết quả bản dịch sẽ hiển thị ở đây...</p>
             )}

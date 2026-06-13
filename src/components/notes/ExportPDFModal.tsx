@@ -1,8 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
 import { djangoClient } from '@/lib/apiClient';
+import { useWebSocket } from '@/hooks/useWebSocket';
+import SmartQueueStatus from '@/components/SmartQueueStatus';
+import { QUEUE_STRATEGIES } from '@/constants/queueStrategies';
+import { useAuthStore } from '@/store/useAuthStore';
+import AuthModal from '@/components/auth/AuthModal';
 
 interface ExportPDFModalProps {
   isOpen: boolean;
@@ -22,21 +27,58 @@ export default function ExportPDFModal({
   totalWords,
   selectedWordIds,
 }: ExportPDFModalProps) {
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
+  const [mounted, setMounted] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
   const [gridColor, setGridColor] = useState('#D32F2F'); // Default: Red
   const [showPinyin, setShowPinyin] = useState(true);
   const [showMeaning, setShowMeaning] = useState(true);
   const [showNotes, setShowNotes] = useState(true);
   const [showCover, setShowCover] = useState(true);
+  const [brandingName, setBrandingName] = useState('XiaoYue Dict');
   const [exportScope, setExportScope] = useState<'all' | 'selected'>('all');
-  
+
   // Advanced customization state
   const [extraRows, setExtraRows] = useState(0);
   const [emptyPages, setEmptyPages] = useState(0);
   const [emptyPageGridSize, setEmptyPageGridSize] = useState<'auto' | '2.0' | '1.0'>('auto');
 
   const [exporting, setExporting] = useState(false);
-  const [loadingText, setLoadingText] = useState('Đang kết nối máy chủ...');
-  const [error, setError] = useState<string | null>(null);
+  const [phase, setPhase] = useState<'idle' | 'uploading' | 'queued' | 'processing' | 'completed' | 'error'>('idle');
+  const [taskId, setTaskId] = useState<string | null>(null);
+  const [queuePosition, setQueuePosition] = useState<number>(0);
+  const [estimatedWait, setEstimatedWait] = useState<number>(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Limits information from backend
+  const [limitInfo, setLimitInfo] = useState<{
+    tier: string;
+    daily_limit: number;
+    current_count: number;
+    remaining_count: number;
+    max_words: number;
+  } | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const fetchLimits = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const res = await djangoClient.get(`/notes/notebooks/${notebookId}/export-pdf/limits/`);
+      setLimitInfo(res.data);
+    } catch (err) {
+      console.error('Lỗi khi tải thông tin hạn mức PDF:', err);
+    }
+  }, [notebookId, isAuthenticated]);
+
+  useEffect(() => {
+    if (isOpen && isAuthenticated) {
+      fetchLimits();
+    }
+  }, [isOpen, isAuthenticated, fetchLimits]);
 
   // Set export scope to 'selected' if user has already selected some words
   useEffect(() => {
@@ -47,34 +89,210 @@ export default function ExportPDFModal({
     }
   }, [selectedWordIds, isOpen]);
 
-  // Loading text rotation during export
+  // Smooth client-side ticking countdown for estimatedWait (EWT)
   useEffect(() => {
-    if (!exporting) return;
-    
-    const texts = [
-      'Đang chuẩn bị dữ liệu sổ tay...',
-      'Đang kết nối microservice xuất bản...',
-      'Đang vẽ lưới chữ Điền (Tianzige)...',
-      'Đang dàn trang và căn lề phiên âm...',
-      'Đang nén file và tối ưu luồng truyền tải...',
-      'Đang chuẩn bị tải xuống file PDF...'
-    ];
-    
-    let index = 0;
-    const interval = setInterval(() => {
-      index = (index + 1) % texts.length;
-      setLoadingText(texts[index]);
-    }, 3000);
+    if (phase !== 'queued' && phase !== 'processing') return;
+    if (estimatedWait <= 0) return;
 
-    return () => clearInterval(interval);
-  }, [exporting]);
+    const timer = setInterval(() => {
+      setEstimatedWait((prev) => {
+        if (prev <= 1) return 1;
+        if (prev <= 5) return Math.random() < 0.25 ? prev - 1 : prev;
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [phase, estimatedWait]);
+
+  // Download PDF file when completed
+  const triggerDownload = async (tid: string) => {
+    try {
+      const res = await djangoClient.get(`/notes/notebooks/export-pdf/download/${tid}/`, {
+        responseType: 'blob',
+        timeout: 90000 // 90 seconds timeout for large notebooks
+      });
+
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      const safeName = notebookName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+      link.setAttribute('download', `so-tay-tap-viet-${safeName}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      setPhase('idle');
+      setExporting(false);
+      onClose();
+    } catch (err: any) {
+      console.error('Lỗi khi tải file PDF:', err);
+      setPhase('error');
+      setErrorMessage('Không thể tải tệp PDF về máy.');
+    }
+  };
+
+  // WebSocket message callback
+  const handleWsMessage = useCallback((msg: any) => {
+    if (!taskId) return;
+    if (msg.payload?.task_id !== taskId) return;
+
+    if (msg.type === 'pdf_complete') {
+      setPhase('completed');
+      triggerDownload(taskId);
+    } else if (msg.type === 'pdf_failed') {
+      setPhase('error');
+      setErrorMessage(msg.payload?.error || 'Có lỗi xảy ra trong quá trình xuất PDF nền.');
+    }
+  }, [taskId]);
+
+  // Subscribe to real-time events via WebSocket hook
+  useWebSocket({
+    onMessage: handleWsMessage
+  });
+
+  // Polling fallback mechanism (runs every 2 seconds if WebSocket is slow or disconnected)
+  useEffect(() => {
+    if (!taskId || ['completed', 'error', 'idle'].includes(phase)) return;
+
+    let isActive = true;
+    const interval = setInterval(async () => {
+      try {
+        const res = await djangoClient.get(`/notes/notebooks/export-pdf/status/${taskId}/`);
+        if (!isActive) return;
+
+        const data = res.data;
+        if (data.status === 'COMPLETED') {
+          setPhase('completed');
+          clearInterval(interval);
+          triggerDownload(taskId);
+        } else if (data.status === 'FAILED') {
+          setPhase('error');
+          setErrorMessage(data.error_message || 'Quá trình biên tập file PDF trên máy chủ gặp sự cố.');
+          clearInterval(interval);
+        } else {
+          setQueuePosition(data.queue_position);
+          setEstimatedWait(data.estimated_wait_seconds);
+          if (data.status === 'PROCESSING') {
+            setPhase('processing');
+          } else {
+            setPhase('queued');
+          }
+        }
+      } catch (err) {
+        console.error('Failed to poll status', err);
+      }
+    }, 2000);
+
+    return () => {
+      isActive = false;
+      clearInterval(interval);
+    };
+  }, [taskId, phase]);
 
   if (!isOpen) return null;
 
+  if (!mounted || isAuthLoading) {
+    return (
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1000] p-4">
+        <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl flex flex-col items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-sm text-secondary mt-3">Đang xác thực tài khoản...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1000] p-4 animate-in fade-in duration-200">
+        <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl overflow-hidden flex flex-col relative max-h-[90vh]">
+
+          <div className="flex justify-between items-center mb-5 border-b border-outline/50 pb-3 shrink-0">
+            <h2 className="text-xl font-bold text-primary flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-2xl">picture_as_pdf</span>
+              Xuất PDF Vở Tập Viết
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-secondary hover:text-primary transition-colors flex items-center justify-center p-1"
+            >
+              <span className="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <div className="flex-1 flex flex-col items-center justify-center text-center py-6 px-2 space-y-4">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2">
+              <span className="material-symbols-outlined text-4xl">lock</span>
+            </div>
+            <h3 className="text-lg font-bold text-primary">Đăng nhập để xuất PDF</h3>
+            <p className="text-sm text-secondary leading-relaxed">
+              Tính năng xuất bản Vở tập viết chữ Hán PDF chuyên nghiệp chỉ dành riêng cho thành viên đã đăng ký.
+            </p>
+
+            <div className="w-full bg-hover-bg rounded-2xl p-4 text-left border border-outline text-xs space-y-2.5">
+              <p className="font-bold text-primary flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-sm text-primary">workspace_premium</span>
+                Quyền lợi thành viên:
+              </p>
+              <ul className="space-y-1.5 text-secondary pl-1">
+                <li className="flex items-start gap-1.5">
+                  <span className="text-primary font-bold">•</span>
+                  <span><strong>Gói Free:</strong> 2 lần xuất/ngày, tối đa 10 từ/file, kèm bìa & thương hiệu mặc định.</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-primary font-bold">•</span>
+                  <span><strong>Gói Plus/Premium/Pro:</strong> Lên đến 15 lần/ngày, 100 từ/file, được phép ẩn bìa & cá nhân hóa header.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t border-outline/50 mt-5 shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-3 border border-outline rounded-xl font-medium text-secondary hover:bg-hover-bg transition-colors text-sm"
+            >
+              Đóng
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsAuthModalOpen(true)}
+              className="flex-1 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary-hover transition-colors text-sm shadow-sm"
+            >
+              Đăng nhập / Đăng ký
+            </button>
+          </div>
+
+          <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+        </div>
+      </div>
+    );
+  }
+
+  const isFreeTier = !limitInfo || limitInfo.tier === 'Free';
+  const currentWordCount = exportScope === 'all' ? totalWords : selectedWordIds.length;
+
   const handleExport = async () => {
+    if (limitInfo && currentWordCount > limitInfo.max_words) {
+      setErrorMessage(`Số lượng từ (${currentWordCount} từ) vượt quá giới hạn tối đa (${limitInfo.max_words} từ) của gói ${limitInfo.tier}.`);
+      return;
+    }
+    if (limitInfo && limitInfo.remaining_count <= 0) {
+      setErrorMessage('Bạn đã dùng hết lượt xuất PDF của ngày hôm nay.');
+      return;
+    }
+
     setExporting(true);
-    setError(null);
-    setLoadingText('Đang kết nối máy chủ...');
+    setPhase('uploading');
+    setErrorMessage(null);
+    setTaskId(null);
 
     try {
       const params: any = {
@@ -82,7 +300,8 @@ export default function ExportPDFModal({
         show_pinyin: showPinyin,
         show_meaning: showMeaning,
         show_notes: showNotes,
-        show_cover: showCover,
+        show_cover: isFreeTier ? true : showCover,
+        branding_name: isFreeTier ? 'XiaoYue Dict' : brandingName,
         extra_rows: extraRows,
         empty_pages: emptyPages,
         empty_page_grid_size: emptyPageGridSize,
@@ -90,40 +309,35 @@ export default function ExportPDFModal({
 
       if (exportScope === 'selected') {
         if (selectedWordIds.length === 0) {
-          setError('Vui lòng chọn ít nhất một từ vựng để xuất.');
+          setErrorMessage('Vui lòng chọn ít nhất một từ vựng để xuất.');
+          setPhase('error');
           setExporting(false);
           return;
         }
         params.word_ids = selectedWordIds.join(',');
       }
 
-      // Zero-Copy response flow via Blob
-      const res = await djangoClient.get(`/notes/notebooks/${notebookId}/export-pdf/`, {
-        params,
-        responseType: 'blob',
-        timeout: 90000 // 90 seconds timeout for large notebooks
-      });
+      // POST to API Gateway to create the PDF background task
+      const res = await djangoClient.post(`/notes/notebooks/${notebookId}/export-pdf/`, params);
+      const data = res.data;
 
-      const blob = new Blob([res.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      
-      const link = document.createElement('a');
-      link.href = url;
-      // Clean notebook name for filename
-      const safeName = notebookName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-      link.setAttribute('download', `so-tay-tap-viet-${safeName}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      
-      // Cleanup
-      link.parentNode?.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      onClose();
+      setTaskId(data.task_id);
+      setQueuePosition(data.queue_position);
+      setEstimatedWait(data.estimated_wait_seconds);
+
+      if (data.queue_position <= 1) {
+        setPhase('processing');
+      } else {
+        setPhase('queued');
+      }
     } catch (err: any) {
       console.error('Lỗi khi xuất PDF:', err);
-      setError('Không thể xuất file PDF. Vui lòng kiểm tra lại dịch vụ hoặc thử lại sau.');
-    } finally {
-      setExporting(false);
+      setPhase('error');
+      let errMsg = 'Không thể xuất file PDF. Vui lòng kiểm tra lại dịch vụ hoặc thử lại sau.';
+      if (err.response?.data?.detail) {
+        errMsg = err.response.data.detail;
+      }
+      setErrorMessage(errMsg);
     }
   };
 
@@ -137,34 +351,69 @@ export default function ExportPDFModal({
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1000] p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl overflow-hidden flex flex-col relative max-h-[90vh]">
-        
+
         {/* Loading Overlay */}
         {exporting && (
           <div className="absolute inset-0 bg-white/95 flex flex-col items-center justify-center z-50 p-6 text-center animate-in fade-in">
-            <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-            <h3 className="text-lg font-bold text-primary mb-2">Đang tạo vở tập viết PDF</h3>
-            <p className="text-sm text-secondary animate-pulse">{loadingText}</p>
+            <div className="w-full">
+              <SmartQueueStatus
+                phase={phase}
+                strategy={QUEUE_STRATEGIES.pdf_export}
+                errorMessage={errorMessage}
+                onRetry={() => {
+                  setExporting(false);
+                  setPhase('idle');
+                  setErrorMessage(null);
+                  fetchLimits(); // Refresh limits count after retry/status reset
+                }}
+              />
+            </div>
           </div>
         )}
 
-        <div className="flex justify-between items-center mb-5 border-b border-outline/50 pb-3 shrink-0">
-          <h2 className="text-xl font-bold text-primary flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-2xl">picture_as_pdf</span>
-            Xuất PDF Vở Tập Viết
-          </h2>
-          <button 
-            type="button"
-            onClick={onClose} 
-            className="text-secondary hover:text-primary transition-colors flex items-center justify-center p-1"
-          >
-            <span className="material-symbols-outlined">close</span>
-          </button>
+        <div className="flex flex-col mb-5 border-b border-outline/50 pb-3 shrink-0">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold text-primary flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-2xl">picture_as_pdf</span>
+              Xuất PDF Vở Tập Viết
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-secondary hover:text-primary transition-colors flex items-center justify-center p-1"
+            >
+              <span className="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          {limitInfo && (
+            <p className="text-xs text-secondary mt-1.5 ml-1.5 flex items-center gap-1 font-medium">
+              Còn <span className="font-bold text-primary">{limitInfo.remaining_count}</span> lần xuất PDF hôm nay • <span className="font-bold text-primary">{currentWordCount}/{limitInfo.max_words}</span> từ
+            </p>
+          )}
         </div>
 
-        {error && (
+        {errorMessage && (
           <div className="mb-4 bg-red-50 text-red-600 text-xs font-semibold p-3 rounded-xl border border-red-100 flex items-start gap-2">
             <span className="material-symbols-outlined text-sm mt-0.5">error</span>
-            <span>{error}</span>
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
+        {limitInfo && currentWordCount > limitInfo.max_words && (
+          <div className="mb-4 bg-orange-50 text-orange-600 text-xs font-semibold p-3 rounded-xl border border-orange-100 flex items-start gap-2">
+            <span className="material-symbols-outlined text-sm mt-0.5">warning</span>
+            <span>
+              Số lượng từ ({currentWordCount} từ) vượt quá giới hạn tối đa của gói {limitInfo.tier} ({limitInfo.max_words} từ). Vui lòng chọn phạm vi ít từ hơn hoặc nâng cấp gói cước.
+            </span>
+          </div>
+        )}
+
+        {limitInfo && limitInfo.remaining_count <= 0 && (
+          <div className="mb-4 bg-red-50 text-red-600 text-xs font-semibold p-3 rounded-xl border border-red-100 flex items-start gap-2">
+            <span className="material-symbols-outlined text-sm mt-0.5">error</span>
+            <span>
+              Bạn đã dùng hết {limitInfo.daily_limit} lượt xuất PDF hôm nay. Vui lòng nâng cấp gói cước để tiếp tục.
+            </span>
           </div>
         )}
 
@@ -176,11 +425,10 @@ export default function ExportPDFModal({
               <button
                 type="button"
                 onClick={() => setExportScope('all')}
-                className={`py-3 px-4 rounded-xl border text-sm font-medium flex flex-col items-center justify-center gap-1 transition-all ${
-                  exportScope === 'all'
-                    ? 'border-primary bg-primary/5 text-primary font-bold'
-                    : 'border-outline hover:bg-hover-bg text-secondary'
-                }`}
+                className={`py-3 px-4 rounded-xl border text-sm font-medium flex flex-col items-center justify-center gap-1 transition-all ${exportScope === 'all'
+                  ? 'border-primary bg-primary/5 text-primary font-bold'
+                  : 'border-outline hover:bg-hover-bg text-secondary'
+                  }`}
               >
                 <span>Tất cả từ vựng</span>
                 <span className="text-xs opacity-70">({totalWords} từ)</span>
@@ -188,11 +436,10 @@ export default function ExportPDFModal({
               <button
                 type="button"
                 onClick={() => setExportScope('selected')}
-                className={`py-3 px-4 rounded-xl border text-sm font-medium flex flex-col items-center justify-center gap-1 transition-all ${
-                  exportScope === 'selected'
-                    ? 'border-primary bg-primary/5 text-primary font-bold'
-                    : 'border-outline hover:bg-hover-bg text-secondary'
-                }`}
+                className={`py-3 px-4 rounded-xl border text-sm font-medium flex flex-col items-center justify-center gap-1 transition-all ${exportScope === 'selected'
+                  ? 'border-primary bg-primary/5 text-primary font-bold'
+                  : 'border-outline hover:bg-hover-bg text-secondary'
+                  }`}
               >
                 <span>Từ đã chọn</span>
                 <span className="text-xs opacity-70">({selectedWordIds.length} từ)</span>
@@ -214,11 +461,10 @@ export default function ExportPDFModal({
                   key={c.value}
                   type="button"
                   onClick={() => setGridColor(c.value)}
-                  className={`flex items-center gap-3 w-full p-2.5 rounded-xl border text-sm transition-colors ${
-                    gridColor === c.value
-                      ? 'border-primary bg-primary/5 font-bold text-primary'
-                      : 'border-outline hover:bg-hover-bg text-secondary'
-                  }`}
+                  className={`flex items-center gap-3 w-full p-2.5 rounded-xl border text-sm transition-colors ${gridColor === c.value
+                    ? 'border-primary bg-primary/5 font-bold text-primary'
+                    : 'border-outline hover:bg-hover-bg text-secondary'
+                    }`}
                 >
                   <span className={`w-5 h-5 rounded-full ${c.bg} shrink-0 border border-black/10`} />
                   <span>{c.label}</span>
@@ -233,25 +479,46 @@ export default function ExportPDFModal({
           {/* Options switch */}
           <div className="space-y-3 pt-2">
             <label className="block text-sm font-bold text-primary">Tùy chọn hiển thị nội dung</label>
-            
+
             <div className="space-y-2.5">
               <label className="flex items-center justify-between p-3 bg-surface border border-outline rounded-xl cursor-pointer hover:bg-hover-bg transition-colors">
                 <div className="flex flex-col">
                   <span className="text-sm font-semibold text-primary">In trang bìa sổ tay</span>
-                  <span className="text-xs text-secondary">Thêm trang mở đầu thiết kế trang nhã</span>
+                  <span className="text-xs text-secondary text-left">Thêm trang mở đầu thiết kế trang nhã</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={isFreeTier ? true : showCover}
+                    disabled={isFreeTier}
+                    onChange={(e) => setShowCover(e.target.checked)}
+                    className="w-4 h-4 accent-primary cursor-pointer disabled:cursor-not-allowed"
+                  />
+                </div>
+              </label>
+
+              {/* Branding name customization */}
+              <div className="p-3 bg-surface border border-outline rounded-xl flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-primary">Dòng chữ thương hiệu ở Header (Branding)</span>
+                    <span className="text-xs text-secondary text-left">Tùy biến tên riêng của người học ở Header</span>
+                  </div>
                 </div>
                 <input
-                  type="checkbox"
-                  checked={showCover}
-                  onChange={(e) => setShowCover(e.target.checked)}
-                  className="w-4 h-4 accent-primary"
+                  type="text"
+                  value={isFreeTier ? 'XiaoYue Dict' : brandingName}
+                  disabled={isFreeTier}
+                  onChange={(e) => setBrandingName(e.target.value)}
+                  placeholder="Nhập tên người học (ví dụ: Học viên Minh Anh)"
+                  className="w-full mt-1 border border-outline rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-primary transition-colors bg-white disabled:bg-hover-bg disabled:text-secondary disabled:cursor-not-allowed text-primary"
                 />
-              </label>
+              </div>
 
               <label className="flex items-center justify-between p-3 bg-surface border border-outline rounded-xl cursor-pointer hover:bg-hover-bg transition-colors">
                 <div className="flex flex-col">
                   <span className="text-sm font-semibold text-primary">Hiển thị bính âm (Pinyin)</span>
-                  <span className="text-xs text-secondary">In chữ Pinyin màu xanh lá cây trên đầu ô đồ</span>
+                  <span className="text-xs text-secondary text-left">In chữ Pinyin màu xanh lá cây trên đầu ô đồ</span>
                 </div>
                 <input
                   type="checkbox"
@@ -264,7 +531,7 @@ export default function ExportPDFModal({
               <label className="flex items-center justify-between p-3 bg-surface border border-outline rounded-xl cursor-pointer hover:bg-hover-bg transition-colors">
                 <div className="flex flex-col">
                   <span className="text-sm font-semibold text-primary">Hiển thị ngữ nghĩa tiếng Việt</span>
-                  <span className="text-xs text-secondary">In nghĩa từ vựng cạnh tiêu đề chữ</span>
+                  <span className="text-xs text-secondary text-left">In nghĩa từ vựng cạnh tiêu đề chữ</span>
                 </div>
                 <input
                   type="checkbox"
@@ -277,7 +544,7 @@ export default function ExportPDFModal({
               <label className="flex items-center justify-between p-3 bg-surface border border-outline rounded-xl cursor-pointer hover:bg-hover-bg transition-colors">
                 <div className="flex flex-col">
                   <span className="text-sm font-semibold text-primary">Hiển thị ghi chú cá nhân</span>
-                  <span className="text-xs text-secondary">In kèm ghi chú/ví dụ của bạn dưới dòng viết</span>
+                  <span className="text-xs text-secondary text-left">In kèm ghi chú/ví dụ của bạn dưới dòng viết</span>
                 </div>
                 <input
                   type="checkbox"
@@ -292,7 +559,7 @@ export default function ExportPDFModal({
           {/* Advanced layout options */}
           <div className="space-y-3 pt-2">
             <label className="block text-sm font-bold text-primary">Cấu hình lưới ô li nâng cao</label>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-secondary mb-1.5">
@@ -353,7 +620,11 @@ export default function ExportPDFModal({
           <button
             type="button"
             onClick={handleExport}
-            disabled={exportScope === 'selected' && selectedWordIds.length === 0}
+            disabled={
+              (exportScope === 'selected' && selectedWordIds.length === 0) ||
+              (limitInfo !== null && currentWordCount > limitInfo.max_words) ||
+              (limitInfo !== null && limitInfo.remaining_count <= 0)
+            }
             className="flex-1 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary-hover transition-colors disabled:opacity-40 text-sm shadow-sm flex items-center justify-center gap-1.5"
           >
             <span className="material-symbols-outlined text-lg">download</span>
@@ -361,6 +632,7 @@ export default function ExportPDFModal({
           </button>
         </div>
 
+        <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
       </div>
     </div>
   );

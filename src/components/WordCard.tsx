@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from 'react';
-import { Volume2, Mic, ChevronDown, ChevronUp } from 'lucide-react';
+import { Volume2, Mic, ChevronDown } from 'lucide-react';
 import { ZhWord } from '@/types/dictionary';
 import AddToNotebookModal from './dictionary/AddToNotebookModal';
 
@@ -70,7 +70,11 @@ const renderClickableHanzi = (text: string, onCharClick?: (char: string) => void
 export default function WordCard({ word, onPracticeClick, onCharClick }: WordCardProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [showAllExamples, setShowAllExamples] = useState(false);
+  const [visibleExamplesCount, setVisibleExamplesCount] = useState(5);
+
+  React.useEffect(() => {
+    setVisibleExamplesCount(5);
+  }, [word]);
 
   const posList = word?.part_of_speech
     ? word.part_of_speech
@@ -79,7 +83,7 @@ export default function WordCard({ word, onPracticeClick, onCharClick }: WordCar
     : [];
 
   const displayedExamples = word?.examples
-    ? (showAllExamples ? word.examples : word.examples.slice(0, 2))
+    ? word.examples.slice(0, visibleExamplesCount)
     : [];
 
   if (!word) {
@@ -237,22 +241,14 @@ export default function WordCard({ word, onPracticeClick, onCharClick }: WordCar
             ))}
           </div>
 
-          {word.examples.length > 2 && (
+          {word.examples.length > visibleExamplesCount && (
             <button
-              onClick={() => setShowAllExamples(!showAllExamples)}
+              type="button"
+              onClick={() => setVisibleExamplesCount((prev) => prev + 5)}
               className="w-full mt-2 py-3 px-4 rounded-xl bg-hover-bg hover:bg-outline/20 text-primary border border-outline font-bold text-sm transition-all flex items-center justify-center gap-1.5 focus:outline-none"
             >
-              {showAllExamples ? (
-                <>
-                  <span>Thu gọn ví dụ</span>
-                  <ChevronUp className="w-4 h-4" />
-                </>
-              ) : (
-                <>
-                  <span>Xem thêm ({word.examples.length - 2} ví dụ)</span>
-                  <ChevronDown className="w-4 h-4" />
-                </>
-              )}
+              <span>Xem thêm</span>
+              <ChevronDown className="w-4 h-4" />
             </button>
           )}
         </div>

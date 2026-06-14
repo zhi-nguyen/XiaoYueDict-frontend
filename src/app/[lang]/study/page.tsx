@@ -7,7 +7,9 @@ import SearchBar from '@/components/dictionary/SearchBar';
 import HanziStrokeBox, { HanziStrokeSequence } from '@/components/HanziStrokeBox';
 import { ZhWord, ZhExample } from '@/types/dictionary';
 import { djangoClient } from '@/lib/apiClient';
-import { Volume2, Bookmark, ArrowUpDown, Loader2 } from 'lucide-react';
+import { Volume2, Bookmark, ArrowUpDown, Loader2, ChevronDown } from 'lucide-react';
+import { useWebSocket, getGuestId } from '@/hooks/useWebSocket';
+import { useAuthStore } from '@/store/useAuthStore';
 
 // Common etymology helper
 const getEtymology = (char: string): string => {
@@ -150,6 +152,31 @@ export default function StudyPage() {
   const [translationResult, setTranslationResult] = useState<{ text: string; source: string } | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
   const [translationError, setTranslationError] = useState('');
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
+  const [pendingText, setPendingText] = useState('');
+
+  const { isAuthenticated } = useAuthStore();
+
+  useWebSocket({
+    onMessage: (msg) => {
+      if (!currentTaskId || msg.payload?.task_id !== currentTaskId) return;
+
+      if (msg.type === 'translation_complete') {
+        const payload = msg.payload as any;
+        setTranslationResult({
+          text: payload.translatedText,
+          source: payload.source || 'ai_translation'
+        });
+        setIsTranslating(false);
+        setCurrentTaskId(null);
+      } else if (msg.type === 'translation_failed') {
+        const payload = msg.payload as any;
+        setTranslationError(payload.error || 'Dịch thuật thất bại.');
+        setIsTranslating(false);
+        setCurrentTaskId(null);
+      }
+    }
+  });
 
   const [isLoading, setIsLoading] = useState(false);
   const practiceSectionRef = useRef<HTMLDivElement>(null);
@@ -158,6 +185,11 @@ export default function StudyPage() {
   const [selectedHanziChar, setSelectedHanziChar] = useState<string | null>(null);
   const [hanziWords, setHanziWords] = useState<Record<string, ZhWord | null>>({});
   const [resolvedRadicals, setResolvedRadicals] = useState<Record<string, string>>({});
+
+  // Database examples fallback & pagination states
+  const [dbExamples, setDbExamples] = useState<ZhExample[]>([]);
+  const [isLoadingExamples, setIsLoadingExamples] = useState(false);
+  const [visibleExamplesCount, setVisibleExamplesCount] = useState(5);
   const [isLoadingHanziDetails, setIsLoadingHanziDetails] = useState(false);
 
   // Dynamic Hán Việt sentence reading state
@@ -198,52 +230,21 @@ export default function StudyPage() {
     return radicalChar;
   };
 
-  // Poll Celery translation task status
-  const pollTranslation = (taskId: string, originalText: string) => {
-    setIsTranslating(true);
-    setTranslationError('');
-
-    const interval = setInterval(async () => {
-      try {
-        const res = await djangoClient.get(`/dictionary/zh/translate/status/${taskId}/`);
-        if (res.data.status === 'SUCCESS') {
-          clearInterval(interval);
-          setTranslationResult({
-            text: res.data.translatedText,
-            source: res.data.source || 'ai_translation'
-          });
-          setIsTranslating(false);
-        } else if (res.data.status === 'FAILED') {
-          clearInterval(interval);
-          setTranslationError(res.data.error || 'Dịch thuật thất bại.');
-          setIsTranslating(false);
-        }
-      } catch (error) {
-        clearInterval(interval);
-        setTranslationError('Lỗi kiểm tra trạng thái dịch.');
-        setIsTranslating(false);
-      }
-    }, 1000);
-
-    // Timeout after 30s
-    setTimeout(() => {
-      clearInterval(interval);
-      setIsTranslating((prev) => {
-        if (prev) {
-          setTranslationError('Quá thời gian chờ phản hồi dịch thuật.');
-          return false;
-        }
-        return prev;
-      });
-    }, 30000);
-  };
-
-  // Direct AI translation fallback
+  // Direct AI translation fallback using WebSockets
   const handleDirectTranslation = async (text: string) => {
     setIsTranslating(true);
     setTranslationError('');
+    setCurrentTaskId(null);
+    setPendingText(text);
+
     try {
-      const res = await djangoClient.post('/dictionary/zh/translate/', { text });
+      const payload: any = { text };
+      const guestId = !isAuthenticated ? getGuestId() : null;
+      if (guestId) {
+        payload.guest_id = guestId;
+      }
+
+      const res = await djangoClient.post('/dictionary/zh/translate/', payload);
       if (res.data.status === 'SUCCESS') {
         setTranslationResult({
           text: res.data.translatedText,
@@ -251,7 +252,7 @@ export default function StudyPage() {
         });
         setIsTranslating(false);
       } else if (res.data.status === 'PENDING' && res.data.task_id) {
-        pollTranslation(res.data.task_id, text);
+        setCurrentTaskId(res.data.task_id);
       } else {
         setTranslationError('Lỗi dịch thuật từ máy chủ.');
         setIsTranslating(false);
@@ -274,13 +275,20 @@ export default function StudyPage() {
     setExactExampleMatch(null);
     setTranslationResult(null);
     setTranslationError('');
-    setSelectedHanziChar(null);
+    setCurrentTaskId(null);
+    setPendingText(trimmed);
 
     try {
-      const res = await djangoClient.get(`/dictionary/zh/search/?q=${encodeURIComponent(trimmed)}`);
+      const guestId = !isAuthenticated ? getGuestId() : null;
+      let url = `/dictionary/zh/search/?q=${encodeURIComponent(trimmed)}`;
+      if (guestId) {
+        url += `&guest_id=${guestId}`;
+      }
+      const res = await djangoClient.get(url);
 
       if (res.status === 202 && res.data.task_id) {
-        pollTranslation(res.data.task_id, trimmed);
+        setIsTranslating(true);
+        setCurrentTaskId(res.data.task_id);
       } else if (res.data.translatedText) {
         setTranslationResult({
           text: res.data.translatedText,
@@ -316,6 +324,45 @@ export default function StudyPage() {
       setSelectedHanziChar(hanziChars[0]);
     }
   }, [activeTab, searchQuery, selectedHanziChar, hanziChars]);
+
+  // Fetch examples containing the search query with fallback=false (so we don't hit AI translation but get database examples instead)
+  useEffect(() => {
+    const fetchDbExamples = async () => {
+      if (!searchQuery) {
+        setDbExamples([]);
+        return;
+      }
+      setIsLoadingExamples(true);
+      try {
+        const res = await djangoClient.get(`/dictionary/zh/search/?q=${encodeURIComponent(searchQuery)}&fallback=false`);
+        const results = res.data.results || [];
+        const collected: ZhExample[] = [];
+        const seen = new Set<string>();
+
+        results.forEach((word: ZhWord) => {
+          if (word.examples) {
+            word.examples.forEach((ex) => {
+              if (
+                (ex.chinese.includes(searchQuery) || ex.vietnamese.includes(searchQuery)) &&
+                !seen.has(ex.chinese)
+              ) {
+                seen.add(ex.chinese);
+                collected.push(ex);
+              }
+            });
+          }
+        });
+        setDbExamples(collected);
+      } catch (e) {
+        console.error("Failed to fetch database examples", e);
+      } finally {
+        setIsLoadingExamples(false);
+      }
+    };
+
+    setVisibleExamplesCount(5);
+    fetchDbExamples();
+  }, [searchQuery]);
 
   // Load Hanzi character details
   useEffect(() => {
@@ -492,6 +539,11 @@ export default function StudyPage() {
   // Extract examples matching the query
   const getMatchingExamples = (): any[] => {
     if (!searchQuery) return [];
+
+    if (dbExamples.length > 0) {
+      return dbExamples;
+    }
+
     const collected: any[] = [];
     const seen = new Set<string>();
 
@@ -871,7 +923,7 @@ export default function StudyPage() {
               </h3>
 
               <div className="space-y-4">
-                {matchingExamples.map((ex, idx) => (
+                {matchingExamples.slice(0, visibleExamplesCount).map((ex, idx) => (
                   <div key={idx} className="p-5 bg-hover-bg rounded-2xl border border-outline/50 hover:border-primary/30 transition-colors group">
                     <div className="flex items-start justify-between gap-4">
                       <div>
@@ -890,6 +942,16 @@ export default function StudyPage() {
                   </div>
                 ))}
               </div>
+
+              {matchingExamples.length > visibleExamplesCount && (
+                <button
+                  onClick={() => setVisibleExamplesCount((prev) => prev + 5)}
+                  className="w-full mt-4 py-3.5 px-4 rounded-2xl bg-hover-bg hover:bg-outline/20 text-primary border border-outline font-bold text-sm transition-all flex items-center justify-center gap-1.5 focus:outline-none"
+                >
+                  <span>Xem thêm</span>
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              )}
             </div>
           )
         )}

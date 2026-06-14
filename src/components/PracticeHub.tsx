@@ -428,6 +428,7 @@ export default function PracticeHub({ word }: PracticeHubProps) {
             strategy={lang === 'en' ? QUEUE_STRATEGIES.speaking_en : QUEUE_STRATEGIES.speaking_zh}
             onRetry={queue.retry}
             errorMessage={queue.errorMessage}
+            errorType={queue.errorType}
           />
         </div>
 

@@ -97,6 +97,8 @@ export interface UseSmartQueueReturn {
   score: number | null;
   /** Error message if phase is 'error' */
   errorMessage: string | null;
+  /** Error type if phase is 'error' */
+  errorType: 'network' | 'validation' | 'processing' | 'rate_limit' | null;
   /** Task ID for reference */
   taskId: string | null;
   /** Reset everything back to idle */
@@ -119,6 +121,7 @@ export function useSmartQueue(): UseSmartQueueReturn {
   const [resultData, setResultData] = useState<ScoringResponse | null>(null);
   const [score, setScore] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<'network' | 'validation' | 'processing' | 'rate_limit' | null>(null);
   const [taskId, setTaskId] = useState<string | null>(null);
 
   const isMountedRef = useRef(true);
@@ -170,6 +173,7 @@ export function useSmartQueue(): UseSmartQueueReturn {
     } else if (msg.type === 'score_failed') {
       setPhase('error');
       setErrorMessage(translateErrorMessage(msg.payload.error || 'Processing failed on the server.'));
+      setErrorType('processing');
     }
   }, [taskId]);
 
@@ -205,6 +209,7 @@ export function useSmartQueue(): UseSmartQueueReturn {
     setResultData(null);
     setScore(null);
     setErrorMessage(null);
+    setErrorType(null);
     setTaskId(null);
   }, []);
 
@@ -270,16 +275,31 @@ export function useSmartQueue(): UseSmartQueueReturn {
       if (!isMountedRef.current) return;
       
       let message = 'Failed to submit audio.';
+      let errType: 'network' | 'validation' | 'processing' | 'rate_limit' = 'network';
+      
       if (err && err.isRateLimited) {
         message = err.message;
+        errType = 'rate_limit';
+      } else if (err.response) {
+        const status = err.response.status;
+        const data = err.response.data;
+        message = data?.error || data?.message || data?.detail || err.message;
+        if (status === 400 || status === 422) {
+          errType = 'validation';
+        } else if (status === 429) {
+          errType = 'rate_limit';
+        } else {
+          errType = 'processing';
+        }
       } else if (err instanceof Error) {
         message = err.message;
-      } else if (err?.message) {
-        message = err.message;
+        const isNet = /network|fetch|timeout|cors|connect/i.test(err.message);
+        errType = isNet ? 'network' : 'processing';
       }
       
       setPhase('error');
       setErrorMessage(translateErrorMessage(message));
+      setErrorType(errType);
       console.error('[useSmartQueue] Submit failed:', err);
     }
   }, [reset, isAuthenticated]);
@@ -298,6 +318,7 @@ export function useSmartQueue(): UseSmartQueueReturn {
     resultData,
     score,
     errorMessage,
+    errorType,
     taskId,
     reset,
     retry,

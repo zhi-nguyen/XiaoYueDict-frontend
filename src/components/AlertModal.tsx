@@ -22,8 +22,8 @@ export default function AlertModal({
   // Icons and Color themes based on type
   const theme = {
     success: {
-      bgIcon: 'bg-emerald-500/10 text-emerald-500 dark:bg-emerald-500/20 dark:text-emerald-400',
-      button: 'bg-emerald-500 hover:bg-emerald-600 focus:ring-emerald-500 text-white shadow-sm',
+      bgIcon: 'bg-emerald-50 text-emerald-600',
+      button: 'bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-600 text-white shadow-sm',
       icon: (
         <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -31,8 +31,8 @@ export default function AlertModal({
       )
     },
     error: {
-      bgIcon: 'bg-red-500/10 text-red-500 dark:bg-red-500/20 dark:text-red-400',
-      button: 'bg-red-500 hover:bg-red-600 focus:ring-red-500 text-white shadow-sm',
+      bgIcon: 'bg-red-50 text-red-600',
+      button: 'bg-red-600 hover:bg-red-700 focus:ring-red-600 text-white shadow-sm',
       icon: (
         <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -40,7 +40,7 @@ export default function AlertModal({
       )
     },
     info: {
-      bgIcon: 'bg-blue-500/10 text-blue-500 dark:bg-blue-500/20 dark:text-blue-400',
+      bgIcon: 'bg-blue-50 text-blue-600',
       button: 'bg-primary hover:opacity-90 focus:ring-primary text-white shadow-sm',
       icon: (
         <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

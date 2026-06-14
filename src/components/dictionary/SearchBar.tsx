@@ -6,6 +6,7 @@ import { ZhWord } from '@/types/dictionary';
 
 interface SearchBarProps {
   onSelectWord: (word: ZhWord) => void;
+  onSearch?: (query: string) => void;
 }
 
 interface ExactExample {
@@ -14,7 +15,7 @@ interface ExactExample {
   vietnamese: string;
 }
 
-export default function SearchBar({ onSelectWord }: SearchBarProps) {
+export default function SearchBar({ onSelectWord, onSearch }: SearchBarProps) {
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 800);
 
@@ -63,6 +64,9 @@ export default function SearchBar({ onSelectWord }: SearchBarProps) {
 
   const handleSelect = (word: ZhWord) => {
     onSelectWord(word);
+    if (onSearch) {
+      onSearch(word.word);
+    }
     setIsOpen(false);
     setQuery('');
   };
@@ -84,6 +88,14 @@ export default function SearchBar({ onSelectWord }: SearchBarProps) {
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => {
             if (results.length > 0 || exactExample) setIsOpen(true);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && query.trim()) {
+              if (onSearch) {
+                onSearch(query.trim());
+              }
+              setIsOpen(false);
+            }
           }}
         />
 

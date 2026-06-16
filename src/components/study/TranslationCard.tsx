@@ -34,7 +34,7 @@ export default function TranslationCard({
     <div className="bg-surface border border-outline rounded-[1.5rem] p-8 shadow-sm">
       <div className="flex justify-between items-start mb-4">
         <h2 className="text-3xl font-bold text-red-600 leading-relaxed tracking-wide flex-1 break-words">
-          {renderClickableHanzi(sentenceText, onSearch)}
+          {renderClickableHanzi(sentenceText, isExactMatch ? undefined : onSearch)}
         </h2>
         <div className="flex gap-3 flex-shrink-0 ml-4">
           <button

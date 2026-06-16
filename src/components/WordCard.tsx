@@ -4,6 +4,7 @@ import React, { useRef, useState } from 'react';
 import { Volume2, Mic, ChevronDown } from 'lucide-react';
 import { ZhWord } from '@/types/dictionary';
 import AddToNotebookModal from './dictionary/AddToNotebookModal';
+import { speakChinese } from '@/lib/zhUtils';
 
 // Mapping from tags_vi.json
 import tagsVi from '@/data/tags_vi.json';
@@ -46,7 +47,7 @@ const isChineseChar = (char: string) => /[\u4e00-\u9fa5]/.test(char);
 const renderClickableHanzi = (text: string, onCharClick?: (char: string) => void) => {
   if (!text) return '';
   if (!onCharClick) return text;
-  
+
   return Array.from(text).map((char, idx) => {
     if (isChineseChar(char)) {
       return (
@@ -78,8 +79,8 @@ export default function WordCard({ word, onPracticeClick, onCharClick }: WordCar
 
   const posList = word?.part_of_speech
     ? word.part_of_speech
-        .filter(pos => pos.trim().toLowerCase() !== 'sentence')
-        .map(pos => translatePartOfSpeech(pos))
+      .filter(pos => pos.trim().toLowerCase() !== 'sentence')
+      .map(pos => translatePartOfSpeech(pos))
     : [];
 
   const displayedExamples = word?.examples
@@ -227,15 +228,28 @@ export default function WordCard({ word, onPracticeClick, onCharClick }: WordCar
               <div key={example.id} className="p-5 bg-hover-bg rounded-2xl border border-outline/50 hover:border-primary/30 transition-colors group">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-xl font-medium text-primary mb-2 leading-relaxed">{renderClickableHanzi(example.chinese, onCharClick)}</p>
+                    <p className="text-xl font-medium text-primary mb-2 leading-relaxed">{example.chinese}</p>
                     <p className="text-sm font-medium text-secondary mb-1">{example.pinyin}</p>
                     <p className="text-base text-secondary">{example.vietnamese}</p>
                   </div>
-                  {example.audio_url && (
-                    <button className="w-10 h-10 rounded-full bg-white border border-outline flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0">
-                      <Volume2 className="w-4 h-4" />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (example.audio_url) {
+                        const audio = new Audio(`http://localhost${example.audio_url}`);
+                        audio.play().catch((err) => {
+                          console.warn("Playback failed, falling back to TTS:", err);
+                          speakChinese(example.chinese);
+                        });
+                      } else {
+                        speakChinese(example.chinese);
+                      }
+                    }}
+                    className="text-secondary hover:text-primary transition-colors flex-shrink-0 focus:outline-none mt-1"
+                    title="Nghe phát âm"
+                  >
+                    <Volume2 className="w-6 h-6" />
+                  </button>
                 </div>
               </div>
             ))}

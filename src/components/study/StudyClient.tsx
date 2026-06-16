@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import SearchBar from '@/components/dictionary/SearchBar';
 import VocabularyTab from '@/components/study/VocabularyTab';
+import SmartQueueStatus from '@/components/SmartQueueStatus';
+import { QUEUE_STRATEGIES } from '@/constants/queueStrategies';
 import HanziTab from '@/components/study/HanziTab';
 import ExamplesTab from '@/components/study/ExamplesTab';
 import PracticeHub from '@/components/PracticeHub';
@@ -25,6 +27,30 @@ type StudyTab = 'vocabulary' | 'hanzi' | 'examples';
 export default function StudyClient() {
   const [activeTab, setActiveTab] = useState<StudyTab>('vocabulary');
   const [isPracticeOpen, setIsPracticeOpen] = useState(false);
+
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+  // Close sidebar on click outside or escape key
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isPracticeOpen && sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
+        setIsPracticeOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isPracticeOpen) {
+        setIsPracticeOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isPracticeOpen]);
 
   // ── Hooks ──
   const search = useStudySearch();
@@ -260,12 +286,32 @@ export default function StudyClient() {
             </div>
             <p className="text-xl font-medium">Hãy tìm kiếm một từ vựng để bắt đầu</p>
           </div>
-        ) : search.isLoading || search.isTranslating ? (
+        ) : search.isTranslating ? (
+          <div className="flex flex-col items-center justify-center p-16 bg-surface border border-outline rounded-[1.5rem] min-h-[400px]">
+            <div className="w-full max-w-md">
+              <SmartQueueStatus
+                phase="processing"
+                strategy={QUEUE_STRATEGIES.translation_zh}
+                onRetry={() => search.handleSearch(search.searchQuery)}
+                errorMessage=""
+              />
+            </div>
+          </div>
+        ) : search.translationError ? (
+          <div className="flex flex-col items-center justify-center p-16 bg-surface border border-outline rounded-[1.5rem] min-h-[400px]">
+            <div className="w-full max-w-md">
+              <SmartQueueStatus
+                phase="error"
+                strategy={QUEUE_STRATEGIES.translation_zh}
+                onRetry={() => search.handleSearch(search.searchQuery)}
+                errorMessage={search.translationError}
+              />
+            </div>
+          </div>
+        ) : search.isLoading ? (
           <div className="flex flex-col items-center justify-center p-16 bg-surface border border-outline rounded-[1.5rem] min-h-[400px]">
             <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-            <p className="text-secondary font-medium">
-              {search.isTranslating ? 'Đang kích hoạt dịch thuật AI...' : 'Đang tra cứu dữ liệu...'}
-            </p>
+            <p className="text-secondary font-medium">Đang tra cứu dữ liệu...</p>
           </div>
         ) : activeTab === 'vocabulary' ? (
           <VocabularyTab
@@ -309,6 +355,7 @@ export default function StudyClient() {
       )}
 
       <div
+        ref={sidebarRef}
         className={`fixed right-0 top-0 bottom-0 w-full sm:w-[460px] h-screen bg-surface border-l border-outline shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out ${
           isPracticeOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
@@ -349,7 +396,7 @@ export default function StudyClient() {
       </div>
 
       {/* ── Floating Half Mic Button ── */}
-      {!isPracticeOpen && search.searchQuery && (
+      {!isPracticeOpen && search.searchQuery && activeTab !== 'examples' && (
         <button
           type="button"
           onClick={() => setIsPracticeOpen(true)}

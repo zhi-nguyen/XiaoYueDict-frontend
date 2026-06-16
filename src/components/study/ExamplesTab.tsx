@@ -48,10 +48,10 @@ export default function ExamplesTab({
               </div>
               <button
                 onClick={() => speakChinese(ex.chinese)}
-                className="w-10 h-10 rounded-full bg-white border border-outline flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
+                className="text-secondary hover:text-primary transition-colors flex-shrink-0 focus:outline-none mt-1"
                 title="Nghe phát âm"
               >
-                <Volume2 className="w-4 h-4" />
+                <Volume2 className="w-6 h-6" />
               </button>
             </div>
           </div>

@@ -14,6 +14,13 @@ interface TranslationRecord {
   timestamp: number;
 }
 
+const capitalizeSentences = (text: string): string => {
+  if (!text) return '';
+  return text.replace(/(^\s*|[.!?\n]\s*)(\S)/g, (match, separator, letter) => {
+    return separator + letter.toUpperCase();
+  });
+};
+
 export default function TranslateClient() {
   const [inputText, setInputText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
@@ -101,13 +108,14 @@ export default function TranslateClient() {
   };
 
   const setTranslationResult = (data: any, originalText: string) => {
-    setTranslatedText(data.translatedText);
+    const formattedText = capitalizeSentences(data.translatedText);
+    setTranslatedText(formattedText);
     setTranslationSource(data.source);
 
     // Save to history
     const newRecord: TranslationRecord = {
       original: originalText,
-      translated: data.translatedText,
+      translated: formattedText,
       source: data.source,
       timestamp: Date.now()
     };
@@ -134,7 +142,7 @@ export default function TranslateClient() {
   };
 
   return (
-    <div className="flex flex-col h-full gap-6">
+    <div className="flex flex-col min-h-full gap-6">
       {/* Translation Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-shrink-0">
         

@@ -25,8 +25,8 @@ export default function ConfirmModal({
 
   const theme = isDestructive
     ? {
-        bgIcon: 'bg-red-500/10 text-red-500 dark:bg-red-500/20 dark:text-red-400',
-        button: 'bg-red-500 hover:bg-red-600 focus:ring-red-500 text-white shadow-sm',
+        bgIcon: 'bg-red-50 text-red-600',
+        button: 'bg-red-600 hover:bg-red-700 focus:ring-red-600 text-white shadow-sm',
         icon: (
           <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -34,7 +34,7 @@ export default function ConfirmModal({
         )
       }
     : {
-        bgIcon: 'bg-blue-500/10 text-blue-500 dark:bg-blue-500/20 dark:text-blue-400',
+        bgIcon: 'bg-blue-50 text-blue-600',
         button: 'bg-primary hover:opacity-90 focus:ring-primary text-white shadow-sm',
         icon: (
           <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

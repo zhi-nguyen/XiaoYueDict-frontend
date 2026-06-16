@@ -6,6 +6,7 @@ import { ZhWord } from '@/types/dictionary';
 
 interface SearchBarProps {
   onSelectWord: (word: ZhWord) => void;
+  onSearch?: (query: string) => void;
 }
 
 interface ExactExample {
@@ -14,7 +15,7 @@ interface ExactExample {
   vietnamese: string;
 }
 
-export default function SearchBar({ onSelectWord }: SearchBarProps) {
+export default function SearchBar({ onSelectWord, onSearch }: SearchBarProps) {
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 800);
 
@@ -23,6 +24,7 @@ export default function SearchBar({ onSelectWord }: SearchBarProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const lastSubmittedQuery = useRef('');
 
   useEffect(() => {
     // Click outside to close
@@ -37,7 +39,8 @@ export default function SearchBar({ onSelectWord }: SearchBarProps) {
 
   useEffect(() => {
     async function searchWords() {
-      if (!debouncedQuery.trim()) {
+      const trimmedQuery = debouncedQuery.trim();
+      if (!trimmedQuery || trimmedQuery === lastSubmittedQuery.current) {
         setResults([]);
         setExactExample(null);
         setIsOpen(false);
@@ -62,7 +65,11 @@ export default function SearchBar({ onSelectWord }: SearchBarProps) {
   }, [debouncedQuery]);
 
   const handleSelect = (word: ZhWord) => {
+    lastSubmittedQuery.current = '';
     onSelectWord(word);
+    if (onSearch) {
+      onSearch(word.word);
+    }
     setIsOpen(false);
     setQuery('');
   };
@@ -81,15 +88,37 @@ export default function SearchBar({ onSelectWord }: SearchBarProps) {
           className="flex-1 h-full bg-transparent outline-none text-lg text-primary placeholder:text-secondary font-medium"
           placeholder="Tra từ điển (Chữ Hán, Pinyin, Tiếng Việt)..."
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            const val = e.target.value;
+            setQuery(val);
+            if (val.trim() !== lastSubmittedQuery.current) {
+              lastSubmittedQuery.current = '';
+            }
+          }}
           onFocus={() => {
-            if (results.length > 0 || exactExample) setIsOpen(true);
+            if ((results.length > 0 || exactExample) && query.trim() !== lastSubmittedQuery.current) {
+              setIsOpen(true);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && query.trim()) {
+              lastSubmittedQuery.current = query.trim();
+              if (onSearch) {
+                onSearch(query.trim());
+              }
+              setIsOpen(false);
+            }
           }}
         />
 
         {query && (
           <button
-            onClick={() => { setQuery(''); setResults([]); setExactExample(null); }}
+            onClick={() => {
+              setQuery('');
+              setResults([]);
+              setExactExample(null);
+              lastSubmittedQuery.current = '';
+            }}
             className="px-4 text-secondary hover:text-primary transition-colors"
           >
             <X className="w-5 h-5" />

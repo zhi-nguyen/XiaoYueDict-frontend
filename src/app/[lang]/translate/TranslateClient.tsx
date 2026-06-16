@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { djangoClient } from '@/lib/apiClient';
 import SmartQueueStatus from '@/components/SmartQueueStatus';
 import { QUEUE_STRATEGIES } from '@/constants/queueStrategies';
+import { useWebSocket, getGuestId } from '@/hooks/useWebSocket';
+import { useAuthStore } from '@/store/useAuthStore';
 
 interface TranslationRecord {
   original: string;
@@ -20,6 +22,31 @@ export default function TranslateClient() {
   const [history, setHistory] = useState<TranslationRecord[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
   const [translationPhase, setTranslationPhase] = useState<'idle' | 'processing' | 'error' | 'success'>('idle');
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
+  const [pendingText, setPendingText] = useState('');
+
+  const { isAuthenticated } = useAuthStore();
+
+  // Listen for WS translation results
+  useWebSocket({
+    onMessage: (msg) => {
+      if (!currentTaskId || msg.payload?.task_id !== currentTaskId) return;
+
+      if (msg.type === 'translation_complete') {
+        const payload = msg.payload as any;
+        setTranslationResult(payload, pendingText);
+        setIsLoading(false);
+        setTranslationPhase('success');
+        setCurrentTaskId(null);
+      } else if (msg.type === 'translation_failed') {
+        const payload = msg.payload as any;
+        setErrorMsg(payload.error || 'Dịch thuật thất bại');
+        setIsLoading(false);
+        setTranslationPhase('error');
+        setCurrentTaskId(null);
+      }
+    }
+  });
 
   // UseEffect for Hydration safe LocalStorage
   useEffect(() => {
@@ -42,9 +69,17 @@ export default function TranslateClient() {
     setTranslatedText('');
     setTranslationSource('');
     setErrorMsg('');
+    setCurrentTaskId(null);
+    setPendingText(trimmedInput);
 
     try {
-      const response = await djangoClient.post('/dictionary/zh/translate/', { text: trimmedInput });
+      const payload: any = { text: trimmedInput };
+      const guestId = !isAuthenticated ? getGuestId() : null;
+      if (guestId) {
+        payload.guest_id = guestId;
+      }
+
+      const response = await djangoClient.post('/dictionary/zh/translate/', payload);
       const data = response.data;
 
       if (data.status === 'SUCCESS') {
@@ -53,8 +88,7 @@ export default function TranslateClient() {
         setIsLoading(false);
         setTranslationPhase('success');
       } else if (data.status === 'PENDING' && data.task_id) {
-        // Start polling
-        pollTranslationStatus(data.task_id, trimmedInput);
+        setCurrentTaskId(data.task_id);
       } else {
         throw new Error('Định dạng phản hồi không hợp lệ');
       }
@@ -64,46 +98,6 @@ export default function TranslateClient() {
       setIsLoading(false);
       setTranslationPhase('error');
     }
-  };
-
-  const pollTranslationStatus = (taskId: string, originalText: string) => {
-    const interval = setInterval(async () => {
-      try {
-        const response = await djangoClient.get(`/dictionary/zh/translate/status/${taskId}/`);
-        const data = response.data;
-
-        if (data.status === 'SUCCESS') {
-          clearInterval(interval);
-          setTranslationResult(data, originalText);
-          setIsLoading(false);
-          setTranslationPhase('success');
-        } else if (data.status === 'FAILED') {
-          clearInterval(interval);
-          setErrorMsg(data.error || 'Dịch thuật thất bại');
-          setIsLoading(false);
-          setTranslationPhase('error');
-        }
-        // If PENDING or anything else, keep polling
-      } catch (error) {
-        clearInterval(interval);
-        setErrorMsg('Lỗi khi kiểm tra trạng thái dịch');
-        setIsLoading(false);
-        setTranslationPhase('error');
-      }
-    }, 1000);
-    
-    // Stop polling after 30 seconds to prevent infinite loops
-    setTimeout(() => {
-      clearInterval(interval);
-      setTranslationPhase((prev) => {
-        if (prev === 'processing') {
-          setErrorMsg('Quá thời gian chờ phản hồi');
-          setIsLoading(false);
-          return 'error';
-        }
-        return prev;
-      });
-    }, 30000);
   };
 
   const setTranslationResult = (data: any, originalText: string) => {

@@ -8,6 +8,7 @@ interface SmartQueueStatusProps {
   strategy: QueueUiStrategy;
   onRetry?: () => void;
   errorMessage?: string | null;
+  errorType?: 'network' | 'validation' | 'processing' | 'rate_limit' | null;
 }
 
 export default function SmartQueueStatus({
@@ -15,6 +16,7 @@ export default function SmartQueueStatus({
   strategy,
   onRetry,
   errorMessage,
+  errorType = null,
 }: SmartQueueStatusProps) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [currentTip, setCurrentTip] = useState('');
@@ -58,24 +60,53 @@ export default function SmartQueueStatus({
   const isStage2 = elapsedSeconds >= 3 && elapsedSeconds < 7;
   const isStage3 = elapsedSeconds >= 7;
 
+  // 4. Phân tích lỗi (Error Classification) để hiển thị tiêu đề và nội dung phù hợp
+  let effectiveErrorType = errorType;
+  if (!effectiveErrorType && errorMessage) {
+    const msg = errorMessage.toLowerCase();
+    if (msg.includes('hạn mức') || msg.includes('lượt') || msg.includes('rate limit')) {
+      effectiveErrorType = 'rate_limit';
+    } else if (msg.includes('giọng nói') || msg.includes('ngắn') || msg.includes('dài') || msg.includes('hợp lệ') || msg.includes('định dạng') || msg.includes('invalid') || msg.includes('chính tả')) {
+      effectiveErrorType = 'validation';
+    } else if (msg.includes('kết nối') || msg.includes('mạng') || msg.includes('đường truyền') || msg.includes('network') || msg.includes('fetch')) {
+      effectiveErrorType = 'network';
+    } else {
+      effectiveErrorType = 'processing';
+    }
+  }
+
+  let errorTitle = 'Gặp sự cố kết nối';
+  let errorDescription = strategy?.errorText || 'Kết nối với máy chủ AI bị gián đoạn.';
+
+  if (effectiveErrorType === 'validation') {
+    errorTitle = 'Lỗi dữ liệu đầu vào';
+    errorDescription = 'Bản ghi âm hoặc văn bản mẫu không đáp ứng yêu cầu phân tích.';
+  } else if (effectiveErrorType === 'rate_limit') {
+    errorTitle = 'Vượt quá hạn mức';
+    errorDescription = 'Tài khoản của bạn đã đạt giới hạn dung lượng tải lên trong ngày/giờ.';
+  } else if (effectiveErrorType === 'processing') {
+    errorTitle = 'Lỗi xử lý âm thanh';
+    errorDescription = 'Có sự cố xảy ra trong quá trình tính toán điểm số tại máy chủ.';
+  }
+
   return (
     <div className="animate-slide-up w-full">
       {phase === 'error' ? (
         // XỬ LÝ NGOẠI LỆ: Báo lỗi và Kêu gọi Hành động (Graceful Degradation - Hồng/Đỏ nhạt)
-        <div className="relative overflow-hidden rounded-2xl border border-red-200 bg-red-50/90 dark:bg-red-950/20 dark:border-red-900/30 p-6 shadow-sm transition-all duration-300">
+        <div className="relative overflow-hidden rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm transition-all duration-300">
           <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center text-red-600 dark:text-red-400 shrink-0">
+            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0">
               <span className="material-symbols-outlined text-[22px]">error</span>
             </div>
             <div className="flex-1">
-              <h4 className="font-bold text-red-800 dark:text-red-300 text-sm">Gặp sự cố kết nối</h4>
-              <p className="text-red-700 dark:text-red-400 text-xs mt-1 leading-relaxed">
-                {strategy?.errorText || 'Kết nối với máy chủ AI bị gián đoạn.'}
+              <h4 className="font-bold text-red-800 text-sm">{errorTitle}</h4>
+              <p className="text-red-700 text-xs mt-1 leading-relaxed">
+                {errorDescription}
               </p>
               {errorMessage && (
-                <p className="text-red-500/80 dark:text-red-400/70 text-[11px] mt-1.5 font-mono italic bg-red-100/50 dark:bg-red-950/40 px-2 py-1 rounded border border-red-200/40">
+                <div className="mt-2.5 p-3 rounded-xl bg-white border border-red-200/60 text-red-800 text-xs leading-relaxed font-medium">
                   Chi tiết: {errorMessage}
-                </p>
+                </div>
               )}
               {onRetry && (
                 <button
@@ -95,7 +126,7 @@ export default function SmartQueueStatus({
         <div
           className={`relative overflow-hidden rounded-2xl border transition-all duration-300 p-6 shadow-sm ${
             isStage3
-              ? 'bg-amber-50/70 border-amber-200/60 dark:bg-amber-950/10 dark:border-amber-900/20 text-amber-900 dark:text-amber-300'
+              ? 'bg-amber-50 border-amber-200 text-amber-900'
               : 'bg-surface border-outline'
           }`}
         >
@@ -132,19 +163,19 @@ export default function SmartQueueStatus({
               <div className="flex-1 min-w-0">
                 <p
                   className={`font-semibold text-sm leading-snug transition-all duration-300 ${
-                    isStage3 ? 'text-amber-800 dark:text-amber-300 font-bold' : 'text-primary'
+                    isStage3 ? 'text-amber-900 font-bold' : 'text-primary'
                   }`}
                 >
                   {displayMessage}
                 </p>
-                <p className={`text-[11px] mt-0.5 ${isStage3 ? 'text-amber-700/80 dark:text-amber-400/70' : 'text-secondary'}`}>
+                <p className={`text-[11px] mt-0.5 ${isStage3 ? 'text-amber-800' : 'text-secondary'}`}>
                   Thời gian đã trôi qua: <span className="font-semibold">{elapsedSeconds} giây</span>
                 </p>
               </div>
             </div>
 
             {/* Thanh tiến trình chuyển động mượt mà */}
-            <div className="h-1.5 w-full bg-hover-bg dark:bg-outline/20 rounded-full overflow-hidden relative">
+            <div className="h-1.5 w-full bg-hover-bg rounded-full overflow-hidden relative">
               <div
                 className={`absolute inset-0 transition-all duration-500 ${
                   isStage3
@@ -157,8 +188,8 @@ export default function SmartQueueStatus({
 
             {/* GIAI ĐOẠN 2: THẺ TIPS HIỆU ỨNG FADE-IN */}
             {elapsedSeconds >= 3 && currentTip && (
-              <div className="animate-fade-in flex gap-2.5 bg-amber-50/50 border border-amber-100/80 dark:bg-amber-950/20 dark:border-amber-900/30 p-3.5 rounded-xl text-xs text-amber-800 dark:text-amber-300 leading-relaxed font-sans">
-                <span className="material-symbols-outlined text-[18px] text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+              <div className="animate-fade-in flex gap-2.5 bg-amber-50 border border-amber-100 p-3.5 rounded-xl text-xs text-amber-900 leading-relaxed font-sans">
+                <span className="material-symbols-outlined text-[18px] text-amber-600 shrink-0 mt-0.5">
                   lightbulb
                 </span>
                 <div>

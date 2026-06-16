@@ -155,44 +155,7 @@ export default function ExportPDFModal({
     onMessage: handleWsMessage
   });
 
-  // Polling fallback mechanism (runs every 2 seconds if WebSocket is slow or disconnected)
-  useEffect(() => {
-    if (!taskId || ['completed', 'error', 'idle'].includes(phase)) return;
-
-    let isActive = true;
-    const interval = setInterval(async () => {
-      try {
-        const res = await djangoClient.get(`/notes/notebooks/export-pdf/status/${taskId}/`);
-        if (!isActive) return;
-
-        const data = res.data;
-        if (data.status === 'COMPLETED') {
-          setPhase('completed');
-          clearInterval(interval);
-          triggerDownload(taskId);
-        } else if (data.status === 'FAILED') {
-          setPhase('error');
-          setErrorMessage(data.error_message || 'Quá trình biên tập file PDF trên máy chủ gặp sự cố.');
-          clearInterval(interval);
-        } else {
-          setQueuePosition(data.queue_position);
-          setEstimatedWait(data.estimated_wait_seconds);
-          if (data.status === 'PROCESSING') {
-            setPhase('processing');
-          } else {
-            setPhase('queued');
-          }
-        }
-      } catch (err) {
-        console.error('Failed to poll status', err);
-      }
-    }, 2000);
-
-    return () => {
-      isActive = false;
-      clearInterval(interval);
-    };
-  }, [taskId, phase]);
+  // Removed Polling fallback mechanism — now relying 100% on WebSockets as requested
 
   if (!isOpen) return null;
 

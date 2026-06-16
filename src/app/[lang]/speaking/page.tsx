@@ -687,6 +687,7 @@ export default function SpeakingPage() {
           strategy={language === 'en' ? QUEUE_STRATEGIES.speaking_en : QUEUE_STRATEGIES.speaking_zh}
           onRetry={queue.retry}
           errorMessage={queue.errorMessage}
+          errorType={queue.errorType}
         />
 
         {/* Error is now handled by the AlertModal popup */}

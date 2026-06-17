@@ -86,7 +86,7 @@ export default function SearchBar({ onSelectWord, onSearch }: SearchBarProps) {
         <input
           type="text"
           className="flex-1 h-full bg-transparent outline-none text-lg text-primary placeholder:text-secondary font-medium"
-          placeholder="Tra từ điển (Chữ Hán, Pinyin, Tiếng Việt)..."
+          placeholder="Tra từ"
           value={query}
           onChange={(e) => {
             const val = e.target.value;

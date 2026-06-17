@@ -22,6 +22,25 @@ export default function Sidebar() {
   const language = (params?.lang as string) || 'zh';
   const { isSidebarOpen, setSidebarOpen, isDesktopSidebarCollapsed, toggleDesktopSidebar } = useUIStore();
   const { tier: subscriptionTier } = useSubscriptionStore();
+  const sidebarRef = React.useRef<HTMLElement>(null);
+
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (!isSidebarOpen) return;
+      const target = event.target as HTMLElement;
+      if (target.closest('#sidebar-toggle-btn') || target.closest('.sidebar-toggle-btn')) {
+        return;
+      }
+      if (sidebarRef.current && !sidebarRef.current.contains(target)) {
+        setSidebarOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isSidebarOpen, setSidebarOpen]);
 
   const items = navItems.map(item => {
     if (item.href === '/exam') {
@@ -43,7 +62,7 @@ export default function Sidebar() {
         />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 h-full w-[260px] bg-surface border-r border-outline flex flex-col shrink-0 transition-all duration-300 md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} ${isDesktopSidebarCollapsed ? 'md:w-[80px]' : 'md:w-[260px]'}`}>
+      <aside ref={sidebarRef} className={`fixed inset-y-0 left-0 z-50 h-full w-[260px] bg-surface border-r border-outline flex flex-col shrink-0 transition-all duration-300 md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} ${isDesktopSidebarCollapsed ? 'md:w-[80px]' : 'md:w-[260px]'}`}>
         {/* Toggle & Brand Section */}
         <div className={`h-[72px] flex items-center shrink-0 transition-all ${isDesktopSidebarCollapsed ? 'md:justify-center px-5 md:px-0' : 'px-5'}`}>
           <button onClick={() => setSidebarOpen(false)} className="p-2 rounded-full hover:bg-hover-bg text-primary transition-colors flex items-center justify-center md:hidden">

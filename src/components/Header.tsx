@@ -64,7 +64,7 @@ export default function Header() {
 
       {/* Search Bar section */}
       <div className="flex items-center flex-1 max-w-[600px] gap-2">
-        <button onClick={toggleSidebar} className="p-2 -ml-2 rounded-full hover:bg-hover-bg text-primary md:hidden flex items-center justify-center shrink-0">
+        <button id="sidebar-toggle-btn" onClick={toggleSidebar} className="p-2 -ml-2 rounded-full hover:bg-hover-bg text-primary md:hidden flex items-center justify-center shrink-0">
           <span className="material-symbols-outlined">menu</span>
         </button>
 

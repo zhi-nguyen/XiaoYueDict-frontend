@@ -53,6 +53,22 @@ export const QUEUE_STRATEGIES: Record<string, QueueUiStrategy> = {
     errorText: 'Kết nối với máy chủ dịch thuật AI bị gián đoạn.'
   },
 
+  // CHIẾN LƯỢC: DỊCH THUẬT TIẾNG ANH
+  'translation_en': {
+    title: 'Dịch thuật AI (Anh)',
+    messages: {
+      stage1: ['Đang kết nối hệ thống AI...', 'Đang phân tích ngữ cảnh...'],
+      stage2: ['Đang dịch thuật văn bản bằng AI...', 'Đang hiệu đính và tối ưu hóa bản dịch...'],
+      stage3: ['Hệ thống AI hiện đang xử lý lượng lớn yêu cầu. Dữ liệu của bạn đã được đưa vào hàng đợi ưu tiên, vui lòng chờ thêm trong giây lát...']
+    },
+    tips: [
+      'Mẹo phát âm: Khi phát âm âm /θ/ (như trong "think"), hãy đặt nhẹ đầu lưỡi ở giữa hai hàm răng và thổi hơi nhẹ ra ngoài.',
+      'Mẹo học từ vựng: Học từ vựng theo cụm từ (collocations) sẽ giúp bạn diễn đạt trôi chảy và tự nhiên hơn.',
+      'Mẹo học: Sử dụng tính năng "Sổ tay từ vựng" thường xuyên sẽ giúp bạn lưu nhớ sâu các từ khó tra cứu.'
+    ],
+    errorText: 'Kết nối với máy chủ dịch thuật AI tiếng Anh bị gián đoạn.'
+  },
+
   // CHIẾN LƯỢC: XUẤT FILE PDF TẬP VIẾT CHỮ HÁN
   'pdf_export': {
     title: 'Khởi tạo vở tập viết chữ Hán',

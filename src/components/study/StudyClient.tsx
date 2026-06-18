@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import SearchBar from '@/components/dictionary/SearchBar';
 import VocabularyTab from '@/components/study/VocabularyTab';
@@ -25,6 +26,9 @@ type StudyTab = 'vocabulary' | 'hanzi' | 'examples';
  * into a cohesive study experience.
  */
 export default function StudyClient() {
+  const params = useParams();
+  const language = (params?.lang as string) === 'en' ? 'en' : 'zh';
+
   const [activeTab, setActiveTab] = useState<StudyTab>('vocabulary');
   const [isPracticeOpen, setIsPracticeOpen] = useState(false);
 
@@ -75,7 +79,7 @@ export default function StudyClient() {
       }
       setIsLoadingExamples(true);
       try {
-        const res = await djangoClient.get(`/dictionary/zh/search/?q=${encodeURIComponent(search.searchQuery)}&fallback=false`);
+        const res = await djangoClient.get(`/dictionary/${language}/search/?q=${encodeURIComponent(search.searchQuery)}&fallback=false`);
         const results = res.data.results || [];
         const collected: ZhExample[] = [];
         const seen = new Set<string>();
@@ -103,7 +107,7 @@ export default function StudyClient() {
 
     setVisibleExamplesCount(5);
     fetchDbExamples();
-  }, [search.searchQuery]);
+  }, [search.searchQuery, language]);
 
   // ── Matching examples aggregation ──
   const getMatchingExamples = (): any[] => {
@@ -244,11 +248,16 @@ export default function StudyClient() {
   ]);
 
   // ── Tab definitions ──
-  const tabs: { id: StudyTab; label: string }[] = [
-    { id: 'vocabulary', label: 'Từ vựng' },
-    { id: 'hanzi', label: 'Hán tự' },
-    { id: 'examples', label: 'Ví dụ' },
-  ];
+  const tabs = useMemo(() => {
+    const list: { id: StudyTab; label: string }[] = [
+      { id: 'vocabulary', label: 'Từ vựng' }
+    ];
+    if (language === 'zh') {
+      list.push({ id: 'hanzi', label: 'Hán tự' });
+    }
+    list.push({ id: 'examples', label: 'Ví dụ' });
+    return list;
+  }, [language]);
 
   return (
     <main className="flex-1 overflow-y-auto w-full p-4 md:p-8 pb-16 bg-surface-alt h-full relative">

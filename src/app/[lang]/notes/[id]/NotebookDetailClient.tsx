@@ -102,7 +102,7 @@ export default function NotebookDetailClient({
     const timer = setTimeout(async () => {
       setIsLookupLoading(true);
       try {
-        const res = await djangoClient.get(`/dictionary/zh/search/?q=${encodeURIComponent(lookupQuery)}`);
+        const res = await djangoClient.get(`/dictionary/${language}/search/?q=${encodeURIComponent(lookupQuery)}`);
         const suggestions: any[] = [];
 
         if (res.data.exact_example_match) {
@@ -131,7 +131,7 @@ export default function NotebookDetailClient({
     }, 700);
 
     return () => clearTimeout(timer);
-  }, [lookupQuery]);
+  }, [lookupQuery, language]);
 
   async function loadWords(search: string) {
     try {

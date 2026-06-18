@@ -4,10 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { createNotebook, deleteNotebook } from '@/lib/api/notes';
+import { Loader2 } from 'lucide-react';
+import { createNotebook, deleteNotebook, fetchNotebooks } from '@/lib/api/notes';
 import { Notebook } from '@/types/note';
 import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
+import AuthModal from '@/components/auth/AuthModal';
+import { useAuthStore } from '@/store/useAuthStore';
 
 interface NotesClientProps {
   initialNotebooks: Notebook[];
@@ -16,6 +19,11 @@ interface NotesClientProps {
 export default function NotesClient({ initialNotebooks }: NotesClientProps) {
   const params = useParams();
   const language = (params?.lang as string) || 'zh';
+
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [loadingNotebooks, setLoadingNotebooks] = useState(false);
+
   const [notebooks, setNotebooks] = useState<Notebook[]>(initialNotebooks);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newName, setNewName] = useState('');
@@ -28,6 +36,25 @@ export default function NotesClient({ initialNotebooks }: NotesClientProps) {
     setMounted(true);
     return () => setMounted(false);
   }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const load = async () => {
+        try {
+          setLoadingNotebooks(true);
+          const list = await fetchNotebooks();
+          setNotebooks(list);
+        } catch (err) {
+          console.error("Failed to load notebooks client-side:", err);
+        } finally {
+          setLoadingNotebooks(false);
+        }
+      };
+      load();
+    } else {
+      setNotebooks([]);
+    }
+  }, [isAuthenticated]);
 
   const [alertConfig, setAlertConfig] = useState<{
     isOpen: boolean;
@@ -97,6 +124,35 @@ export default function NotesClient({ initialNotebooks }: NotesClientProps) {
         }
       }
     });
+  }
+
+  if (isAuthLoading || (isAuthenticated && loadingNotebooks && notebooks.length === 0)) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-16 bg-surface min-h-[400px]">
+        <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+        <p className="text-secondary font-medium">Đang tải...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex-1 overflow-y-auto w-full p-8 pb-16 flex flex-col items-center justify-center min-h-[500px]">
+        <div className="max-w-md text-center py-20 px-8 text-secondary bg-surface border border-outline rounded-2xl shadow-sm">
+          <span className="material-symbols-outlined text-6xl mb-4 text-primary/80 opacity-80">lock</span>
+          <h2 className="text-2xl font-bold text-primary mb-2">Đăng nhập để xem sổ tay</h2>
+          <p className="text-sm text-secondary mb-6">Bạn cần đăng nhập tài khoản để tạo và quản lý sổ tay từ vựng của riêng mình.</p>
+          <button 
+            type="button"
+            onClick={() => setIsAuthModalOpen(true)}
+            className="w-full bg-primary text-white py-3.5 rounded-xl font-bold hover:bg-primary-hover transition-colors shadow-sm focus:outline-none"
+          >
+            Đăng nhập ngay
+          </button>
+        </div>
+        <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+      </div>
+    );
   }
 
   return (

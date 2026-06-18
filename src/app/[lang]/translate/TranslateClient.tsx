@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import { djangoClient } from '@/lib/apiClient';
 import SmartQueueStatus from '@/components/SmartQueueStatus';
 import { QUEUE_STRATEGIES } from '@/constants/queueStrategies';
@@ -22,6 +23,9 @@ const capitalizeSentences = (text: string): string => {
 };
 
 export default function TranslateClient() {
+  const params = useParams();
+  const language = (params?.lang as string) === 'en' ? 'en' : 'zh';
+
   const [inputText, setInputText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -86,7 +90,7 @@ export default function TranslateClient() {
         payload.guest_id = guestId;
       }
 
-      const response = await djangoClient.post('/dictionary/zh/translate/', payload);
+      const response = await djangoClient.post(`/dictionary/${language}/translate/`, payload);
       const data = response.data;
 
       if (data.status === 'SUCCESS') {
@@ -149,7 +153,7 @@ export default function TranslateClient() {
         {/* Left Column - Input */}
         <div className="flex flex-col bg-surface rounded-2xl border border-outline shadow-sm overflow-hidden min-h-[300px]">
           <div className="flex justify-between items-center px-4 py-3 border-b border-outline">
-            <span className="font-semibold text-secondary">Tiếng Trung</span>
+            <span className="font-semibold text-secondary">{language === 'en' ? 'Tiếng Anh' : 'Tiếng Trung'}</span>
             {inputText && (
               <button 
                 onClick={handleClear}
@@ -163,7 +167,7 @@ export default function TranslateClient() {
           <textarea
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder="Nhập văn bản tiếng Trung cần dịch..."
+            placeholder={language === 'en' ? 'Nhập văn bản tiếng Anh cần dịch...' : 'Nhập văn bản tiếng Trung cần dịch...'}
             className="flex-1 w-full resize-none p-4 bg-transparent outline-none text-[16px] text-primary"
             spellCheck="false"
           />
@@ -210,7 +214,7 @@ export default function TranslateClient() {
               <div className="w-full max-w-md">
                 <SmartQueueStatus
                   phase={translationPhase}
-                  strategy={QUEUE_STRATEGIES.translation_zh}
+                  strategy={language === 'en' ? QUEUE_STRATEGIES.translation_en : QUEUE_STRATEGIES.translation_zh}
                   onRetry={handleTranslate}
                   errorMessage={errorMsg}
                 />

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useParams } from 'next/navigation';
 import { ZhWord } from '@/types/dictionary';
 import { djangoClient } from '@/lib/apiClient';
 import { useWebSocket, getGuestId } from '@/hooks/useWebSocket';
@@ -25,6 +26,9 @@ interface UseStudySearchReturn {
  * dictionary lookup → exact example match → AI translation fallback (via WebSocket).
  */
 export function useStudySearch(): UseStudySearchReturn {
+  const params = useParams();
+  const language = (params?.lang as string) === 'en' ? 'en' : 'zh';
+
   const [searchQuery, setSearchQuery] = useState('');
   const [wordResults, setWordResults] = useState<ZhWord[]>([]);
   const [selectedWord, setSelectedWord] = useState<ZhWord | null>(null);
@@ -77,7 +81,7 @@ export function useStudySearch(): UseStudySearchReturn {
         payload.guest_id = guestId;
       }
 
-      const res = await djangoClient.post('/dictionary/zh/translate/', payload);
+      const res = await djangoClient.post(`/dictionary/${language}/translate/`, payload);
       if (res.data.status === 'SUCCESS') {
         setTranslationResult({
           text: res.data.translatedText,
@@ -94,7 +98,7 @@ export function useStudySearch(): UseStudySearchReturn {
       setTranslationError(e.message || 'Lỗi kết nối máy chủ dịch thuật.');
       setIsTranslating(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, language]);
 
   // Master search handler
   const handleSearch = useCallback(async (query: string) => {
@@ -113,7 +117,7 @@ export function useStudySearch(): UseStudySearchReturn {
 
     try {
       const guestId = !isAuthenticated ? getGuestId() : null;
-      let url = `/dictionary/zh/search/?q=${encodeURIComponent(trimmed)}`;
+      let url = `/dictionary/${language}/search/?q=${encodeURIComponent(trimmed)}`;
       if (guestId) {
         url += `&guest_id=${guestId}`;
       }
@@ -146,7 +150,7 @@ export function useStudySearch(): UseStudySearchReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, handleDirectTranslation]);
+  }, [isAuthenticated, handleDirectTranslation, language]);
 
   return {
     searchQuery,

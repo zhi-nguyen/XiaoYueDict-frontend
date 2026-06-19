@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useParams } from 'next/navigation';
 import { Search, X, Loader2, Quote } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { djangoClient } from '@/lib/apiClient';
@@ -16,6 +17,9 @@ interface ExactExample {
 }
 
 export default function SearchBar({ onSelectWord, onSearch }: SearchBarProps) {
+  const params = useParams();
+  const language = (params?.lang as string) === 'en' ? 'en' : 'zh';
+
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 800);
 
@@ -49,7 +53,7 @@ export default function SearchBar({ onSelectWord, onSearch }: SearchBarProps) {
 
       setIsLoading(true);
       try {
-        const res = await djangoClient.get(`/dictionary/zh/search/?q=${encodeURIComponent(debouncedQuery)}`);
+        const res = await djangoClient.get(`/dictionary/${language}/search/?q=${encodeURIComponent(debouncedQuery)}`);
         const data = res.data;
         setResults(data.results || []);
         setExactExample(data.exact_example_match || null);

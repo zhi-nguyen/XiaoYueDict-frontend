@@ -4,7 +4,9 @@ import React, { useRef, useState } from 'react';
 import { Volume2, Mic, ChevronDown } from 'lucide-react';
 import { ZhWord } from '@/types/dictionary';
 import AddToNotebookModal from './dictionary/AddToNotebookModal';
+import AuthModal from '@/components/auth/AuthModal';
 import { speakChinese } from '@/lib/zhUtils';
+import { useAuthStore } from '@/store/useAuthStore';
 
 // Mapping from tags_vi.json
 import tagsVi from '@/data/tags_vi.json';
@@ -69,6 +71,8 @@ const renderClickableHanzi = (text: string, onCharClick?: (char: string) => void
 };
 
 export default function WordCard({ word, onPracticeClick, onCharClick }: WordCardProps) {
+  const { isAuthenticated } = useAuthStore();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [visibleExamplesCount, setVisibleExamplesCount] = useState(5);
@@ -190,7 +194,13 @@ export default function WordCard({ word, onPracticeClick, onCharClick }: WordCar
         {word.word.length <= 14 && (
           <button
             type="button"
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={() => {
+              if (isAuthenticated) {
+                setIsAddModalOpen(true);
+              } else {
+                setIsAuthModalOpen(true);
+              }
+            }}
             className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600/30 shadow-sm"
           >
             <span className="material-symbols-outlined text-lg">bookmark_add</span>
@@ -273,6 +283,12 @@ export default function WordCard({ word, onPracticeClick, onCharClick }: WordCar
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         word={word}
+      />
+
+      {/* Auth Modal fallback */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
       />
     </div>
   );

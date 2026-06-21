@@ -11,7 +11,7 @@ export default function HomePage() {
   const language = (params?.lang as string) || 'zh';
 
   return (
-    <div className="flex-1 overflow-y-auto w-full p-4 md:p-8 pb-16">
+    <div className="w-full p-4 md:p-8 pb-16">
       <div className="max-w-[1280px] mx-auto space-y-8">
         <WelcomeBanner language={language} />
         <StatsGrid language={language} />

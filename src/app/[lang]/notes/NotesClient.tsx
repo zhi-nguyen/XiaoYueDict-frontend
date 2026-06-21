@@ -156,7 +156,7 @@ export default function NotesClient({ initialNotebooks }: NotesClientProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto w-full p-8 pb-16">
+    <div className="w-full p-8 pb-16">
       <div className="max-w-[1280px] mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-primary">Sổ Tay Của Tôi</h1>

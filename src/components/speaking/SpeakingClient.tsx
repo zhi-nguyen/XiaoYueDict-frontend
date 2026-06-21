@@ -142,7 +142,7 @@ export default function SpeakingClient() {
   }, [recording.audioBlob, language, targetText, queue, hasSpellErrors, recording]);
 
   return (
-    <div className="flex-1 overflow-y-auto w-full p-8 pb-16">
+    <div className="w-full p-8 pb-16">
       <div className="max-w-[800px] mx-auto space-y-6">
 
         {/* ── Header ── */}

@@ -247,7 +247,7 @@ export default function NotebookDetailClient({
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-surface animate-in fade-in duration-200">
+    <div className="flex flex-col bg-surface animate-in fade-in duration-200 w-full">
       {/* Header */}
       <div className="px-8 py-6 border-b border-outline flex items-center justify-between shrink-0 bg-white sticky top-0 z-10">
         <div className="flex items-center">
@@ -285,7 +285,7 @@ export default function NotebookDetailClient({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto w-full p-8 pb-16">
+      <div className="w-full p-8 pb-16">
         <div className="max-w-[1000px] mx-auto">
           {/* Toolbar */}
           <div className="mb-6 flex gap-4 items-center justify-between">

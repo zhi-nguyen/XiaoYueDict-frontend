@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
+import Footer from '@/components/Footer'
 
 import { Analytics } from "@vercel/analytics/next"
 
@@ -35,7 +36,12 @@ export default function RootLayout({
             <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
               <Header />
               {/* Main Content Area */}
-              {children}
+              <div className="flex-1 overflow-y-auto flex flex-col justify-between">
+                <div className="flex-1 flex flex-col">
+                  {children}
+                </div>
+                <Footer />
+              </div>
             </div>
           </div>
       </body>

@@ -363,7 +363,7 @@ export default function ExamTakePage() {
   const allQuestions = exam.sections?.flatMap(s => s.questions) || [];
 
   return (
-    <div className="flex-1 overflow-y-auto w-full p-4 md:p-8 pb-32">
+    <div className="w-full p-4 md:p-8 pb-32">
       <div className="max-w-7xl mx-auto flex flex-col xl:flex-row gap-8">
 
         {/* Left Column: Exam Content */}

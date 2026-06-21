@@ -8,7 +8,7 @@ export default function WritingPage() {
   const language = (params?.lang as string) || 'zh';
 
   return (
-    <div className="flex-1 overflow-y-auto w-full p-4 md:p-8 pb-16">
+    <div className="w-full p-4 md:p-8 pb-16">
       <div className="max-w-[800px] mx-auto">
         <div className="bg-surface border border-outline rounded-[1.5rem] p-8 shadow-sm flex flex-col items-center">
           <div className="w-16 h-16 rounded-xl bg-hover-bg flex items-center justify-center text-primary mb-4">

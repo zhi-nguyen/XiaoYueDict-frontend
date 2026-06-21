@@ -26,8 +26,8 @@ export default function Dashboard() {
   const { currentStreak, maxStreak } = useGamificationStore();
 
   return (
-    <div className="flex flex-col h-full bg-surface">
-      <div className="flex-1 p-6 md:p-8 overflow-y-auto custom-scroll">
+    <div className="flex flex-col bg-surface w-full">
+      <div className="p-6 md:p-8">
         <div className="max-w-6xl mx-auto space-y-8">
 
           {/* Header */}

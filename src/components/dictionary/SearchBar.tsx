@@ -16,6 +16,11 @@ interface ExactExample {
   vietnamese: string;
 }
 
+const capitalizeFirstLetter = (str: string): string => {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
+};
+
 export default function SearchBar({ onSelectWord, onSearch }: SearchBarProps) {
   const params = useParams();
   const language = (params?.lang as string) === 'en' ? 'en' : 'zh';
@@ -184,7 +189,7 @@ export default function SearchBar({ onSelectWord, onSearch }: SearchBarProps) {
                       {exactExample.pinyin}
                     </div>
                     <div className="text-sm font-medium text-secondary mt-0.5">
-                      {exactExample.vietnamese}
+                      {capitalizeFirstLetter(exactExample.vietnamese)}
                     </div>
                   </button>
                 </div>
@@ -204,7 +209,7 @@ export default function SearchBar({ onSelectWord, onSearch }: SearchBarProps) {
                           {word.traditional && <span className="text-sm text-secondary">({word.traditional})</span>}
                         </div>
                         <span className="text-sm font-medium text-secondary truncate max-w-sm mt-1">
-                          {word.translation_vi}
+                          {capitalizeFirstLetter(word.translation_vi)}
                         </span>
                       </div>
 

@@ -14,8 +14,9 @@ import { useStudySearch } from '@/hooks/useStudySearch';
 import { useHanziDetails } from '@/hooks/useHanziDetails';
 import { useHanVietSentence } from '@/hooks/useHanVietSentence';
 import { isChineseChar } from '@/lib/zhUtils';
-import { ZhWord, ZhExample } from '@/types/dictionary';
 import { djangoClient } from '@/lib/apiClient';
+import { ZhWord, ZhExample } from '@/types/dictionary';
+import { SystemNotebooksDashboard } from '@/components/study/SystemNotebooksDashboard';
 
 type StudyTab = 'vocabulary' | 'hanzi' | 'examples';
 
@@ -70,25 +71,26 @@ export default function StudyClient() {
   const [isLoadingExamples, setIsLoadingExamples] = useState(false);
   const [visibleExamplesCount, setVisibleExamplesCount] = useState(5);
 
-  // Fetch examples containing the search query
+  // Fetch examples containing the search query or the selected word
   useEffect(() => {
     const fetchDbExamples = async () => {
-      if (!search.searchQuery) {
+      const activeWordText = search.selectedWord?.word || search.searchQuery;
+      if (!activeWordText) {
         setDbExamples([]);
         return;
       }
       setIsLoadingExamples(true);
       try {
-        const res = await djangoClient.get(`/dictionary/${language}/search/?q=${encodeURIComponent(search.searchQuery)}&fallback=false`);
+        const res = await djangoClient.get(`/dictionary/${language}/search/?q=${encodeURIComponent(activeWordText)}&fallback=false`);
         const results = res.data.results || [];
         const collected: ZhExample[] = [];
         const seen = new Set<string>();
 
         results.forEach((word: ZhWord) => {
           if (word.examples) {
-            word.examples.forEach((ex) => {
+            word.examples.forEach((ex: ZhExample) => {
               if (
-                (ex.chinese.includes(search.searchQuery) || ex.vietnamese.includes(search.searchQuery)) &&
+                (ex.chinese.includes(activeWordText) || ex.vietnamese.includes(activeWordText)) &&
                 !seen.has(ex.chinese)
               ) {
                 seen.add(ex.chinese);
@@ -107,11 +109,12 @@ export default function StudyClient() {
 
     setVisibleExamplesCount(5);
     fetchDbExamples();
-  }, [search.searchQuery, language]);
+  }, [search.selectedWord?.word, search.searchQuery, language]);
 
   // ── Matching examples aggregation ──
   const getMatchingExamples = (): any[] => {
-    if (!search.searchQuery) return [];
+    const activeWordText = search.selectedWord?.word || search.searchQuery;
+    if (!activeWordText) return [];
 
     if (dbExamples.length > 0) {
       return dbExamples;
@@ -134,7 +137,7 @@ export default function StudyClient() {
       if (word.examples) {
         word.examples.forEach((ex) => {
           if (
-            (ex.chinese.includes(search.searchQuery) || ex.vietnamese.includes(search.searchQuery)) &&
+            (ex.chinese.includes(activeWordText) || ex.vietnamese.includes(activeWordText)) &&
             !seen.has(ex.chinese)
           ) {
             seen.add(ex.chinese);
@@ -148,7 +151,7 @@ export default function StudyClient() {
   };
 
   const matchingExamples = getMatchingExamples();
-  const hanziChars = Array.from(search.searchQuery).filter(isChineseChar);
+  const hanziChars = Array.from(search.selectedWord?.word || search.searchQuery).filter(isChineseChar);
 
   // ── Determine the current word/sentence to be practiced in PracticeHub ──
   const activePracticeWord = useMemo<ZhWord | null>(() => {
@@ -289,12 +292,7 @@ export default function StudyClient() {
 
         {/* Tab Content Panels */}
         {!search.searchQuery ? (
-          <div className="flex flex-col items-center justify-center p-16 bg-surface border border-outline rounded-[1.5rem] min-h-[400px] text-secondary">
-            <div className="w-20 h-20 bg-hover-bg rounded-full flex items-center justify-center mb-4 border border-outline">
-              <span className="material-symbols-outlined text-4xl opacity-50">search</span>
-            </div>
-            <p className="text-xl font-medium">Hãy tìm kiếm một từ vựng để bắt đầu</p>
-          </div>
+          <SystemNotebooksDashboard lang={language} onSearchWord={search.handleSearch} />
         ) : search.isTranslating ? (
           <div className="flex flex-col items-center justify-center p-16 bg-surface border border-outline rounded-[1.5rem] min-h-[400px]">
             <div className="w-full max-w-md">
@@ -332,6 +330,7 @@ export default function StudyClient() {
             translationError={search.translationError}
             onSearch={search.handleSearch}
             onPracticeClick={() => setIsPracticeOpen(true)}
+            onSelectWord={search.setSelectedWord}
           />
         ) : activeTab === 'hanzi' ? (
           <HanziTab
@@ -347,7 +346,7 @@ export default function StudyClient() {
         ) : (
           <ExamplesTab
             matchingExamples={matchingExamples}
-            searchQuery={search.searchQuery}
+            searchQuery={search.selectedWord?.word || search.searchQuery}
             visibleCount={visibleExamplesCount}
             onLoadMore={() => setVisibleExamplesCount((prev) => prev + 5)}
             onSearch={search.handleSearch}

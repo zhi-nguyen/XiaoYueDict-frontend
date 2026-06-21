@@ -40,8 +40,33 @@
 
 body {
   font-family: 'Lexend', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  font-size: 1rem; /* 16px base — primary content size */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Typography Scale (Mobile-first) ──
+   - Primary info:   16px (text-sm / text-base) on all screens
+   - Secondary info:  14px (text-xs) on desktop (md+)
+   - Mobile minimum: 16px — no text smaller than 16px on touch devices
+   ───────────────────────────────────────────── */
+@media (max-width: 767px) {
+  /* Enforce minimum 16px on mobile: override all sub-16px text sizes */
+  .text-xs {
+    font-size: 1rem !important;     /* 16px */
+    line-height: 1.5rem !important; /* 24px */
+  }
+  /* Custom pixel sizes below 16px also get bumped on mobile
+     EXCEPT Material Symbols icons which use text-[Npx] for icon sizing */
+  .text-\[10px\]:not(.material-symbols-outlined),
+  .text-\[11px\]:not(.material-symbols-outlined),
+  .text-\[12px\]:not(.material-symbols-outlined),
+  .text-\[13px\]:not(.material-symbols-outlined),
+  .text-\[14px\]:not(.material-symbols-outlined),
+  .text-\[15px\]:not(.material-symbols-outlined) {
+    font-size: 1rem !important;
+    line-height: 1.5rem !important;
+  }
 }
 
 /* ── Material Symbols ── */

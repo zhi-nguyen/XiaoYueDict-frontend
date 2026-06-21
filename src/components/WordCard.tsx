@@ -161,7 +161,7 @@ export default function WordCard({ word, onPracticeClick, onCharClick }: WordCar
           <div className="flex items-center gap-2">
             <span className="text-base text-secondary font-medium">Hán Việt:</span>
             <span className="text-sm font-semibold px-2.5 py-1 rounded-md bg-secondary/10 text-secondary uppercase tracking-wider">
-              {word.han_viet}
+              {word.han_viet.toUpperCase()}
             </span>
           </div>
         )}

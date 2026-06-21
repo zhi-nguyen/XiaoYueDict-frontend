@@ -249,24 +249,24 @@ export default function NotebookDetailClient({
   return (
     <div className="flex flex-col bg-surface animate-in fade-in duration-200 w-full">
       {/* Header */}
-      <div className="px-8 py-6 border-b border-outline flex items-center justify-between shrink-0 bg-white sticky top-0 z-10">
-        <div className="flex items-center">
-          <Link href={`/${language}/notes`} className="mr-4 p-2 hover:bg-hover-bg rounded-full text-secondary transition-colors">
+      <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-outline flex flex-col sm:flex-row sm:items-center justify-between shrink-0 bg-white sticky top-0 z-10 gap-3">
+        <div className="flex items-center min-w-0">
+          <Link href={`/${language}/notes`} className="mr-3 sm:mr-4 p-2 hover:bg-hover-bg rounded-full text-secondary transition-colors shrink-0">
             <span className="material-symbols-outlined">arrow_back</span>
           </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-primary">{notebook.name}</h1>
-            <p className="text-sm text-secondary">{notebook.description || 'Chưa có mô tả'} • {notebook.word_count_annotated || 0} từ vựng</p>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-primary truncate">{notebook.name}</h1>
+            <p className="text-xs sm:text-sm text-secondary truncate">{notebook.description || 'Chưa có mô tả'} • {notebook.word_count_annotated || 0} từ vựng</p>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2 sm:gap-3 shrink-0 self-end sm:self-auto">
           <button
             onClick={() => setShowExportModal(true)}
-            className="p-2.5 text-secondary border border-outline rounded-xl hover:bg-hover-bg transition-colors flex items-center justify-center gap-1.5 px-4 font-semibold text-sm border-dashed hover:border-primary/50"
+            className="p-2.5 text-secondary border border-outline rounded-xl hover:bg-hover-bg transition-colors flex items-center justify-center gap-1.5 sm:px-4 font-semibold text-sm border-dashed hover:border-primary/50"
             title="Xuất vở tập viết PDF"
           >
             <span className="material-symbols-outlined text-red-500">picture_as_pdf</span>
-            <span>Xuất PDF</span>
+            <span className="hidden sm:inline">Xuất PDF</span>
           </button>
           <button
             onClick={() => setShowSettingsModal(true)}
@@ -277,18 +277,18 @@ export default function NotebookDetailClient({
           </button>
           <button
             onClick={() => setShowAddModal(true)}
-            className="bg-primary text-white px-5 py-2.5 rounded-xl font-bold hover:bg-primary-hover transition-colors flex items-center shadow-sm"
+            className="bg-primary text-white px-3 sm:px-5 py-2.5 rounded-xl font-bold hover:bg-primary-hover transition-colors flex items-center shadow-sm"
           >
-            <span className="material-symbols-outlined mr-2">add</span>
-            Thêm từ mới
+            <span className="material-symbols-outlined sm:mr-2">add</span>
+            <span className="hidden sm:inline">Thêm từ mới</span>
           </button>
         </div>
       </div>
 
-      <div className="w-full p-8 pb-16">
+      <div className="w-full p-4 sm:p-8 pb-16 overflow-x-hidden">
         <div className="max-w-[1000px] mx-auto">
           {/* Toolbar */}
-          <div className="mb-6 flex gap-4 items-center justify-between">
+          <div className="mb-6 flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center justify-between">
             <div className="relative flex-1 max-w-md">
               <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-secondary">search</span>
               <input

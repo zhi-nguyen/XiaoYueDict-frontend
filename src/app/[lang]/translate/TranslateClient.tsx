@@ -151,7 +151,7 @@ export default function TranslateClient() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-shrink-0">
         
         {/* Left Column - Input */}
-        <div className="flex flex-col bg-surface rounded-2xl border border-outline shadow-sm overflow-hidden min-h-[300px]">
+        <div className="flex flex-col bg-surface rounded-2xl border border-outline shadow-sm overflow-hidden min-h-[200px]">
           <div className="flex justify-between items-center px-4 py-3 border-b border-outline">
             <span className="font-semibold text-secondary">{language === 'en' ? 'Tiếng Anh' : 'Tiếng Trung'}</span>
             {inputText && (
@@ -197,7 +197,7 @@ export default function TranslateClient() {
         </div>
 
         {/* Right Column - Output */}
-        <div className="flex flex-col bg-surface rounded-2xl border border-outline shadow-sm overflow-hidden min-h-[300px]">
+        <div className="flex flex-col bg-surface rounded-2xl border border-outline shadow-sm overflow-hidden min-h-[200px]">
           <div className="flex justify-between items-center px-4 py-3 border-b border-outline">
             <span className="font-semibold text-secondary">Tiếng Việt</span>
             <button 
@@ -247,7 +247,7 @@ export default function TranslateClient() {
 
       {/* History Section */}
       {history.length > 0 && (
-        <div className="flex-1 flex flex-col bg-surface rounded-2xl border border-outline shadow-sm overflow-hidden min-h-[200px]">
+        <div className="flex-1 flex flex-col bg-surface rounded-2xl border border-outline shadow-sm overflow-hidden min-h-[300px]">
           <div className="px-5 py-4 border-b border-outline">
             <h2 className="font-semibold text-primary flex items-center gap-2">
               <span className="material-symbols-outlined text-secondary">history</span>
@@ -270,7 +270,7 @@ export default function TranslateClient() {
                       </span>
                     ) : (
                       <span className="text-[10px] uppercase font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded flex items-center gap-1 shrink-0">
-                        Hệ thống
+                        Dịch tham khảo
                       </span>
                     )}
                   </div>

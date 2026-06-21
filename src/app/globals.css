@@ -179,6 +179,25 @@ body {
   animation: float 3s ease-in-out infinite;
 }
 
+/* Indeterminate Progress Bar */
+@keyframes indeterminate-bar {
+  0% {
+    left: -40%;
+    right: 100%;
+  }
+  50% {
+    left: 20%;
+    right: 20%;
+  }
+  100% {
+    left: 100%;
+    right: -40%;
+  }
+}
+.animate-indeterminate-bar {
+  animation: indeterminate-bar 1.8s cubic-bezier(0.65, 0.815, 0.735, 0.395) infinite;
+}
+
 /* ── Glassmorphism Utility ── */
 .glass {
   background: rgba(255, 255, 255, 0.7);

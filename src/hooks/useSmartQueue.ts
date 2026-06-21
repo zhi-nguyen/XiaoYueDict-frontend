@@ -167,9 +167,11 @@ export function useSmartQueue(): UseSmartQueueReturn {
     if (msg.type === 'score_complete') {
       setPhase('completed');
       setScore(msg.payload.score);
-      // Optional: We might need to fetch the full result_data since WS only sends score
-      // but for now, we just rely on WS data or fetch status once
-      fetchFinalStatus(taskId);
+      if (msg.payload.result_data) {
+        setResultData(msg.payload.result_data);
+      } else {
+        fetchFinalStatus(taskId);
+      }
     } else if (msg.type === 'score_failed') {
       setPhase('error');
       setErrorMessage(translateErrorMessage(msg.payload.error || 'Processing failed on the server.'));

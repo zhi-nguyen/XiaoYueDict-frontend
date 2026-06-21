@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { getStreaks, logStudyHistory, StudyHistoryPayload, StudyHistoryResponse } from '@/lib/api/gamification';
+import { useAuthStore } from '@/store/useAuthStore';
 
 interface GamificationState {
   currentStreak: number;
@@ -20,6 +21,9 @@ export const useGamificationStore = create<GamificationState>((set, get) => ({
 
   fetchGamificationData: async () => {
     if (get().isInitialized) return;
+    
+    // Return early if not authenticated yet to avoid failed requests
+    if (!useAuthStore.getState().isAuthenticated) return;
 
     set({ isLoading: true });
     try {
@@ -68,3 +72,16 @@ export const useGamificationStore = create<GamificationState>((set, get) => ({
     });
   }
 }));
+
+// Subscribe to auth state changes to keep gamification in sync (login / logout / page reload)
+let lastIsAuthenticated = useAuthStore.getState().isAuthenticated;
+useAuthStore.subscribe((state) => {
+  if (state.isAuthenticated !== lastIsAuthenticated) {
+    lastIsAuthenticated = state.isAuthenticated;
+    if (state.isAuthenticated) {
+      useGamificationStore.getState().fetchGamificationData();
+    } else {
+      useGamificationStore.getState().resetStore();
+    }
+  }
+});

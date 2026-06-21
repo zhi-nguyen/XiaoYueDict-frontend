@@ -124,9 +124,9 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       if (!isMountedRef.current) return;
 
       // Step 2: Determine WS URL
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      // Connect via Nginx on the same host (port 80/443)
-      const wsUrl = `${protocol}//${window.location.hostname}/ws/${actualUserId}?token=${wsToken}`;
+      const baseWsUrl = process.env.NEXT_PUBLIC_WS_URL || `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}/ws`;
+      const cleanBaseWsUrl = baseWsUrl.endsWith('/') ? baseWsUrl.slice(0, -1) : baseWsUrl;
+      const wsUrl = `${cleanBaseWsUrl}/${actualUserId}?token=${wsToken}`;
 
       // Step 3: Create WebSocket
       const socket = new WebSocket(wsUrl);

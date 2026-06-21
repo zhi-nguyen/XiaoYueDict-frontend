@@ -124,7 +124,19 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       if (!isMountedRef.current) return;
 
       // Step 2: Determine WS URL
-      const baseWsUrl = process.env.NEXT_PUBLIC_WS_URL || `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}/ws`;
+      let baseWsUrl = process.env.NEXT_PUBLIC_WS_URL;
+      
+      if (!baseWsUrl && process.env.NEXT_PUBLIC_API_URL) {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+        const wsProtocol = apiUrl.startsWith('https:') ? 'wss:' : 'ws:';
+        const host = apiUrl.replace(/^https?:\/\//, '');
+        baseWsUrl = `${wsProtocol}//${host}/ws`;
+      }
+      
+      if (!baseWsUrl) {
+        baseWsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}/ws`;
+      }
+
       const cleanBaseWsUrl = baseWsUrl.endsWith('/') ? baseWsUrl.slice(0, -1) : baseWsUrl;
       const wsUrl = `${cleanBaseWsUrl}/${actualUserId}?token=${wsToken}`;
 

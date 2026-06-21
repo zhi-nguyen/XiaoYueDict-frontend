@@ -24,7 +24,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="vi">
-      <Analytics />
       <head>
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -44,6 +43,7 @@ export default function RootLayout({
               </div>
             </div>
           </div>
+          <Analytics />
       </body>
     </html>
   )

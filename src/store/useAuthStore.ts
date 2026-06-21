@@ -56,12 +56,15 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { data: refreshData } = await axios.post('/api/auth/refresh');
       const token = refreshData.access;
       
-      // Then fetch user profile
+      // Set access token and authentication state immediately so subsequent calls can use the token
+      set({ accessToken: token, isAuthenticated: true, isLoading: false });
+      
+      // Then fetch user profile in the background
       const { data: userData } = await axios.get('/api/auth/me', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      set({ user: userData, accessToken: token, isAuthenticated: true, isLoading: false });
+      set({ user: userData });
     } catch (e) {
       // Silent refresh failed (no valid refresh token), so user is not logged in
       set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false });

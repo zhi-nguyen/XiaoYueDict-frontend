@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/store/useAuthStore';
+import { getGuestId } from '@/lib/guest';
 
 // We use the Next.js BFF routes for auth to leverage HttpOnly cookies
 const NEXT_API_BASE_URL = '/api';
@@ -36,11 +37,16 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
-// Add access token to requests
+// Add access token or Guest ID to requests
 const requestInterceptor = (config: InternalAxiosRequestConfig) => {
   const token = useAuthStore.getState().accessToken;
   if (token && config.headers) {
     config.headers['Authorization'] = `Bearer ${token}`;
+  } else if (config.headers) {
+    const guestId = getGuestId();
+    if (guestId) {
+      config.headers['X-Guest-ID'] = guestId;
+    }
   }
   return config;
 };

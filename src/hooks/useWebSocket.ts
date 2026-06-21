@@ -3,19 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { djangoClient } from '@/lib/apiClient';
-
-/**
- * Get or create a stable guest ID for unauthenticated users.
- */
-export const getGuestId = (): string | null => {
-  if (typeof window === 'undefined') return null;
-  let gid = localStorage.getItem('guest_id');
-  if (!gid) {
-    gid = `guest_${Math.random().toString(36).substring(2, 15)}`;
-    localStorage.setItem('guest_id', gid);
-  }
-  return gid;
-};
+import { getGuestId } from '@/lib/guest';
 
 /**
  * WebSocket message received from the server.
@@ -83,6 +71,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
   const reconnectDelayRef = useRef(INITIAL_RECONNECT_DELAY_MS);
   const isMountedRef = useRef(true);
   const isConnectingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Read auth state outside of effect to avoid stale closures
   const { isAuthenticated, user } = useAuthStore();
@@ -104,20 +93,40 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
 
   // ── Core connect function ────────────────────────────────
   const connect = useCallback(async () => {
-    if (!isMountedRef.current || isConnectingRef.current) return;
+    if (!isMountedRef.current) return;
     
+    // Abort any in-flight token request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    // Close any existing socket to prevent leaks
+    if (socketRef.current) {
+      socketRef.current.onclose = null;
+      socketRef.current.close();
+      socketRef.current = null;
+    }
+
     const guestId = !isAuthenticated ? getGuestId() : null;
     const effectiveUserId = isAuthenticated ? user?.id : guestId;
 
     if (!effectiveUserId) return;
 
     isConnectingRef.current = true;
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
 
     try {
       // Step 1: Obtain short-lived WS token (2-minute TTL)
       const { data } = await djangoClient.post('/users/ws-token/', {
         guest_id: guestId
+      }, {
+        signal: abortController.signal
       });
+      
+      if (abortController.signal.aborted) return;
+      
       const wsToken = data.ws_token;
       const actualUserId = data.user_id;
 
@@ -145,7 +154,10 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       socketRef.current = socket;
 
       socket.onopen = () => {
-        if (!isMountedRef.current) return;
+        if (abortController.signal.aborted || !isMountedRef.current) {
+          socket.close();
+          return;
+        }
 
         setIsConnected(true);
         reconnectDelayRef.current = INITIAL_RECONNECT_DELAY_MS;
@@ -162,7 +174,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       };
 
       socket.onmessage = (event) => {
-        if (!isMountedRef.current) return;
+        if (abortController.signal.aborted || !isMountedRef.current) return;
 
         // Ignore pong responses
         if (event.data === 'pong') return;
@@ -177,7 +189,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       };
 
       socket.onclose = () => {
-        if (!isMountedRef.current) return;
+        if (abortController.signal.aborted || !isMountedRef.current) return;
 
         clearHeartbeat();
         setIsConnected(false);
@@ -199,11 +211,14 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       };
 
       socket.onerror = () => {
-        // Close to trigger onclose → reconnection logic
         socket.close();
       };
 
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'CanceledError' || abortController.signal.aborted) {
+        return; // Connection attempt was aborted, ignore error
+      }
+      
       console.error('[WS] Failed to obtain ws-token:', error);
       isConnectingRef.current = false;
 
@@ -237,6 +252,11 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       isMountedRef.current = false;
       clearHeartbeat();
       clearReconnectTimeout();
+
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
 
       if (socketRef.current) {
         socketRef.current.onclose = null; // Prevent reconnection on cleanup

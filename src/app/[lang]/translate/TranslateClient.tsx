@@ -5,7 +5,8 @@ import { useParams } from 'next/navigation';
 import { djangoClient } from '@/lib/apiClient';
 import SmartQueueStatus from '@/components/SmartQueueStatus';
 import { QUEUE_STRATEGIES } from '@/constants/queueStrategies';
-import { useWebSocket, getGuestId } from '@/hooks/useWebSocket';
+import { useWebSocket } from '@/hooks/useWebSocket';
+import { getGuestId } from '@/lib/guest';
 import { useAuthStore } from '@/store/useAuthStore';
 
 interface TranslationRecord {

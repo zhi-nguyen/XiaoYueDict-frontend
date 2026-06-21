@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { getMySubscription, SubscriptionInfo } from '@/lib/api/subscriptions';
 import { djangoClient } from '@/lib/apiClient';
-import { getGuestId } from '@/hooks/useWebSocket';
+import { getGuestId } from '@/lib/guest';
 import { useAuthStore } from '@/store/useAuthStore';
 
 export interface VolumeUsageInfo {

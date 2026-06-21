@@ -8,7 +8,8 @@ import type {
 } from '@/types/scoring';
 import { validateTextInput } from '@/lib/inputValidation';
 import { djangoClient } from '@/lib/apiClient';
-import { useWebSocket, getGuestId } from './useWebSocket';
+import { useWebSocket } from './useWebSocket';
+import { getGuestId } from '@/lib/guest';
 import { useAuthStore } from '@/store/useAuthStore';
 
 /**

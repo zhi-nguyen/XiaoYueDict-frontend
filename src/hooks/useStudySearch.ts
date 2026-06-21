@@ -4,7 +4,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { ZhWord } from '@/types/dictionary';
 import { djangoClient } from '@/lib/apiClient';
-import { useWebSocket, getGuestId } from '@/hooks/useWebSocket';
+import { useWebSocket } from '@/hooks/useWebSocket';
+import { getGuestId } from '@/lib/guest';
 import { useAuthStore } from '@/store/useAuthStore';
 
 interface UseStudySearchReturn {

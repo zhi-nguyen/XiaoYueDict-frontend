@@ -192,10 +192,11 @@ export default function Header() {
           </div>
         ) : (
           <button 
-            className="px-4 py-2 rounded-full bg-primary text-white font-semibold text-sm hover:opacity-90 transition-opacity"
+            className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center hover:opacity-90 transition-opacity shadow-sm"
             onClick={() => setIsAuthModalOpen(true)}
+            title="Đăng nhập"
           >
-            Đăng nhập
+            <span className="material-symbols-outlined text-xl">person</span>
           </button>
         )}
       </div>

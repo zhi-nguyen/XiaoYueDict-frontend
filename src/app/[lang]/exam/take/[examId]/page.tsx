@@ -130,7 +130,7 @@ export default function ExamTakePage() {
     isOpen: false,
     title: '',
     message: '',
-    onConfirm: () => {},
+    onConfirm: () => { },
   });
 
   useEffect(() => {
@@ -191,7 +191,7 @@ export default function ExamTakePage() {
   // Auto-save state
   useEffect(() => {
     if (!exam || isSubmitted) return;
-    
+
     saveExamState(examId, {
       version: '0.1',
       answers,
@@ -242,6 +242,21 @@ export default function ExamTakePage() {
         handleFinalSubmit();
         setModalConfig(prev => ({ ...prev, isOpen: false }));
       },
+    });
+  };
+
+  const handleReportQuestion = (questionId: string) => {
+    setModalConfig({
+      isOpen: true,
+      title: 'Báo cáo câu hỏi sai',
+      message: `Bạn có chắc chắn muốn báo cáo câu hỏi này bị sai thông tin/nội dung?`,
+      confirmText: 'Báo cáo',
+      onConfirm: () => {
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+        setTimeout(() => {
+          alert('Cảm ơn bạn đã báo cáo lỗi. Chúng tôi sẽ sớm kiểm tra!');
+        }, 300);
+      }
     });
   };
 
@@ -312,17 +327,17 @@ export default function ExamTakePage() {
     if (isMainAudioPlaying && audioRef.current) {
       audioRef.current.pause();
     }
-    
+
     if (segmentAudioRef.current) {
       segmentAudioRef.current.pause();
       segmentAudioRef.current.currentTime = timeToSeconds(startTime) || 0;
       activeSegmentEndTimeRef.current = timeToSeconds(endTime);
-      
+
       const savedSpeed = localStorage.getItem('exam_audio_speed');
       const savedVolume = localStorage.getItem('exam_audio_volume');
       segmentAudioRef.current.playbackRate = savedSpeed ? parseFloat(savedSpeed) : 1.0;
       segmentAudioRef.current.volume = savedVolume ? parseFloat(savedVolume) : 1.0;
-      
+
       segmentAudioRef.current.play().catch(console.error);
       setActiveSegmentId(questionId);
     }
@@ -348,327 +363,353 @@ export default function ExamTakePage() {
   const allQuestions = exam.sections?.flatMap(s => s.questions) || [];
 
   return (
-    <div className="flex-1 overflow-y-auto w-full p-4 md:p-8 pb-32">
+    <div className="w-full p-4 md:p-8 pb-32">
       <div className="max-w-7xl mx-auto flex flex-col xl:flex-row gap-8">
-        
+
         {/* Left Column: Exam Content */}
         <div className="flex-1 bg-surface rounded-[2rem] p-6 shadow-sm border border-outline">
-        <button onClick={handleLeave} className="text-secondary hover:text-primary mb-6 flex items-center gap-2">
-          &larr; Quay lại danh sách
-        </button>
+          <button onClick={handleLeave} className="text-secondary hover:text-primary mb-6 flex items-center gap-2">
+            &larr; Quay lại danh sách
+          </button>
 
-        <div className="flex justify-between items-start mb-2 relative">
-          <h1 className="text-3xl font-bold text-primary">{exam.exam_name}</h1>
-          
-          {/* Settings Dropdown Button */}
-          <div className="relative" ref={dropdownRef}>
-            <button 
-              onClick={() => setShowSettings(!showSettings)}
-              className="flex items-center gap-2 px-4 py-2 bg-surface border border-outline hover:bg-hover-bg rounded-xl font-bold text-primary transition-all shadow-sm"
-            >
-              <svg className="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              Cài Đặt
-            </button>
+          <div className="flex justify-between items-start mb-2 relative">
+            <h1 className="text-3xl font-bold text-primary">{exam.exam_name}</h1>
 
-            {showSettings && (
-              <div className="absolute right-0 mt-2 w-72 bg-surface border border-outline rounded-2xl p-4 shadow-xl z-50 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
-                <h3 className="font-bold text-primary border-b pb-2 mb-2">
-                  Cấu hình âm thanh
-                </h3>
-                
-                {/* Speed rate control */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-secondary flex justify-between">
-                    <span>Tốc độ phát (Speed):</span>
-                    <span className="text-primary font-mono">{speedRate.toFixed(2)}x</span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    <input 
-                      type="range" 
-                      min="0.5" 
-                      max="2.0" 
-                      step="0.05"
-                      value={speedRate}
-                      onChange={(e) => handleSpeedChange(parseFloat(e.target.value))}
-                      className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
-                    />
-                  </div>
-                </div>
-
-                {/* Volume control */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-secondary flex justify-between">
-                    <span>Âm lượng (Volume):</span>
-                    <span className="text-primary font-mono">{Math.round(volume * 100)}%</span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                    </svg>
-                    <input 
-                      type="range" 
-                      min="0" 
-                      max="1" 
-                      step="0.05"
-                      value={volume}
-                      onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                      className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-4 text-secondary mb-8 pb-6 border-b">
-          <span className="font-bold text-primary bg-primary/10 px-3 py-1 rounded-lg">
-            Thời gian: {timeRemaining !== null ? formatTime(timeRemaining) : `${exam.total_time_minutes}:00`}
-          </span>
-          <span>•</span>
-          <span>{exam.total_questions} câu</span>
-          <span>•</span>
-          <span>Điểm đạt: {exam.passing_score}/{exam.total_score}</span>
-        </div>
-
-        {mainAudioUrl && (
-          <div className="mb-8 p-6 bg-primary/5 rounded-2xl border border-primary/20 shadow-sm sticky top-4 z-10 backdrop-blur-sm">
-            <h2 className="text-lg font-bold text-primary mb-3 flex items-center gap-2">
-              🎧 Audio Toàn Bài Thi
-            </h2>
-            
-            {/* Hidden native audio for main */}
-            <audio 
-              ref={audioRef} 
-              src={getMediaUrl(mainAudioUrl)} 
-              onTimeUpdate={(e) => setMainAudioCurrentTime(e.currentTarget.currentTime)}
-              onEnded={() => setIsMainAudioPlaying(false)}
-              onPause={() => setIsMainAudioPlaying(false)}
-              onPlay={() => setIsMainAudioPlaying(true)}
-              className="hidden" 
-            />
-
-            {/* Hidden native audio for segments */}
-            <audio 
-              ref={segmentAudioRef} 
-              src={getMediaUrl(mainAudioUrl)} 
-              onTimeUpdate={(e) => {
-                if (activeSegmentEndTimeRef.current && e.currentTarget.currentTime >= activeSegmentEndTimeRef.current) {
-                  e.currentTarget.pause();
-                  setActiveSegmentId(null);
-                }
-              }}
-              onEnded={() => setActiveSegmentId(null)}
-              className="hidden" 
-            />
-
-            {/* Custom UI for Main Audio */}
-            <div className="flex items-center gap-4 bg-white p-3 rounded-xl border border-outline">
-              <button 
-                onClick={isMainAudioPlaying ? handlePauseMainAudio : handlePlayMainAudio}
-                className="w-12 h-12 flex-shrink-0 flex items-center justify-center bg-primary text-white rounded-full hover:bg-primary-hover transition-colors"
+            {/* Settings Dropdown Button */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setShowSettings(!showSettings)}
+                className="flex items-center gap-2 px-4 py-2 bg-surface border border-outline hover:bg-hover-bg rounded-xl font-bold text-primary transition-all shadow-sm"
               >
-                {isMainAudioPlaying ? (
-                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                ) : (
-                  <svg className="w-6 h-6 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                )}
+                <svg className="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Cài Đặt
               </button>
-              <div className="flex-1">
-                 <div className="h-2 bg-gray-200 rounded-full w-full overflow-hidden">
-                    <div 
-                       className="h-full bg-primary transition-all duration-200" 
-                       style={{ width: `${(mainAudioCurrentTime / (audioRef.current?.duration || 1)) * 100}%` }}
-                    ></div>
-                 </div>
-              </div>
-              <div className="text-sm font-bold text-secondary font-mono w-24 text-right">
-                {formatTime(Math.floor(mainAudioCurrentTime))} / {formatTime(Math.floor(audioRef.current?.duration || 0))}
-              </div>
+
+              {showSettings && (
+                <div className="absolute right-0 mt-2 w-72 bg-surface border border-outline rounded-2xl p-4 shadow-xl z-50 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <h3 className="font-bold text-primary border-b pb-2 mb-2">
+                    Cấu hình âm thanh
+                  </h3>
+
+                  {/* Speed rate control */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-secondary flex justify-between">
+                      <span>Tốc độ phát (Speed):</span>
+                      <span className="text-primary font-mono">{speedRate.toFixed(2)}x</span>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="2.0"
+                        step="0.05"
+                        value={speedRate}
+                        onChange={(e) => handleSpeedChange(parseFloat(e.target.value))}
+                        className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Volume control */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-secondary flex justify-between">
+                      <span>Âm lượng (Volume):</span>
+                      <span className="text-primary font-mono">{Math.round(volume * 100)}%</span>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                      </svg>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        value={volume}
+                        onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                        className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        )}
+          <div className="flex flex-wrap gap-4 text-secondary mb-8 pb-6 border-b">
+            <span className="font-bold text-primary bg-primary/10 px-3 py-1 rounded-lg">
+              Thời gian: {timeRemaining !== null ? formatTime(timeRemaining) : `${exam.total_time_minutes}:00`}
+            </span>
+            <span>•</span>
+            <span>{exam.total_questions} câu</span>
+            <span>•</span>
+            <span>Điểm đạt: {exam.passing_score}/{exam.total_score}</span>
+          </div>
+
+          {mainAudioUrl && (
+            <div className="mb-8 p-6 bg-primary/5 rounded-2xl border border-primary/20 shadow-sm">
+              <h2 className="text-lg font-bold text-primary mb-3 flex items-center gap-2">
+                🎧 Audio Toàn Bài Thi
+              </h2>
+
+              {/* Hidden native audio for main */}
+              <audio
+                ref={audioRef}
+                src={getMediaUrl(mainAudioUrl)}
+                onTimeUpdate={(e) => setMainAudioCurrentTime(e.currentTarget.currentTime)}
+                onEnded={() => setIsMainAudioPlaying(false)}
+                onPause={() => setIsMainAudioPlaying(false)}
+                onPlay={() => setIsMainAudioPlaying(true)}
+                className="hidden"
+              />
+
+              {/* Hidden native audio for segments */}
+              <audio
+                ref={segmentAudioRef}
+                src={getMediaUrl(mainAudioUrl)}
+                onTimeUpdate={(e) => {
+                  if (activeSegmentEndTimeRef.current && e.currentTarget.currentTime >= activeSegmentEndTimeRef.current) {
+                    e.currentTarget.pause();
+                    setActiveSegmentId(null);
+                  }
+                }}
+                onEnded={() => setActiveSegmentId(null)}
+                className="hidden"
+              />
+
+              {/* Custom UI for Main Audio */}
+              <div className="flex items-center gap-4 bg-white p-3 rounded-xl border border-outline">
+                <button
+                  onClick={isMainAudioPlaying ? handlePauseMainAudio : handlePlayMainAudio}
+                  className="w-12 h-12 flex-shrink-0 flex items-center justify-center bg-primary text-white rounded-full hover:bg-primary-hover transition-colors"
+                >
+                  {isMainAudioPlaying ? (
+                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+                  ) : (
+                    <svg className="w-6 h-6 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                  )}
+                </button>
+                <div className="flex-1">
+                  <div className="h-2 bg-gray-200 rounded-full w-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all duration-200"
+                      style={{ width: `${(mainAudioCurrentTime / (audioRef.current?.duration || 1)) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+                <div className="text-sm font-bold text-secondary font-mono w-24 text-right">
+                  {formatTime(Math.floor(mainAudioCurrentTime))} / {formatTime(Math.floor(audioRef.current?.duration || 0))}
+                </div>
+              </div>
+            </div>
+          )}
 
 
-        <div className="space-y-12">
-          {exam.sections?.map(section => (
-            <div key={section.id} className="section-container">
-              <h2 className="text-xl font-bold text-primary mb-2">{section.section_name} - Part {section.part_number}</h2>
-              {section.instruction && <p className="text-secondary mb-6 italic">{section.instruction}</p>}
+          <div className="space-y-12">
+            {exam.sections?.map(section => (
+              <div key={section.id} className="section-container">
+                <h2 className="text-xl font-bold text-primary mb-2">{section.section_name} - Part {section.part_number}</h2>
+                {section.instruction && <p className="text-secondary mb-6 italic">{section.instruction}</p>}
 
-              <div className="space-y-8">
-                {section.questions.map((question, index) => {
-                  const isCorrect = answers[question.question_id] === question.correct_answer;
-                  const isAnswered = !!answers[question.question_id];
+                <div className="space-y-8">
+                  {section.questions.map((question, index) => {
+                    const isCorrect = answers[question.question_id] === question.correct_answer;
+                    const isAnswered = !!answers[question.question_id];
 
-                  return (
-                    <div id={`question-${question.question_id}`} key={question.id} className={`p-6 rounded-2xl border scroll-m-24 ${isSubmitted ? (isCorrect ? 'border-green-300 bg-green-50/30' : 'border-red-300 bg-red-50/30') : 'border-outline-variant bg-surface'}`}>
-                      <div className="flex gap-4">
-                        <div className="w-8 h-8 flex-shrink-0 bg-primary/10 text-primary font-bold rounded-full flex items-center justify-center">
-                          {allQuestions.findIndex(q => q.question_id === question.question_id) + 1}
-                        </div>
-                        <div className="flex-1 space-y-4">
-                          <div className="flex flex-col md:flex-row md:items-center gap-3">
-                            {question.question_text && <p className="font-bold text-lg">{question.question_text}</p>}
-                            
-                            {question.audio_start_time && question.audio_end_time && (
-                              <button
-                                onClick={() => playSegmentAudio(question.question_id, question.audio_start_time, question.audio_end_time)}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold border transition-colors ${
-                                  activeSegmentId === question.question_id 
+                    return (
+                      <div id={`question-${question.question_id}`} key={question.id} className={`p-6 rounded-2xl border scroll-m-24 ${isSubmitted ? (isCorrect ? 'border-green-300 bg-green-50/30' : 'border-red-300 bg-red-50/30') : 'border-outline-variant bg-surface'}`}>
+                        <div className="space-y-4">
+                          {/* Hàng 1: 3 cột: số câu hỏi, nút nghe câu này và dấu chấm than báo cáo */}
+                          <div className="flex items-center justify-between w-full">
+                            <div className="w-8 h-8 flex-shrink-0 bg-primary/10 text-primary font-bold rounded-full flex items-center justify-center">
+                              {allQuestions.findIndex(q => q.question_id === question.question_id) + 1}
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              {question.audio_start_time && question.audio_end_time && (
+                                <button
+                                  onClick={() => playSegmentAudio(question.question_id, question.audio_start_time, question.audio_end_time)}
+                                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold border transition-colors ${activeSegmentId === question.question_id
                                     ? 'bg-primary text-white border-primary'
                                     : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/20'
-                                }`}
+                                    }`}
+                                >
+                                  {activeSegmentId === question.question_id ? (
+                                    <>
+                                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+
+                                    </>
+                                  ) : (
+                                    <>
+                                      <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+
+                                    </>
+                                  )}
+                                </button>
+                              )}
+
+                              {/* Báo cáo câu hỏi sai (Dấu chấm than / Warning icon) */}
+                              <button
+                                onClick={() => handleReportQuestion(question.question_id)}
+                                className="w-8 h-8 flex items-center justify-center text-secondary hover:text-red-500 hover:bg-red-50 rounded-lg transition-all border border-outline hover:border-red-200"
+                                title="Báo cáo câu hỏi sai"
                               >
-                                {activeSegmentId === question.question_id ? (
-                                  <>
-                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                                    Đang nghe...
-                                  </>
-                                ) : (
-                                  <>
-                                    <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                                    Nghe câu này
-                                  </>
-                                )}
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
                               </button>
-                            )}
+                            </div>
                           </div>
-                          
-                          <div className={question.question_type === 'true_false' ? "flex flex-col md:flex-row md:items-center gap-6 mt-4" : "mt-4"}>
-                            <div className="flex-1">
+
+                          {/* Hàng 2: Nội dung câu hỏi (chữ + ảnh) */}
+                          {(question.question_text || question.image_url || question.image_description) && (
+                            <div className="space-y-4">
+                              {question.question_text && (
+                                <p className="font-bold text-lg text-primary">
+                                  {question.question_text}
+                                </p>
+                              )}
+
                               {question.image_url && (
-                                <div className="flex justify-center md:justify-start">
-                                  <img src={getMediaUrl(question.image_url)} alt="Question Image" className="w-48 h-48 object-cover rounded-2xl shadow-sm border border-outline-variant" />
+                                <div className="w-full flex justify-center md:justify-start">
+                                  <img
+                                    src={getMediaUrl(question.image_url)}
+                                    alt="Question Image"
+                                    className="w-full max-w-md h-auto aspect-[4/3] object-cover rounded-2xl shadow-sm border border-outline-variant"
+                                  />
                                 </div>
                               )}
+
                               {!question.image_url && question.image_description && (
                                 <div className="p-4 bg-gray-100 rounded-xl italic text-gray-600 max-w-xs text-center md:text-left">
                                   [Hình ảnh: {question.image_description}]
                                 </div>
                               )}
-                              
-                              {isSubmitted && (question.audio_url || (mainAudioUrl && question.audio_start_time)) && (
-                                <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                                  <p className="text-sm font-bold text-gray-600 mb-2">Nghe lại câu này:</p>
-                                  {(() => {
-                                    let targetAudioUrl = question.audio_url ? getMediaUrl(question.audio_url) : getMediaUrl(mainAudioUrl!);
-                                    if (!question.audio_url && mainAudioUrl && question.audio_start_time) {
-                                      const start = timeToSeconds(question.audio_start_time);
-                                      const end = timeToSeconds(question.audio_end_time);
-                                      if (start !== null) {
-                                        targetAudioUrl += `#t=${start}${end !== null ? ',' + end : ''}`;
-                                      }
-                                    }
-                                    return (
-                                      <audio controls className="h-10 w-full outline-none">
-                                        <source src={targetAudioUrl} type="audio/mpeg" />
-                                      </audio>
-                                    );
-                                  })()}
-                                </div>
-                              )}
                             </div>
+                          )}
 
-                            {question.question_type === 'true_false' ? (
-                              <div className="flex flex-col gap-3 shrink-0 w-32 justify-center">
-                                {question.options.map(opt => {
-                                  const selected = answers[question.question_id] === opt.option_id;
-                                  const isTrue = opt.option_id === 'opt_True';
-                                  
-                                  let btnClass = "flex items-center justify-center p-3 rounded-xl border-2 transition-all cursor-pointer ";
-                                  if (isSubmitted) {
-                                    if (opt.option_id === question.correct_answer) {
-                                      btnClass += "bg-green-100 border-green-500 text-green-700 shadow-sm";
-                                    } else if (selected && opt.option_id !== question.correct_answer) {
-                                      btnClass += "bg-red-100 border-red-500 text-red-700 shadow-sm";
-                                    } else {
-                                      btnClass += "border-outline-variant bg-gray-50 text-gray-300 opacity-60";
-                                    }
-                                    btnClass = btnClass.replace("cursor-pointer", "cursor-default");
-                                  } else {
-                                    btnClass += selected ? "border-primary bg-primary/10 text-primary scale-105 shadow-md" : "border-outline-variant bg-gray-100 hover:bg-gray-200 text-secondary";
+                          {/* Hàng 2.5: Nghe lại câu này (chỉ hiển thị khi đã nộp bài) */}
+                          {isSubmitted && (question.audio_url || (mainAudioUrl && question.audio_start_time)) && (
+                            <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                              <p className="text-sm font-bold text-gray-600 mb-2">Nghe lại câu này:</p>
+                              {(() => {
+                                let targetAudioUrl = question.audio_url ? getMediaUrl(question.audio_url) : getMediaUrl(mainAudioUrl!);
+                                if (!question.audio_url && mainAudioUrl && question.audio_start_time) {
+                                  const start = timeToSeconds(question.audio_start_time);
+                                  const end = timeToSeconds(question.audio_end_time);
+                                  if (start !== null) {
+                                    targetAudioUrl += `#t=${start}${end !== null ? ',' + end : ''}`;
                                   }
+                                }
+                                return (
+                                  <audio controls className="h-10 w-full outline-none">
+                                    <source src={targetAudioUrl} type="audio/mpeg" />
+                                  </audio>
+                                );
+                              })()}
+                            </div>
+                          )}
 
-                                  return (
-                                    <div key={opt.option_id || opt.id} className={btnClass} onClick={() => handleOptionSelect(question.question_id, opt.option_id)}>
-                                      {isTrue ? (
-                                        <svg className="w-8 h-8 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg>
-                                      ) : (
-                                        <svg className="w-8 h-8 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M6 18L18 6M6 6l12 12" /></svg>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              <div className={`mt-6 ${question.options.every(opt => !opt.text) ? 'grid grid-cols-1 md:grid-cols-3 gap-6' : 'space-y-3'}`}>
-                                {question.options.map((opt, optIndex) => {
-                                  const selected = answers[question.question_id] === opt.option_id;
-                                  const isImageOnly = !opt.text;
-                                  
-                                  let optionClass = `relative flex ${isImageOnly ? 'flex-col justify-center items-center p-2' : 'items-center gap-4 p-4'} rounded-2xl border-2 cursor-pointer transition-all `;
-                                  
-                                  if (isSubmitted) {
-                                    if (opt.option_id === question.correct_answer) {
-                                      optionClass += "bg-green-50 border-green-500 text-green-900 shadow-sm";
-                                    } else if (selected && opt.option_id !== question.correct_answer) {
-                                      optionClass += "bg-red-50 border-red-400 text-red-900";
-                                    } else {
-                                      optionClass += "border-outline-variant opacity-60 bg-surface";
-                                    }
-                                    optionClass = optionClass.replace("cursor-pointer", "cursor-default");
+                          {/* Hàng 3: Các lựa chọn câu trả lời (Options / True-False) */}
+                          {question.question_type === 'true_false' ? (
+                            <div className="grid grid-cols-2 gap-4 w-full mt-4">
+                              {question.options.map(opt => {
+                                const selected = answers[question.question_id] === opt.option_id;
+                                const isTrue = opt.option_id === 'opt_True';
+
+                                let btnClass = "flex items-center justify-center p-4 rounded-xl border-2 transition-all cursor-pointer ";
+                                if (isSubmitted) {
+                                  if (opt.option_id === question.correct_answer) {
+                                    btnClass += "bg-green-100 border-green-500 text-green-700 shadow-sm";
+                                  } else if (selected && opt.option_id !== question.correct_answer) {
+                                    btnClass += "bg-red-100 border-red-500 text-red-700 shadow-sm";
                                   } else {
-                                    optionClass += selected ? "border-primary bg-primary/5 shadow-md scale-[1.02]" : "border-outline-variant hover:border-primary/40 hover:bg-hover-bg bg-surface";
+                                    btnClass += "border-outline-variant bg-gray-50 text-gray-300 opacity-60";
                                   }
+                                  btnClass = btnClass.replace("cursor-pointer", "cursor-default");
+                                } else {
+                                  btnClass += selected ? "border-primary bg-primary/10 text-primary scale-105 shadow-md" : "border-outline-variant bg-gray-100 hover:bg-gray-200 text-secondary";
+                                }
 
-                                  const letter = String.fromCharCode(65 + optIndex); // A, B, C...
+                                return (
+                                  <div key={opt.option_id || opt.id} className={btnClass} onClick={() => handleOptionSelect(question.question_id, opt.option_id)}>
+                                    {isTrue ? (
+                                      <svg className="w-8 h-8 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg>
+                                    ) : (
+                                      <svg className="w-8 h-8 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M6 18L18 6M6 6l12 12" /></svg>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className={`mt-6 ${question.options.every(opt => !opt.text) ? 'grid grid-cols-1 md:grid-cols-3 gap-6' : 'space-y-3'}`}>
+                              {question.options.map((opt, optIndex) => {
+                                const selected = answers[question.question_id] === opt.option_id;
+                                const isImageOnly = !opt.text;
 
-                                  return (
-                                    <div key={opt.option_id || opt.id} className={optionClass} onClick={() => handleOptionSelect(question.question_id, opt.option_id)}>
-                                      {isImageOnly ? (
-                                        <>
-                                          <div className="absolute top-0 left-0 bg-secondary/80 text-white w-8 h-8 flex items-center justify-center rounded-br-xl rounded-tl-xl font-bold z-10">
-                                            {letter}
-                                          </div>
-                                          <div className="w-full aspect-[4/3] rounded-xl overflow-hidden bg-gray-50 flex items-center justify-center relative">
-                                            {opt.image_url ? (
-                                              <img src={getMediaUrl(opt.image_url)} alt="Option" className="w-full h-full object-cover" />
-                                            ) : opt.image_description ? (
-                                              <span className="italic text-gray-500 text-xs p-4 text-center">[{opt.image_description}]</span>
-                                            ) : null}
-                                          </div>
-                                          {isSubmitted && opt.option_id === question.correct_answer && (
-                                            <div className="absolute inset-[-4px] border-[4px] border-green-500 rounded-2xl pointer-events-none z-20"></div>
+                                let optionClass = `relative flex ${isImageOnly ? 'flex-row items-center gap-4 p-3' : 'items-center gap-4 p-4'} rounded-2xl border-2 cursor-pointer transition-all `;
+
+                                if (isSubmitted) {
+                                  if (opt.option_id === question.correct_answer) {
+                                    optionClass += "bg-green-50 border-green-500 text-green-900 shadow-sm";
+                                  } else if (selected && opt.option_id !== question.correct_answer) {
+                                    optionClass += "bg-red-50 border-red-400 text-red-900";
+                                  } else {
+                                    optionClass += "border-outline-variant opacity-60 bg-surface";
+                                  }
+                                  optionClass = optionClass.replace("cursor-pointer", "cursor-default");
+                                } else {
+                                  optionClass += selected ? "border-primary bg-primary/5 shadow-md scale-[1.02]" : "border-outline-variant hover:border-primary/40 hover:bg-hover-bg bg-surface";
+                                }
+
+                                const letter = String.fromCharCode(65 + optIndex); // A, B, C...
+
+                                return (
+                                  <div key={opt.option_id || opt.id} className={optionClass} onClick={() => handleOptionSelect(question.question_id, opt.option_id)}>
+                                    {isImageOnly ? (
+                                      <>
+                                        <div className="w-8 h-8 flex-shrink-0 bg-secondary/10 text-secondary font-bold rounded-full flex items-center justify-center">
+                                          {letter}
+                                        </div>
+                                        <div className="flex-1 aspect-[4/3] rounded-xl overflow-hidden bg-gray-50 flex items-center justify-center relative">
+                                          {opt.image_url ? (
+                                            <img src={getMediaUrl(opt.image_url)} alt="Option" className="w-full h-full object-cover" />
+                                          ) : opt.image_description ? (
+                                            <span className="italic text-gray-500 text-xs p-4 text-center">[{opt.image_description}]</span>
+                                          ) : null}
+                                        </div>
+                                        {isSubmitted && opt.option_id === question.correct_answer && (
+                                          <div className="absolute inset-[-4px] border-[4px] border-green-500 rounded-2xl pointer-events-none z-20"></div>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <>
+                                        <div className={`w-6 h-6 shrink-0 rounded-full border-2 flex items-center justify-center ${selected ? 'border-primary bg-primary/20' : 'border-gray-300'}`}>
+                                          {selected && <div className="w-3 h-3 bg-primary rounded-full"></div>}
+                                        </div>
+                                        <div className="flex-1 text-lg">
+                                          {opt.text}
+                                          {opt.image_url && (
+                                            <div className="mt-3 flex justify-center md:justify-start">
+                                              <img src={getMediaUrl(opt.image_url)} alt="Option" className="max-w-[200px] max-h-[150px] object-cover rounded-xl border border-gray-200 shadow-sm" />
+                                            </div>
                                           )}
-                                        </>
-                                      ) : (
-                                        <>
-                                          <div className={`w-6 h-6 shrink-0 rounded-full border-2 flex items-center justify-center ${selected ? 'border-primary bg-primary/20' : 'border-gray-300'}`}>
-                                            {selected && <div className="w-3 h-3 bg-primary rounded-full"></div>}
-                                          </div>
-                                          <div className="flex-1 text-lg">
-                                            {opt.text}
-                                            {opt.image_url && (
-                                              <div className="mt-3 flex justify-center md:justify-start">
-                                                <img src={getMediaUrl(opt.image_url)} alt="Option" className="max-w-[200px] max-h-[150px] object-cover rounded-xl border border-gray-200 shadow-sm" />
-                                              </div>
-                                            )}
-                                          </div>
-                                        </>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
 
+                          {/* Hàng 4: Giải thích đáp án */}
                           {isSubmitted && exam.show_explanation_after === 'exam_submitted' && (
                             <div className="mt-6 p-4 bg-blue-50 text-blue-900 rounded-xl border border-blue-200 text-sm">
                               <p className="font-bold mb-1">Giải thích:</p>
@@ -678,14 +719,13 @@ export default function ExamTakePage() {
                           )}
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
 
         {/* Right Column: Navigation Sidebar */}
         <div className="w-full xl:w-96 flex-shrink-0">
@@ -697,15 +737,15 @@ export default function ExamTakePage() {
                   {Object.keys(answers).length} / {exam.total_questions}
                 </span>
               </h2>
-              
+
               <div className="flex-1 overflow-y-auto pr-2 pb-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full">
                 <div className="flex flex-wrap gap-2">
                   {allQuestions.map((q, idx) => {
                     const isAnswered = !!answers[q.question_id];
                     const isCorrect = answers[q.question_id] === q.correct_answer;
-                    
+
                     let btnClass = "w-10 h-10 rounded-xl font-bold text-sm flex items-center justify-center border-2 transition-all duration-200 ";
-                    
+
                     if (isSubmitted) {
                       if (isCorrect) btnClass += " bg-green-100 text-green-700 border-green-400";
                       else btnClass += " bg-red-100 text-red-700 border-red-400";
@@ -731,7 +771,7 @@ export default function ExamTakePage() {
 
                 {!isSubmitted ? (
                   <div className="mt-8 pt-6 border-t border-outline">
-                    <button 
+                    <button
                       onClick={handleSubmit}
                       className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-4 rounded-xl shadow-md transition-transform active:scale-95"
                     >
@@ -755,7 +795,7 @@ export default function ExamTakePage() {
           </div>
         </div>
       </div>
-      
+
       <ConfirmModal
         isOpen={modalConfig.isOpen}
         title={modalConfig.title}

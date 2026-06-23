@@ -94,7 +94,7 @@ export default function ExamClient({ initialExams }: ExamClientProps) {
   const levels = Object.keys(groupedExams).sort();
 
   return (
-    <div className="flex-1 overflow-y-auto w-full p-8 pb-16">
+    <div className="w-full p-8 pb-16">
       <div className="max-w-[1280px] mx-auto">
         <div className="flex justify-between items-center mb-6 relative">
           <h1 className="text-3xl font-bold text-primary">

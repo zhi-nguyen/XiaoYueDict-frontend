@@ -137,29 +137,6 @@ export default function SmartQueueStatus({
 
           <div className="relative z-10 space-y-4">
             <div className="flex items-center gap-4">
-              {/* Spinner xoay với hiệu ứng giảm sáng nhẹ ở Giai đoạn 2 */}
-              <div
-                className={`relative w-10 h-10 rounded-full bg-hover-bg flex items-center justify-center shrink-0 transition-all duration-300 ${
-                  isStage2 ? 'opacity-65 blur-[0.3px]' : ''
-                }`}
-              >
-                <svg
-                  className={`animate-spin w-5 h-5 ${
-                    isStage3 ? 'text-amber-500' : 'text-primary'
-                  }`}
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-              </div>
-
               <div className="flex-1 min-w-0">
                 <p
                   className={`font-semibold text-sm leading-snug transition-all duration-300 ${
@@ -175,15 +152,16 @@ export default function SmartQueueStatus({
             </div>
 
             {/* Thanh tiến trình chuyển động mượt mà */}
-            <div className="h-1.5 w-full bg-hover-bg rounded-full overflow-hidden relative">
+            <div className={`h-2 w-full rounded-full overflow-hidden relative ${
+              isStage3 ? 'bg-amber-200/70' : 'bg-slate-200'
+            }`}>
               <div
-                className={`absolute inset-0 transition-all duration-500 ${
+                className={`absolute inset-y-0 rounded-full transition-all duration-500 ${
                   isStage3
-                    ? 'bg-gradient-to-r from-amber-400 to-amber-600'
-                    : 'bg-gradient-to-r from-[var(--accent-gradient-start)] to-[var(--accent-gradient-end)]'
-                } ${isStage2 ? 'opacity-70 blur-[0.2px]' : ''} animate-pulse`}
+                    ? 'bg-gradient-to-r from-amber-500 via-orange-600 to-amber-700'
+                    : 'bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500'
+                } animate-indeterminate-bar`}
               />
-              <div className="absolute inset-0 animate-shimmer opacity-30" />
             </div>
 
             {/* GIAI ĐOẠN 2: THẺ TIPS HIỆU ỨNG FADE-IN */}

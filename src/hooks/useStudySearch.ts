@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { ZhWord } from '@/types/dictionary';
 import { djangoClient } from '@/lib/apiClient';
-import { useWebSocket, getGuestId } from '@/hooks/useWebSocket';
+import { useWebSocket } from '@/hooks/useWebSocket';
+import { getGuestId } from '@/lib/guest';
 import { useAuthStore } from '@/store/useAuthStore';
 
 interface UseStudySearchReturn {
@@ -100,10 +101,18 @@ export function useStudySearch(): UseStudySearchReturn {
     }
   }, [isAuthenticated, language]);
 
-  // Master search handler
-  const handleSearch = useCallback(async (query: string) => {
+  const performSearch = useCallback(async (query: string, pushHistory = true) => {
     const trimmed = query.trim();
-    if (!trimmed) return;
+    if (!trimmed) {
+      setSearchQuery('');
+      setWordResults([]);
+      setSelectedWord(null);
+      setExactExampleMatch(null);
+      setTranslationResult(null);
+      setTranslationError('');
+      setCurrentTaskId(null);
+      return;
+    }
 
     setSearchQuery(trimmed);
     setIsLoading(true);
@@ -114,6 +123,12 @@ export function useStudySearch(): UseStudySearchReturn {
     setTranslationError('');
     setCurrentTaskId(null);
     setPendingText(trimmed);
+
+    if (pushHistory && typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('q', trimmed);
+      window.history.pushState({ q: trimmed }, '', url.pathname + url.search);
+    }
 
     try {
       const guestId = !isAuthenticated ? getGuestId() : null;
@@ -151,6 +166,27 @@ export function useStudySearch(): UseStudySearchReturn {
       setIsLoading(false);
     }
   }, [isAuthenticated, handleDirectTranslation, language]);
+
+  const handleSearch = useCallback((query: string) => {
+    return performSearch(query, true);
+  }, [performSearch]);
+
+  // Sync state with URL query search params on popstate
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const syncFromUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      const query = params.get('q') || '';
+      if (query !== searchQuery) {
+        performSearch(query, false);
+      }
+    };
+
+    syncFromUrl();
+    window.addEventListener('popstate', syncFromUrl);
+    return () => window.removeEventListener('popstate', syncFromUrl);
+  }, [performSearch, searchQuery]);
 
   return {
     searchQuery,

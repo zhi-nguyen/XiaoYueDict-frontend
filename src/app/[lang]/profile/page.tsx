@@ -54,7 +54,7 @@ export default function ProfilePage() {
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto w-full p-4 md:p-8 pb-16">
+      <div className="w-full p-4 md:p-8 pb-16">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row gap-8">
 
           {/* Sidebar */}

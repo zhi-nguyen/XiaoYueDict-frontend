@@ -59,7 +59,7 @@ export default function DevUploadPage() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto w-full p-8 pb-16">
+    <div className="w-full p-8 pb-16">
       <div className="max-w-[800px] mx-auto bg-surface border border-outline rounded-[1.5rem] p-8 shadow-sm">
         <h1 className="text-3xl font-bold text-primary mb-6 border-b pb-4">🛠 Dev: Upload Đề Thi</h1>
         

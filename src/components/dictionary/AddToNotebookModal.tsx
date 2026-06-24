@@ -14,7 +14,7 @@ interface AddToNotebookModalProps {
 
 export default function AddToNotebookModal({ isOpen, onClose, word }: AddToNotebookModalProps) {
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
-  const [selectedNotebookId, setSelectedNotebookId] = useState<number | ''>('');
+  const [selectedNotebookId, setSelectedNotebookId] = useState<string | ''>('');
   const [vocab, setVocab] = useState(word.word);
   const [pinyin, setPinyin] = useState(word.pinyin);
   const [meaning, setMeaning] = useState(word.translation_vi);
@@ -143,7 +143,7 @@ export default function AddToNotebookModal({ isOpen, onClose, word }: AddToNoteb
             ) : (
               <select
                 value={selectedNotebookId}
-                onChange={e => setSelectedNotebookId(Number(e.target.value))}
+                onChange={e => setSelectedNotebookId(e.target.value)}
                 className="w-full border border-outline rounded-xl px-4 py-2.5 bg-white focus:outline-none focus:border-primary transition-colors text-sm font-medium"
               >
                 {notebooks.map(nb => (

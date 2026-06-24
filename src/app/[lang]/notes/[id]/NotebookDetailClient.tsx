@@ -14,7 +14,7 @@ import ExportPDFModal from '@/components/notes/ExportPDFModal';
 
 
 interface NotebookDetailClientProps {
-  notebookId: number;
+  notebookId: string;
   initialNotebook: Notebook;
   initialWords: Word[];
 }
@@ -65,7 +65,7 @@ export default function NotebookDetailClient({
 
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [selectedWordIds, setSelectedWordIds] = useState<number[]>([]);
+  const [selectedWordIds, setSelectedWordIds] = useState<string[]>([]);
   const [editName, setEditName] = useState(initialNotebook.name);
   const [editDesc, setEditDesc] = useState(initialNotebook.description || '');
 
@@ -178,7 +178,7 @@ export default function NotebookDetailClient({
     }
   }
 
-  function handleDeleteWord(wordId: number) {
+  function handleDeleteWord(wordId: string) {
     setConfirmConfig({
       isOpen: true,
       title: 'Xóa từ vựng',

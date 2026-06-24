@@ -12,10 +12,10 @@ import AuthModal from '@/components/auth/AuthModal';
 interface ExportPDFModalProps {
   isOpen: boolean;
   onClose: () => void;
-  notebookId: number;
+  notebookId: string;
   notebookName: string;
   totalWords: number;
-  selectedWordIds: number[];
+  selectedWordIds: string[];
   onSelectAllWords?: () => void;
 }
 

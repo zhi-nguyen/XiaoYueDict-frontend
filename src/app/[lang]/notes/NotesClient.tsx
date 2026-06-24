@@ -102,7 +102,7 @@ export default function NotesClient({ initialNotebooks }: NotesClientProps) {
     }
   }
 
-  function handleDeleteNotebook(e: React.MouseEvent, id: number, name: string) {
+  function handleDeleteNotebook(e: React.MouseEvent, id: string, name: string) {
     e.preventDefault();
     e.stopPropagation();
     setConfirmConfig({

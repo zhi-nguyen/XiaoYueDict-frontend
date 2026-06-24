@@ -24,7 +24,7 @@ export async function handleProxy(
 
   const headers = new Headers();
   // Copy safe headers from the client request
-  const headersToCopy = ['content-type', 'accept', 'authorization'];
+  const headersToCopy = ['content-type', 'accept', 'authorization', 'cookie', 'x-csrftoken'];
   for (const h of headersToCopy) {
     const val = request.headers.get(h);
     if (val) headers.set(h, val);
@@ -48,6 +48,18 @@ export async function handleProxy(
     const responseHeaders = new Headers();
     const contentType = res.headers.get('content-type');
     if (contentType) responseHeaders.set('content-type', contentType);
+
+    // Forward Set-Cookie headers from Django back to the client browser
+    // getSetCookie retrieves all Set-Cookie headers individually
+    const setCookies = res.headers.getSetCookie ? res.headers.getSetCookie() : [];
+    if (setCookies.length > 0) {
+      setCookies.forEach(cookie => {
+        responseHeaders.append('set-cookie', cookie);
+      });
+    } else {
+      const setCookie = res.headers.get('set-cookie');
+      if (setCookie) responseHeaders.set('set-cookie', setCookie);
+    }
 
     // Return the backend's response body directly as a stream
     return new NextResponse(res.body, {

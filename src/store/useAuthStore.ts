@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import axios from 'axios';
 
 interface User {
-  id: number;
+  id: string;
   username: string;
   email: string;
   first_name: string;
@@ -59,10 +59,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       // Set access token and authentication state immediately so subsequent calls can use the token
       set({ accessToken: token, isAuthenticated: true, isLoading: false });
       
-      // Then fetch user profile in the background
-      const { data: userData } = await axios.get('/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // Then fetch user profile in the background (cookies are automatically sent)
+      const { data: userData } = await axios.get('/api/auth/me');
       
       set({ user: userData });
     } catch (e) {

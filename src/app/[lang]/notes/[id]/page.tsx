@@ -13,10 +13,10 @@ interface PageProps {
 }
 
 export default async function NotebookDetailPage({ params }: PageProps) {
-  const notebookId = parseInt(params.id, 10);
+  const notebookId = params.id;
   const language = params.lang || 'zh';
 
-  if (isNaN(notebookId)) {
+  if (!notebookId) {
     return (
       <div className="flex-1 p-8">
         <div className="bg-red-50 text-red-500 p-4 rounded-xl mb-6">

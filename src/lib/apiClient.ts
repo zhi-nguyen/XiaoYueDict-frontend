@@ -10,8 +10,9 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  // withCredentials: true is needed if we are sending cookies to a different domain,
-  // but since we are calling our own Next.js /api routes, it's sent automatically.
+  withCredentials: true,
+  xsrfCookieName: 'csrftoken',
+  xsrfHeaderName: 'X-CSRFToken',
 });
 
 // For calls directly to Django if needed, though we route most via Next.js BFF or Nginx.
@@ -20,6 +21,9 @@ export const djangoClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
+  xsrfCookieName: 'csrftoken',
+  xsrfHeaderName: 'X-CSRFToken',
 });
 
 let isRefreshing = false;
@@ -39,12 +43,16 @@ const processQueue = (error: any, token: string | null = null) => {
 
 // Add access token or Guest ID to requests
 const requestInterceptor = (config: InternalAxiosRequestConfig) => {
-  const token = useAuthStore.getState().accessToken;
-  if (token && config.headers) {
-    config.headers['Authorization'] = `Bearer ${token}`;
-  } else if (config.headers) {
+  const { accessToken, isAuthenticated } = useAuthStore.getState();
+  
+  if (accessToken && config.headers) {
+    config.headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+  
+  // Only attach X-Guest-ID if the user is not authenticated
+  if (!isAuthenticated && config.headers) {
     const guestId = getGuestId();
-    if (guestId) {
+    if (config.headers && guestId) {
       config.headers['X-Guest-ID'] = guestId;
     }
   }
@@ -65,12 +73,16 @@ const responseInterceptor = async (error: AxiosError) => {
     }
 
     if (isRefreshing) {
-      // If currently refreshing, enqueue the failed request and wait
+      // If currently refreshing, enqueue the failed request and wait.
+      // Once refresh is complete, retry the original request. The cookies will be updated,
+      // so it will automatically carry the new access_token cookie.
       return new Promise(function (resolve, reject) {
         failedQueue.push({ resolve, reject });
       })
         .then(token => {
-          originalRequest.headers['Authorization'] = 'Bearer ' + token;
+          if (token && originalRequest.headers) {
+            originalRequest.headers['Authorization'] = 'Bearer ' + token;
+          }
           return axios(originalRequest);
         })
         .catch(err => {
@@ -93,7 +105,9 @@ const responseInterceptor = async (error: AxiosError) => {
       processQueue(null, newAccessToken);
 
       // Retry the original request
-      originalRequest.headers['Authorization'] = 'Bearer ' + newAccessToken;
+      if (newAccessToken && originalRequest.headers) {
+        originalRequest.headers['Authorization'] = 'Bearer ' + newAccessToken;
+      }
       return axios(originalRequest);
     } catch (refreshError) {
       processQueue(refreshError, null);

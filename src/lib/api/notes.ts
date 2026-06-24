@@ -13,21 +13,21 @@ export async function createNotebook(data: { name: string; description?: string 
   return res.data;
 }
 
-export async function fetchNotebook(id: number): Promise<Notebook> {
+export async function fetchNotebook(id: string): Promise<Notebook> {
   const res = await djangoClient.get(`/notes/notebooks/${id}`);
   return res.data;
 }
 
-export async function updateNotebook(id: number, data: { name?: string; description?: string }): Promise<Notebook> {
+export async function updateNotebook(id: string, data: { name?: string; description?: string }): Promise<Notebook> {
   const res = await djangoClient.patch(`/notes/notebooks/${id}`, data);
   return res.data;
 }
 
-export async function deleteNotebook(id: number): Promise<void> {
+export async function deleteNotebook(id: string): Promise<void> {
   await djangoClient.delete(`/notes/notebooks/${id}`);
 }
 
-export async function fetchWords(notebookId: number, search?: string): Promise<Word[]> {
+export async function fetchWords(notebookId: string, search?: string): Promise<Word[]> {
   let path = `/notes/notebooks/${notebookId}/words/`;
   if (search) {
     path += `?search=${encodeURIComponent(search)}`;
@@ -37,7 +37,7 @@ export async function fetchWords(notebookId: number, search?: string): Promise<W
 }
 
 export async function createWord(
-  notebookId: number,
+  notebookId: string,
   data: { vocabulary: string; pinyin?: string; meaning: string; note?: string; notes?: string }
 ): Promise<Word> {
   const requestData = {
@@ -51,8 +51,8 @@ export async function createWord(
 }
 
 export async function updateWord(
-  notebookId: number,
-  wordId: number,
+  notebookId: string,
+  wordId: string,
   data: { vocabulary?: string; pinyin?: string; meaning?: string; note?: string; notes?: string }
 ): Promise<Word> {
   const requestData: any = { ...data };
@@ -64,7 +64,8 @@ export async function updateWord(
   return res.data;
 }
 
-export async function deleteWord(notebookId: number, wordId: number): Promise<void> {
+export async function deleteWord(notebookId: string, wordId: string): Promise<void> {
   await djangoClient.delete(`/notes/notebooks/${notebookId}/words/${wordId}/`);
 }
+
 

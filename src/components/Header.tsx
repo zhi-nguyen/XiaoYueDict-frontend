@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useGamificationStore } from '@/store/useGamificationStore';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import Link from 'next/link';
+import Image from 'next/image';
 import AuthModal from '@/components/auth/AuthModal';
 
 export default function Header() {
@@ -149,9 +150,17 @@ export default function Header() {
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               >
                 {user.avatar ? (
-                  <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                  <Image 
+                    src={user.avatar} 
+                    alt="Avatar" 
+                    width={40} 
+                    height={40} 
+                    className="w-full h-full object-cover" 
+                  />
                 ) : (
-                  user.username.substring(0, 2).toUpperCase()
+                  user.first_name && user.last_name
+                    ? (user.first_name.charAt(0) + user.last_name.charAt(0)).toUpperCase()
+                    : (user.first_name || user.username).substring(0, 2).toUpperCase()
                 )}
               </button>
               
@@ -164,7 +173,9 @@ export default function Header() {
                   ></div>
                   <div className="absolute right-0 mt-2 w-48 bg-surface rounded-xl shadow-lg border border-outline py-2 z-50 animate-in fade-in slide-in-from-top-2">
                     <div className="px-4 py-2 border-b border-outline mb-1">
-                      <p className="text-sm font-bold text-primary truncate">{user.username}</p>
+                      <p className="text-sm font-bold text-primary truncate">
+                        {user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user.username}
+                      </p>
                       <p className="text-xs text-secondary truncate">{user.email}</p>
                     </div>
                     <Link 

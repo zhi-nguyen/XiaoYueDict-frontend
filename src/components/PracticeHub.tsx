@@ -164,10 +164,13 @@ export default function PracticeHub({ word }: PracticeHubProps) {
     }
     setIsRecording(false);
   };
+  const isServiceUnavailable = usageData?.service_available === false;
+  const isBusy = queue.phase !== 'idle' && queue.phase !== 'completed' && queue.phase !== 'error';
+  const showResult = queue.phase === 'completed' && queue.resultData;
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (isBusy || !word?.word) return;
+    if (isBusy || !word?.word || isServiceUnavailable) return;
     startRecording();
   };
 
@@ -178,7 +181,7 @@ export default function PracticeHub({ word }: PracticeHubProps) {
 
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
-    if (isBusy || !word?.word) return;
+    if (isBusy || !word?.word || isServiceUnavailable) return;
     startRecording();
   };
 
@@ -210,7 +213,7 @@ export default function PracticeHub({ word }: PracticeHubProps) {
   };
 
   const handleSubmitAudio = () => {
-    if (!audioBlob || !word?.word) return;
+    if (!audioBlob || !word?.word || isServiceUnavailable) return;
 
     setConfirmConfig({
       isOpen: true,
@@ -235,10 +238,6 @@ export default function PracticeHub({ word }: PracticeHubProps) {
       }
     });
   };
-
-  const isBusy = queue.phase !== 'idle' && queue.phase !== 'completed' && queue.phase !== 'error';
-  const showResult = queue.phase === 'completed' && queue.resultData;
-
   const displayScore = queue.score != null ? Math.round(queue.score) : '--';
   const circumference = 2 * Math.PI * 54;
   const scoreNum = typeof displayScore === 'number' ? displayScore : 0;
@@ -311,6 +310,19 @@ export default function PracticeHub({ word }: PracticeHubProps) {
           </div>
         )}
 
+        {/* Maintenance Banner */}
+        {isServiceUnavailable && (
+          <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl animate-fade-in mb-6">
+            <span className="material-symbols-outlined text-amber-600 text-xl animate-pulse">engineering</span>
+            <div>
+              <p className="text-sm font-bold text-amber-955">Dịch vụ đang bảo trì</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Hệ thống chấm điểm hiện đang tạm bảo trì để nâng cấp chất lượng dịch vụ. Vui lòng quay lại sau.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col md:flex-row items-center gap-8 mb-8">
           <div className="relative w-[120px] h-[120px] flex items-center justify-center shrink-0">
             {isBusy ? (
@@ -365,7 +377,7 @@ export default function PracticeHub({ word }: PracticeHubProps) {
                     onTouchStart={handleTouchStart}
                     onTouchEnd={handleTouchEnd}
                     onTouchCancel={handleTouchEnd}
-                    disabled={isBusy || !word?.word}
+                    disabled={isBusy || !word?.word || queue.isAuthLoading || isServiceUnavailable}
                     className={`relative w-20 h-20 rounded-full flex flex-col items-center justify-center shadow-md transition-all select-none disabled:opacity-40 focus:outline-none ${
                       isRecording
                         ? 'bg-red-500 text-white ring-8 ring-red-500/20'
@@ -373,10 +385,12 @@ export default function PracticeHub({ word }: PracticeHubProps) {
                     }`}
                   >
                     {isRecording && <span className="absolute inset-0 rounded-xl animate-pulse-ring text-red-300 pointer-events-none" />}
-                    <span className="material-symbols-outlined text-[32px]">mic</span>
+                    <span className="material-symbols-outlined text-[32px]">
+                      {queue.isAuthLoading ? 'sync' : 'mic'}
+                    </span>
                   </button>
                   <p className="text-xs text-secondary font-medium select-none">
-                    {isRecording ? 'Thả tay để hoàn tất' : 'Nhấn giữ để nói'}
+                    {queue.isAuthLoading ? 'Đang xác thực...' : isRecording ? 'Thả tay để hoàn tất' : 'Nhấn giữ để nói'}
                   </p>
                 </div>
               ) : (
@@ -411,10 +425,20 @@ export default function PracticeHub({ word }: PracticeHubProps) {
                   <button
                     type="button"
                     onClick={handleSubmitAudio}
-                    className="w-full py-3.5 rounded-xl bg-primary hover:opacity-90 text-white font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2 focus:outline-none"
+                    disabled={queue.isAuthLoading || isServiceUnavailable}
+                    className="w-full py-3.5 rounded-xl bg-primary hover:opacity-90 text-white font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2 focus:outline-none disabled:opacity-35 disabled:cursor-not-allowed"
                   >
-                    <span className="material-symbols-outlined text-lg">send</span>
-                    Gửi chấm điểm
+                    {queue.isAuthLoading ? (
+                      <>
+                        <span className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
+                        Đang xác thực tài khoản...
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-lg">send</span>
+                        Gửi chấm điểm
+                      </>
+                    )}
                   </button>
                 </div>
               )}
@@ -429,6 +453,10 @@ export default function PracticeHub({ word }: PracticeHubProps) {
             onRetry={queue.retry}
             errorMessage={queue.errorMessage}
             errorType={queue.errorType}
+            queuePosition={queue.queuePosition}
+            estimatedWait={queue.estimatedWait}
+            initialEWT={queue.initialEWT}
+            elapsedSeconds={queue.elapsedSeconds}
           />
         </div>
 

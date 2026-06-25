@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import axios from 'axios';
 import { auth as firebaseAuth } from '@/lib/firebase';
 import { onAuthStateChanged, signOut as fbSignOut } from 'firebase/auth';
+import { clearGuestId } from '@/lib/guest';
 
 interface User {
   id: string;
@@ -82,6 +83,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             isAuthenticated: true, 
             isLoading: false 
           });
+          // Remove stale guest identity — prevent WS/task identity leak
+          clearGuestId();
         } catch (e) {
           console.error('Failed to sync Firebase session with Django backend', e);
           // If token exchange fails, reset state

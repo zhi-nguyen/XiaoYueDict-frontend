@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
+import { useParams } from 'next/navigation';
 import { Volume2, Bookmark, ArrowUpDown } from 'lucide-react';
-import { renderClickableHanzi, speakChinese } from '@/lib/zhUtils';
+import { renderClickableHanzi, playTTSWithClientCache } from '@/lib/zhUtils';
 
 interface TranslationCardProps {
   sentenceText: string;
@@ -28,6 +29,8 @@ export default function TranslationCard({
   isExactMatch,
   onSearch,
 }: TranslationCardProps) {
+  const params = useParams();
+  const lang = (params?.lang as 'zh' | 'en') === 'en' ? 'en' : 'zh';
   const isSystemTranslation = isExactMatch || translationSource === 'database';
 
   return (
@@ -38,7 +41,7 @@ export default function TranslationCard({
         </h2>
         <div className="flex gap-3 flex-shrink-0 ml-4">
           <button
-            onClick={() => speakChinese(sentenceText)}
+            onClick={() => playTTSWithClientCache(sentenceText, lang)}
             title="Phát âm"
             className="text-secondary hover:text-primary transition-colors flex-shrink-0 focus:outline-none"
           >

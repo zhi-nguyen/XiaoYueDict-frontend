@@ -49,7 +49,10 @@ export default function SearchBar({ onSelectWord, onSearch }: SearchBarProps) {
   useEffect(() => {
     async function searchWords() {
       const trimmedQuery = debouncedQuery.trim();
-      if (!trimmedQuery || trimmedQuery === lastSubmittedQuery.current) {
+      const isChinese = language === 'zh';
+      const isTooLongForSearch = isChinese ? trimmedQuery.length > 100 : trimmedQuery.split(/\s+/).length > 30;
+
+      if (!trimmedQuery || trimmedQuery === lastSubmittedQuery.current || isTooLongForSearch) {
         setResults([]);
         setExactExample(null);
         setIsOpen(false);

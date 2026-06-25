@@ -8,6 +8,7 @@ import { QUEUE_STRATEGIES } from '@/constants/queueStrategies';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { getGuestId } from '@/lib/guest';
 import { useAuthStore } from '@/store/useAuthStore';
+import { playTTSWithClientCache } from '@/lib/zhUtils';
 
 interface TranslationRecord {
   original: string;
@@ -27,6 +28,8 @@ export default function TranslateClient() {
   const params = useParams();
   const language = (params?.lang as string) === 'en' ? 'en' : 'zh';
 
+  const defaultDirection = language === 'en' ? 'en_vi' : 'zh_vi';
+  const [direction, setDirection] = useState<'zh_vi' | 'vi_zh' | 'en_vi' | 'vi_en'>(defaultDirection);
   const [inputText, setInputText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -37,12 +40,35 @@ export default function TranslateClient() {
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [pendingText, setPendingText] = useState('');
 
+  // Update direction default when language URL param changes
+  useEffect(() => {
+    setDirection(language === 'en' ? 'en_vi' : 'zh_vi');
+    handleClear();
+  }, [language]);
+
+  const handleSwapDirection = () => {
+    const nextDirection = 
+      direction === 'zh_vi' ? 'vi_zh' :
+      direction === 'vi_zh' ? 'zh_vi' :
+      direction === 'en_vi' ? 'vi_en' : 'en_vi';
+    
+    setDirection(nextDirection);
+    setInputText(translatedText);
+    setTranslatedText(inputText);
+    setErrorMsg('');
+    setTranslationPhase('idle');
+  };
+
   const { isAuthenticated } = useAuthStore();
 
   // Listen for WS translation results
   useWebSocket({
     onMessage: (msg) => {
-      if (!currentTaskId || msg.payload?.task_id !== currentTaskId) return;
+      console.log('[TranslateClient] onMessage received:', msg.type, 'payload task_id:', msg.payload?.task_id, 'currentTaskId:', currentTaskId);
+      if (!currentTaskId || msg.payload?.task_id !== currentTaskId) {
+        console.log('[TranslateClient] Ignored message (task ID mismatch or no active task)');
+        return;
+      }
 
       if (msg.type === 'translation_complete') {
         const payload = msg.payload as any;
@@ -85,7 +111,10 @@ export default function TranslateClient() {
     setPendingText(trimmedInput);
 
     try {
-      const payload: any = { text: trimmedInput };
+      const payload: any = { 
+        text: trimmedInput,
+        direction: direction
+      };
       const guestId = !isAuthenticated ? getGuestId() : null;
       if (guestId) {
         payload.guest_id = guestId;
@@ -99,7 +128,7 @@ export default function TranslateClient() {
         setTranslationResult(data, trimmedInput);
         setIsLoading(false);
         setTranslationPhase('success');
-      } else if (data.status === 'PENDING' && data.task_id) {
+      } else if (data.task_id) {
         setCurrentTaskId(data.task_id);
       } else {
         throw new Error('Định dạng phản hồi không hợp lệ');
@@ -146,30 +175,58 @@ export default function TranslateClient() {
     setTranslationPhase('idle');
   };
 
+  const sourceLangLabel = direction === 'zh_vi' ? 'Tiếng Trung' : direction === 'en_vi' ? 'Tiếng Anh' : 'Tiếng Việt';
+  const targetLangLabel = direction === 'zh_vi' || direction === 'en_vi' ? 'Tiếng Việt' : direction === 'vi_zh' ? 'Tiếng Trung' : 'Tiếng Anh';
+  const textPlaceholder = direction === 'zh_vi' ? 'Nhập văn bản tiếng Trung cần dịch...' : direction === 'en_vi' ? 'Nhập văn bản tiếng Anh cần dịch...' : 'Nhập văn bản tiếng Việt cần dịch...';
+
   return (
     <div className="flex flex-col min-h-full gap-6">
+      {/* Direction Selector bar */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 bg-surface px-6 py-2.5 rounded-2xl border border-outline shadow-sm w-full max-w-[360px] mx-auto">
+        <span className="font-bold text-primary text-[15px] text-left truncate">{sourceLangLabel}</span>
+        <button
+          onClick={handleSwapDirection}
+          className="p-1.5 rounded-full hover:bg-hover-bg text-secondary hover:text-primary transition-all border border-outline hover:scale-105 active:scale-95 flex items-center justify-center"
+          title="Đổi chiều dịch"
+        >
+          <span className="material-symbols-outlined text-[20px]">swap_horiz</span>
+        </button>
+        <span className="font-bold text-primary text-[15px] text-left truncate pl-2">{targetLangLabel}</span>
+      </div>
+
       {/* Translation Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-shrink-0">
         
         {/* Left Column - Input */}
-        <div className="flex flex-col bg-surface rounded-2xl border border-outline shadow-sm overflow-hidden min-h-[200px]">
+        <div className="flex flex-col bg-surface rounded-2xl border border-outline shadow-sm overflow-hidden min-h-[240px]">
           <div className="flex justify-between items-center px-4 py-3 border-b border-outline">
-            <span className="font-semibold text-secondary">{language === 'en' ? 'Tiếng Anh' : 'Tiếng Trung'}</span>
-            {inputText && (
-              <button 
-                onClick={handleClear}
-                className="text-secondary/60 hover:text-error transition-colors p-1"
-                title="Xóa văn bản"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            )}
+            <span className="font-semibold text-secondary">{sourceLangLabel}</span>
+            <div className="flex items-center gap-2">
+              {direction !== 'vi_zh' && direction !== 'vi_en' && inputText.trim() && (
+                <button
+                  onClick={() => playTTSWithClientCache(inputText, direction === 'zh_vi' ? 'zh' : 'en')}
+                  className="text-secondary/60 hover:text-primary transition-colors p-1 flex items-center"
+                  title="Nghe phát âm"
+                >
+                  <span className="material-symbols-outlined text-[20px]">volume_up</span>
+                </button>
+              )}
+              {inputText && (
+                <button 
+                  onClick={handleClear}
+                  className="text-secondary/60 hover:text-error transition-colors p-1 flex items-center"
+                  title="Xóa văn bản"
+                >
+                  <span className="material-symbols-outlined text-[20px]">close</span>
+                </button>
+              )}
+            </div>
           </div>
           <textarea
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder={language === 'en' ? 'Nhập văn bản tiếng Anh cần dịch...' : 'Nhập văn bản tiếng Trung cần dịch...'}
-            className="flex-1 w-full resize-none p-4 bg-transparent outline-none text-[16px] text-primary"
+            placeholder={textPlaceholder}
+            className="flex-1 w-full resize-none p-4 bg-transparent outline-none text-[16px] text-primary min-h-[140px]"
             spellCheck="false"
           />
           <div className="px-4 py-3 flex justify-end border-t border-outline/50 bg-background/50">
@@ -198,17 +255,28 @@ export default function TranslateClient() {
         </div>
 
         {/* Right Column - Output */}
-        <div className="flex flex-col bg-surface rounded-2xl border border-outline shadow-sm overflow-hidden min-h-[200px]">
+        <div className="flex flex-col bg-surface rounded-2xl border border-outline shadow-sm overflow-hidden min-h-[240px]">
           <div className="flex justify-between items-center px-4 py-3 border-b border-outline">
-            <span className="font-semibold text-secondary">Tiếng Việt</span>
-            <button 
-              onClick={handleCopy}
-              disabled={!translatedText}
-              className={`p-1 transition-colors ${translatedText ? 'text-secondary hover:text-primary' : 'text-outline cursor-not-allowed'}`}
-              title="Sao chép"
-            >
-              <span className="material-symbols-outlined text-[20px]">content_copy</span>
-            </button>
+            <span className="font-semibold text-secondary">{targetLangLabel}</span>
+            <div className="flex items-center gap-2">
+              {(direction === 'vi_zh' || direction === 'vi_en') && translatedText.trim() && (
+                <button
+                  onClick={() => playTTSWithClientCache(translatedText, direction === 'vi_zh' ? 'zh' : 'en')}
+                  className="text-secondary/60 hover:text-primary transition-colors p-1 flex items-center"
+                  title="Nghe phát âm"
+                >
+                  <span className="material-symbols-outlined text-[20px]">volume_up</span>
+                </button>
+              )}
+              <button 
+                onClick={handleCopy}
+                disabled={!translatedText}
+                className={`p-1 transition-colors ${translatedText ? 'text-secondary hover:text-primary' : 'text-outline cursor-not-allowed'} flex items-center`}
+                title="Sao chép"
+              >
+                <span className="material-symbols-outlined text-[20px]">content_copy</span>
+              </button>
+            </div>
           </div>
           <div className={`flex-1 w-full p-4 overflow-y-auto ${(!translatedText || (translationPhase !== 'idle' && translationPhase !== 'success')) ? 'flex flex-col justify-center items-center' : ''}`}>
             {translationPhase !== 'idle' && translationPhase !== 'success' ? (

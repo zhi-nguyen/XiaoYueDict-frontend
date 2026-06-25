@@ -49,7 +49,11 @@ export function useStudySearch(): UseStudySearchReturn {
   // Listen for WebSocket translation results
   useWebSocket({
     onMessage: (msg) => {
-      if (!currentTaskId || msg.payload?.task_id !== currentTaskId) return;
+      console.log('[useStudySearch] onMessage received:', msg.type, 'payload task_id:', msg.payload?.task_id, 'currentTaskId:', currentTaskId);
+      if (!currentTaskId || msg.payload?.task_id !== currentTaskId) {
+        console.log('[useStudySearch] Ignored message (task ID mismatch or no active task)');
+        return;
+      }
 
       if (msg.type === 'translation_complete') {
         const payload = msg.payload as any;
@@ -89,7 +93,7 @@ export function useStudySearch(): UseStudySearchReturn {
           source: res.data.source || 'ai_translation'
         });
         setIsTranslating(false);
-      } else if (res.data.status === 'PENDING' && res.data.task_id) {
+      } else if (res.data.task_id) {
         setCurrentTaskId(res.data.task_id);
       } else {
         setTranslationError('Lỗi dịch thuật từ máy chủ.');
@@ -128,6 +132,15 @@ export function useStudySearch(): UseStudySearchReturn {
       const url = new URL(window.location.href);
       url.searchParams.set('q', trimmed);
       window.history.pushState({ q: trimmed }, '', url.pathname + url.search);
+    }
+
+    const isChinese = language === 'zh';
+    const isTooLongForSearch = isChinese ? trimmed.length > 100 : trimmed.split(/\s+/).length > 30;
+
+    if (isTooLongForSearch) {
+      handleDirectTranslation(trimmed);
+      setIsLoading(false);
+      return;
     }
 
     try {

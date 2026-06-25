@@ -243,6 +243,7 @@ export default function ExportPDFModal({
   const currentWordCount = exportScope === 'all' ? totalWords : selectedWordIds.length;
 
   const handleExport = async () => {
+    if (isAuthLoading) return;
     if (limitInfo && currentWordCount > limitInfo.max_words) {
       setErrorMessage(`Số lượng từ (${currentWordCount} từ) vượt quá giới hạn tối đa (${limitInfo.max_words} từ) của gói ${limitInfo.tier}.`);
       return;
@@ -580,18 +581,28 @@ export default function ExportPDFModal({
           >
             Đóng
           </button>
-          <button
+           <button
             type="button"
             onClick={handleExport}
             disabled={
+              isAuthLoading ||
               (exportScope === 'selected' && selectedWordIds.length === 0) ||
               (limitInfo !== null && currentWordCount > limitInfo.max_words) ||
               (limitInfo !== null && limitInfo.remaining_count <= 0)
             }
             className="flex-1 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary-hover transition-colors disabled:opacity-40 text-sm shadow-sm flex items-center justify-center gap-1.5"
           >
-            <span className="material-symbols-outlined text-lg">download</span>
-            Tải File PDF
+            {isAuthLoading ? (
+              <>
+                <span className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
+                Đang xác thực...
+              </>
+            ) : (
+              <>
+                <span className="material-symbols-outlined text-lg">download</span>
+                Tải File PDF
+              </>
+            )}
           </button>
         </div>
 

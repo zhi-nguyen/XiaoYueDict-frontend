@@ -12,6 +12,7 @@ export interface VolumeUsageInfo {
   used_min: number;
   used_hr: number;
   used_day: number;
+  service_available?: boolean;
 }
 
 interface SubscriptionState {

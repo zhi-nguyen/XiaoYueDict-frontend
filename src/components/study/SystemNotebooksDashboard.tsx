@@ -5,19 +5,11 @@ import { Loader2, ArrowLeft, Lock, Volume2, AlertCircle } from 'lucide-react';
 import { djangoClient } from '@/lib/apiClient';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import { ZhWord } from '@/types/dictionary';
-import { speakChinese } from '@/lib/zhUtils';
+import { speakBrowserFallback, playTTSWithClientCache } from '@/lib/zhUtils';
 
-const playAudio = (url: string | null, word: string) => {
-  if (url) {
-    const fullUrl = url.startsWith('http') ? url : `http://localhost${url}`;
-    const audio = new Audio(fullUrl);
-    audio.play().catch(err => {
-      console.warn('Audio playback failed, falling back to TTS:', err);
-      speakChinese(word);
-    });
-  } else {
-    speakChinese(word);
-  }
+const playAudio = (word: string, lang: string) => {
+  const langCode = lang === 'en' ? 'en' : 'zh';
+  playTTSWithClientCache(word, langCode);
 };
 
 const capitalizeFirstLetter = (text: string) => {
@@ -267,7 +259,7 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => playAudio(w.audio_url, w.word)}
+                      onClick={() => playAudio(w.word, lang)}
                       className="p-2 rounded-full hover:bg-primary/10 text-secondary hover:text-primary transition-colors flex items-center justify-center border border-transparent hover:border-primary/20 bg-surface"
                       title="Nghe phát âm"
                     >

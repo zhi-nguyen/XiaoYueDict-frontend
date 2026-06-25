@@ -3,7 +3,7 @@ import './globals.css'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Analytics } from "@vercel/analytics/next"
 
 export const metadata: Metadata = {
@@ -24,26 +24,26 @@ export default function RootLayout({
 }) {
   return (
     <html lang="vi">
-      <Analytics />
       <head>
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#334155" />
       </head>
       <body className="font-lexend text-primary bg-content-bg">
-          <div className="flex h-screen w-full bg-content-bg overflow-hidden font-lexend text-primary">
-            <Sidebar />
-            <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-              <Header />
-              {/* Main Content Area */}
-              <div className="flex-1 overflow-y-auto flex flex-col justify-between">
-                <div className="flex-1 flex flex-col">
-                  {children}
-                </div>
-                <Footer />
+        <div className="flex h-screen w-full bg-content-bg overflow-hidden font-lexend text-primary">
+          <Sidebar />
+          <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+            <Header />
+            {/* Main Content Area */}
+            <div className="flex-1 overflow-y-auto flex flex-col justify-between">
+              <div className="flex-1 flex flex-col">
+                {children}
               </div>
+              <Footer />
             </div>
           </div>
+        </div>
+        <Analytics />
       </body>
     </html>
   )

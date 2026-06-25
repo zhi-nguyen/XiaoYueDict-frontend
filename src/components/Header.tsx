@@ -14,7 +14,6 @@ export default function Header() {
   const params = useParams();
   const router = useRouter();
   const pathname = usePathname();
-  const language = (params?.lang as string) || 'zh';
 
   const switchLanguage = (newLang: string) => {
     if (params?.lang) {
@@ -26,12 +25,18 @@ export default function Header() {
   const toggleSidebar = useUIStore((state) => state.toggleSidebar);
   const { isAuthenticated, user, logout, checkAuth } = useAuthStore();
   
-  const { currentStreak, fetchGamificationData, isInitialized: isGamificationInit } = useGamificationStore();
-  const { tier: subscriptionTier, fetchSubscription, isInitialized: isSubInit } = useSubscriptionStore();
-
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  
+  const language = isMounted ? ((params?.lang as string) || 'zh') : 'zh';
+  const { currentStreak, fetchGamificationData, isInitialized: isGamificationInit } = useGamificationStore();
+  const { tier: subscriptionTier, fetchSubscription, isInitialized: isSubInit } = useSubscriptionStore();
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     checkAuth();
@@ -120,7 +125,7 @@ export default function Header() {
         </div>
 
         {/* Gamification Streak */}
-        {isAuthenticated && isGamificationInit && (
+        {isMounted && isAuthenticated && isGamificationInit && (
           <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline hover:bg-hover-bg cursor-pointer transition-colors">
             <span className={`material-symbols-outlined text-[20px] filled ${currentStreak > 0 ? 'text-orange' : 'text-secondary/50'}`}>
               local_fire_department
@@ -136,7 +141,9 @@ export default function Header() {
           <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 border border-surface"></span>
         </button>
 
-        {isAuthenticated && user ? (
+        {!isMounted ? (
+          <div className="w-10 h-10 rounded-full bg-primary/10 animate-pulse"></div>
+        ) : isAuthenticated && user ? (
           <div className="flex items-center gap-2">
             {isSubInit && subscriptionTier && subscriptionTier !== 'Free' && (
               <div className="hidden md:flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-100 border border-yellow-300">

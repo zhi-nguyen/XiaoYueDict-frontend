@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Loader2, Volume2 } from 'lucide-react';
+import { Loader2, Volume2, ChevronDown, ChevronUp } from 'lucide-react';
 import WordCard from '@/components/WordCard';
 import HanziStrokeBox, { HanziStrokeSequence } from '@/components/HanziStrokeBox';
 import { ZhWord } from '@/types/dictionary';
@@ -33,6 +33,59 @@ export default function HanziTab({
   onSearch,
   onPracticeClick,
 }: HanziTabProps) {
+  const [isMobile, setIsMobile] = React.useState(false);
+  const [visibleRowsCount, setVisibleRowsCount] = React.useState(1);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const hanziCharsStr = hanziChars.join('');
+
+  React.useEffect(() => {
+    setVisibleRowsCount(1);
+  }, [hanziCharsStr]);
+
+  const gridCols = isMobile ? 5 : 20;
+  const labelSpan = isMobile ? 1 : 2;
+  const toggleSpan = 1;
+
+  const characterRows = React.useMemo(() => {
+    const rows: string[][] = [];
+    if (hanziChars.length === 0) return rows;
+
+    const limitNoToggle = gridCols - labelSpan; // 18 on desktop, 4 on mobile
+    const limitWithToggle = gridCols - labelSpan - toggleSpan; // 17 on desktop, 3 on mobile
+
+    const hasToggle = hanziChars.length > limitNoToggle;
+
+    if (!hasToggle) {
+      rows.push(hanziChars);
+      return rows;
+    }
+
+    // Row 1
+    rows.push(hanziChars.slice(0, limitWithToggle));
+
+    // Subsequent rows (which don't have label & toggle button, so they use all gridCols slots)
+    let index = limitWithToggle;
+    while (index < hanziChars.length) {
+      rows.push(hanziChars.slice(index, index + gridCols));
+      index += gridCols;
+    }
+
+    return rows;
+  }, [hanziChars, isMobile, labelSpan]);
+
+  const totalRows = characterRows.length;
+  const hasToggle = totalRows > 1;
+
   // No Chinese characters found in search query
   if (hanziChars.length === 0) {
     return (
@@ -45,20 +98,85 @@ export default function HanziTab({
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Hanzi selector buttons */}
-      <div className="flex flex-wrap gap-2 p-3 bg-surface border border-outline rounded-2xl">
-        <span className="text-sm font-semibold text-secondary flex items-center mr-2">Chữ Hán:</span>
-        {hanziChars.map((char, idx) => (
-          <button
-            key={`${char}-${idx}`}
-            onClick={() => onSelectChar(char)}
-            className={`w-11 h-11 rounded-xl text-lg font-bold transition-all border ${selectedHanziChar === char
-              ? 'bg-primary text-white border-primary shadow-md'
-              : 'bg-hover-bg hover:bg-outline/20 text-secondary border-transparent'
-              }`}
-          >
-            {char}
-          </button>
-        ))}
+      <div 
+        className="p-3 bg-surface border border-outline rounded-2xl gap-y-2.5"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`,
+          alignItems: 'center'
+        }}
+      >
+        {Array.from({ length: visibleRowsCount }).map((_, rowIndex) => {
+          const isFirstRow = rowIndex === 0;
+          const isLastVisibleRow = rowIndex === visibleRowsCount - 1;
+          const hasMoreRows = visibleRowsCount < totalRows;
+
+          // Determine characters to display in this row
+          let rowChars = characterRows[rowIndex] || [];
+          let showDotsButton = false;
+
+          if (isLastVisibleRow && hasMoreRows && !isFirstRow) {
+            // Last visible row with more rows ahead has a dots button at the end (unless it is Row 1)
+            rowChars = rowChars.slice(0, rowChars.length - 1);
+            showDotsButton = true;
+          }
+
+          return (
+            <React.Fragment key={rowIndex}>
+              {/* Row 1 Label */}
+              {isFirstRow && (
+                <div 
+                  style={{ gridColumn: `span ${labelSpan}` }} 
+                  className="text-sm font-semibold text-secondary select-none"
+                >
+                  Chữ Hán:
+                </div>
+              )}
+
+              {/* Character buttons */}
+              {rowChars.map((char, charIdx) => (
+                <button
+                  key={`${char}-${charIdx}`}
+                  style={{ gridColumn: 'span 1' }}
+                  onClick={() => onSelectChar(char)}
+                  className={`w-full aspect-square max-w-[44px] rounded-xl text-lg font-bold transition-all border flex items-center justify-center focus:outline-none justify-self-center
+                    ${selectedHanziChar === char
+                      ? 'bg-primary text-white border-primary shadow-md'
+                      : 'bg-hover-bg hover:bg-outline/20 text-secondary border-transparent'
+                    }`}
+                >
+                  {char}
+                </button>
+              ))}
+
+              {/* Optional three-dots button at the end of last visible row */}
+              {showDotsButton && (
+                <button
+                  type="button"
+                  style={{ gridColumn: 'span 1' }}
+                  onClick={() => setVisibleRowsCount((prev) => prev + 1)}
+                  className="w-full aspect-square max-w-[44px] rounded-xl text-secondary hover:text-primary bg-hover-bg hover:bg-outline/20 transition-all border border-outline/50 font-bold flex items-center justify-center focus:outline-none justify-self-center"
+                  title="Hiện thêm hàng tiếp theo"
+                >
+                  ...
+                </button>
+              )}
+
+              {/* Toggle button at the end of Row 1 */}
+              {isFirstRow && hasToggle && (
+                <button
+                  type="button"
+                  style={{ gridColumn: 'span 1' }}
+                  onClick={() => setVisibleRowsCount(visibleRowsCount > 1 ? 1 : 2)}
+                  className="w-full aspect-square max-w-[44px] rounded-xl bg-hover-bg hover:bg-outline/20 text-secondary hover:text-primary transition-all border border-outline/50 flex items-center justify-center focus:outline-none justify-self-center"
+                  title={visibleRowsCount > 1 ? "Thu gọn" : "Mở rộng"}
+                >
+                  {visibleRowsCount > 1 ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                </button>
+              )}
+            </React.Fragment>
+          );
+        })}
       </div>
 
       {/* Hanzi details panel */}
@@ -111,9 +229,9 @@ function HanziDetailsPanel({
     : 'Chưa rõ';
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* Visual details & WordCard */}
-      <div className="bg-surface border border-outline rounded-[1.5rem] p-8 shadow-sm">
+    <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+      {/* Left Column: Visual details */}
+      <div className="md:col-span-5 bg-surface border border-outline rounded-[1.5rem] p-6 shadow-sm">
         <div className="flex flex-col items-center gap-6">
           <HanziStrokeBox char={selectedHanziChar} />
 
@@ -173,8 +291,10 @@ function HanziDetailsPanel({
         </div>
       </div>
 
-      {/* WordCard for character details (Meaning, Hán Việt, Examples) */}
-      <WordCard word={charWord} onCharClick={onSearch} onPracticeClick={onPracticeClick} />
+      {/* Right Column: WordCard for character details (Meaning, Hán Việt, Examples) */}
+      <div className="md:col-span-7">
+        <WordCard word={charWord} onCharClick={onSearch} onPracticeClick={onPracticeClick} />
+      </div>
     </div>
   );
 }

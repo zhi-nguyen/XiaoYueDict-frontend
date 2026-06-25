@@ -20,6 +20,7 @@ interface RecordingControlsProps {
   onTogglePlayback: () => void;
   onResetAudio: () => void;
   onSubmit: () => void;
+  isAuthLoading?: boolean;
 }
 
 /**
@@ -44,6 +45,7 @@ export default function RecordingControls({
   onTogglePlayback,
   onResetAudio,
   onSubmit,
+  isAuthLoading = false,
 }: RecordingControlsProps) {
   if (!audioBlob) {
     // ── Recording & Upload Mode ──
@@ -59,7 +61,7 @@ export default function RecordingControls({
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
           onTouchCancel={onTouchEnd}
-          disabled={isBusy || (!!hasSpellErrors && !isRecording)}
+          disabled={isBusy || isAuthLoading || (!!hasSpellErrors && !isRecording)}
           className={`relative flex-1 flex items-center justify-center gap-2.5 px-4 py-3.5 rounded-xl font-semibold text-sm
                      transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-40 select-none
                      ${isRecording
@@ -68,8 +70,10 @@ export default function RecordingControls({
             }`}
         >
           {isRecording && <span className="absolute inset-0 rounded-xl animate-pulse-ring text-red-300 pointer-events-none" />}
-          <span className="material-symbols-outlined text-lg">mic</span>
-          {isRecording ? 'Thả tay để hoàn tất' : 'Nhấn giữ để nói'}
+          <span className="material-symbols-outlined text-lg">
+            {isAuthLoading ? 'sync' : 'mic'}
+          </span>
+          {isAuthLoading ? 'Đang xác thực...' : isRecording ? 'Thả tay để hoàn tất' : 'Nhấn giữ để nói'}
         </button>
 
         {/* Upload button */}
@@ -84,7 +88,7 @@ export default function RecordingControls({
           id="upload-btn"
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={isBusy || isRecording || !!hasSpellErrors}
+          disabled={isBusy || isRecording || isAuthLoading || !!hasSpellErrors}
           className="flex-1 flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl font-semibold text-sm
                      bg-hover-bg hover:bg-outline/50 text-secondary transition-colors focus:outline-none
                      focus:ring-2 focus:ring-offset-2 focus:ring-primary/30 disabled:opacity-40
@@ -138,13 +142,18 @@ export default function RecordingControls({
           id="submit-btn"
           type="button"
           onClick={onSubmit}
-          disabled={!!hasSpellErrors}
+          disabled={!!hasSpellErrors || isAuthLoading}
           className="w-full py-3.5 rounded-xl font-bold text-sm transition-all focus:outline-none
-                     focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent-gradient-start)] disabled:opacity-30
+                     focus:ring-2 focus:ring-offset-2 focus:ring-[var(--accent-gradient-start)] disabled:opacity-35
                      disabled:cursor-not-allowed bg-primary hover:bg-primary/90 text-white shadow-md
                      hover:shadow-lg active:scale-[0.98]"
         >
-          {targetText.trim()
+          {isAuthLoading ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
+              Đang xác thực tài khoản...
+            </span>
+          ) : targetText.trim()
             ? `Chấm điểm Read-Aloud (${language === 'en' ? 'EN' : 'ZH'})`
             : `Chấm điểm tự do (${language === 'en' ? 'EN' : 'ZH'})`}
         </button>

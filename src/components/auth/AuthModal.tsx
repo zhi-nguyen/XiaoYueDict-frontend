@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { 
   signInWithEmailAndPassword, 
@@ -13,6 +14,7 @@ import {
 import { auth } from '@/lib/firebase';
 
 export default function AuthModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const [mounted, setMounted] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   
@@ -31,6 +33,11 @@ export default function AuthModal({ isOpen, onClose }: { isOpen: boolean; onClos
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   if (!isOpen) return null;
 
@@ -112,8 +119,8 @@ export default function AuthModal({ isOpen, onClose }: { isOpen: boolean; onClos
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="bg-surface w-full max-w-md p-6 rounded-2xl shadow-xl relative animate-in fade-in zoom-in-95 duration-200">
         <button 
           onClick={handleClose}
@@ -291,4 +298,10 @@ export default function AuthModal({ isOpen, onClose }: { isOpen: boolean; onClos
       </div>
     </div>
   );
+
+  if (mounted && typeof window !== 'undefined') {
+    return createPortal(modalContent, document.body);
+  }
+
+  return null;
 }

@@ -19,7 +19,13 @@ const navItems = [
 export default function Sidebar() {
   const pathname = usePathname();
   const params = useParams();
-  const language = (params?.lang as string) || 'zh';
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const language = isMounted ? ((params?.lang as string) || 'zh') : 'zh';
   const { isSidebarOpen, setSidebarOpen, isDesktopSidebarCollapsed, toggleDesktopSidebar } = useUIStore();
   const { tier: subscriptionTier } = useSubscriptionStore();
   const sidebarRef = React.useRef<HTMLElement>(null);
@@ -80,7 +86,7 @@ export default function Sidebar() {
       <nav className="flex-1 px-4 space-y-1 sidebar-scroll overflow-y-auto overflow-x-hidden pt-4">
         {items.map(item => {
           const targetHref = `/${language}${item.href}`;
-          const isActive = pathname === targetHref || (item.href !== '/' && pathname.startsWith(targetHref));
+          const isActive = isMounted && (pathname === targetHref || (item.href !== '/' && pathname.startsWith(targetHref)));
           return (
             <Link 
               key={item.href}
@@ -118,7 +124,7 @@ export default function Sidebar() {
 
       {/* Bottom Actions */}
       <div className="p-4 shrink-0 border-t border-outline flex flex-col gap-2">
-        {subscriptionTier === 'Free' && !isDesktopSidebarCollapsed && (
+        {isMounted && subscriptionTier === 'Free' && !isDesktopSidebarCollapsed && (
           <div className="bg-gradient-to-r from-orange/10 to-orange/5 border border-orange/20 rounded-xl p-3 mb-2 flex flex-col items-center justify-center relative overflow-hidden">
             <div className="absolute top-0 right-0 -mt-2 -mr-2 w-12 h-12 bg-orange/20 rounded-full blur-xl"></div>
             <span className="material-symbols-outlined text-orange text-3xl mb-1">workspace_premium</span>
@@ -130,7 +136,7 @@ export default function Sidebar() {
           </div>
         )}
         
-        {subscriptionTier === 'Free' && isDesktopSidebarCollapsed && (
+        {isMounted && subscriptionTier === 'Free' && isDesktopSidebarCollapsed && (
            <div className="hidden md:flex justify-center mb-2">
              <button className="w-10 h-10 rounded-full bg-gradient-to-r from-orange to-red-500 text-white flex items-center justify-center shadow-sm hover:shadow transition-all" title="Nâng cấp Premium">
                <span className="material-symbols-outlined text-[20px]">workspace_premium</span>

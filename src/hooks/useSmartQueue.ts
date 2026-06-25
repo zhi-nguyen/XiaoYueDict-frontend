@@ -11,6 +11,36 @@ import { djangoClient } from '@/lib/apiClient';
 import { useWebSocket } from './useWebSocket';
 import { getGuestId } from '@/lib/guest';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+
+/**
+ * Validates audio duration asynchronously using Audio element with a 3s timeout.
+ */
+const validateAudioDuration = (blob: Blob): Promise<number> => {
+  return new Promise((resolve, reject) => {
+    const audio = new Audio();
+    const url = URL.createObjectURL(blob);
+    audio.src = url;
+    
+    // Thiết lập chốt chặn thời gian xử lý metadata tại Client (3s)
+    const timeoutId = setTimeout(() => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Quá thời gian trích xuất thông tin tệp tin (Metadata Timeout)."));
+    }, 3000);
+
+    audio.onloadedmetadata = () => {
+      clearTimeout(timeoutId);
+      URL.revokeObjectURL(url);
+      resolve(audio.duration); // Trả về thời lượng thực tế của tệp (giây)
+    };
+
+    audio.onerror = () => {
+      clearTimeout(timeoutId);
+      URL.revokeObjectURL(url);
+      reject(new Error("Trình duyệt không thể đọc định dạng tệp tin âm thanh này."));
+    };
+  });
+};
 
 /**
  * Translates common English error messages from the backend or browser to Vietnamese.
@@ -106,6 +136,12 @@ export interface UseSmartQueueReturn {
   reset: () => void;
   /** Retry the last failed submission */
   retry: () => Promise<void>;
+  /** Whether authentication state is currently resolving */
+  isAuthLoading: boolean;
+  /** Elapsed time in seconds since submission started */
+  elapsedSeconds: number;
+  /** Initial estimated wait time in seconds */
+  initialEWT: number;
 }
 
 /**
@@ -124,25 +160,34 @@ export function useSmartQueue(): UseSmartQueueReturn {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [errorType, setErrorType] = useState<'network' | 'validation' | 'processing' | 'rate_limit' | null>(null);
   const [taskId, setTaskId] = useState<string | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [initialEWT, setInitialEWT] = useState(0);
 
   const isMountedRef = useRef(true);
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
   const lastSubmissionRef = useRef<{
     audioBlob: Blob;
     language: 'en' | 'zh';
     targetText?: string;
   } | null>(null);
 
-  // Smooth client-side ticking countdown for estimatedWait (EWT)
+  // Smooth client-side ticking countdown for estimatedWait (EWT) and elapsed time tracking
   useEffect(() => {
     if (phase !== 'queued' && phase !== 'processing') {
       return;
     }
-    if (estimatedWait <= 0) {
-      return;
-    }
 
     const timer = setInterval(() => {
+      setElapsedSeconds((prev) => {
+        const next = prev + 1;
+        if (next >= 60) {
+          setPhase('error');
+          setErrorMessage('Thời gian xử lý quá lâu (Timeout). Hệ thống đang bận, vui lòng thử lại sau.');
+          setErrorType('processing');
+        }
+        return next;
+      });
+
       setEstimatedWait((prev) => {
         if (prev <= 1) {
           // Keep it at 1 second while waiting for final WebSocket resolution event
@@ -157,7 +202,7 @@ export function useSmartQueue(): UseSmartQueueReturn {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [phase, estimatedWait]);
+  }, [phase]);
 
   const handleWsMessage = useCallback((msg: any) => {
     if (!isMountedRef.current || !taskId) return;
@@ -205,7 +250,6 @@ export function useSmartQueue(): UseSmartQueueReturn {
   }, []);
 
   const reset = useCallback(() => {
-
     setPhase('idle');
     setQueuePosition(0);
     setEstimatedWait(0);
@@ -214,6 +258,8 @@ export function useSmartQueue(): UseSmartQueueReturn {
     setErrorMessage(null);
     setErrorType(null);
     setTaskId(null);
+    setElapsedSeconds(0);
+    setInitialEWT(0);
   }, []);
 
   const submit = useCallback(async (
@@ -221,6 +267,13 @@ export function useSmartQueue(): UseSmartQueueReturn {
     language: 'en' | 'zh',
     targetText?: string,
   ) => {
+    if (isAuthLoading) {
+      setPhase('error');
+      setErrorMessage('Đang xác thực tài khoản, vui lòng đợi giây lát.');
+      setErrorType('network');
+      return;
+    }
+
     // Cache the submission arguments for retry capability
     lastSubmissionRef.current = { audioBlob, language, targetText };
 
@@ -229,6 +282,44 @@ export function useSmartQueue(): UseSmartQueueReturn {
     setPhase('uploading');
 
     try {
+      // 1. Kiểm tra giới hạn cứng về dung lượng tệp tin đầu vào (2MB)
+      const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+      if (audioBlob.size > MAX_SIZE) {
+        throw new Error('Dung lượng tệp ghi âm vượt quá giới hạn tối đa cho phép (2MB). Vui lòng ghi âm ngắn hơn.');
+      }
+
+      // 2. Kiểm tra giới hạn cứng về thời lượng tệp ghi âm (45 giây)
+      const MAX_DURATION = 45; // 45s
+      const duration = await validateAudioDuration(audioBlob);
+      if (duration > MAX_DURATION) {
+        throw new Error(`Thời lượng tệp ghi âm (${duration.toFixed(1)} giây) vượt quá giới hạn tối đa cho phép (45 giây). Vui lòng ghi âm ngắn hơn.`);
+      }
+
+      // 3. Kiểm tra hạn mức dung lượng còn lại (usage check trước khi submit)
+      await useSubscriptionStore.getState().fetchUsage();
+      const usage = useSubscriptionStore.getState().usageData;
+      if (usage) {
+        const remainingMin = Math.max(0, usage.limit_min - usage.used_min);
+        const remainingHr = Math.max(0, usage.limit_hr - usage.used_hr);
+        const remainingDay = Math.max(0, usage.limit_day - usage.used_day);
+
+        if (audioBlob.size > remainingMin) {
+          const err: any = new Error(`Dung lượng tệp (${(audioBlob.size / 1024 / 1024).toFixed(2)} MB) vượt quá dung lượng khả dụng của phút này (${(remainingMin / 1024 / 1024).toFixed(2)} MB).`);
+          err.isRateLimited = true;
+          throw err;
+        }
+        if (audioBlob.size > remainingHr) {
+          const err: any = new Error(`Dung lượng tệp (${(audioBlob.size / 1024 / 1024).toFixed(2)} MB) vượt quá dung lượng khả dụng của giờ này (${(remainingHr / 1024 / 1024).toFixed(2)} MB).`);
+          err.isRateLimited = true;
+          throw err;
+        }
+        if (audioBlob.size > remainingDay) {
+          const err: any = new Error(`Dung lượng tệp (${(audioBlob.size / 1024 / 1024).toFixed(2)} MB) vượt quá dung lượng khả dụng của ngày này (${(remainingDay / 1024 / 1024).toFixed(2)} MB).`);
+          err.isRateLimited = true;
+          throw err;
+        }
+      }
+
       // ── Validate text input ("Warm welcome" layer) ─────────────────
       if (targetText && targetText.trim()) {
         const validation = validateTextInput(targetText.trim(), language);
@@ -262,6 +353,8 @@ export function useSmartQueue(): UseSmartQueueReturn {
       setTaskId(data.task_id);
       setQueuePosition(data.queue_position);
       setEstimatedWait(data.estimated_wait_seconds);
+      setInitialEWT(data.estimated_wait_seconds);
+      setElapsedSeconds(0);
 
       // Determine initial phase based on queue position
       if (data.queue_position <= 4) {
@@ -291,13 +384,16 @@ export function useSmartQueue(): UseSmartQueueReturn {
           errType = 'validation';
         } else if (status === 429) {
           errType = 'rate_limit';
+        } else if (status === 503) {
+          errType = 'network'; // Trạng thái bảo trì
         } else {
           errType = 'processing';
         }
       } else if (err instanceof Error) {
         message = err.message;
         const isNet = /network|fetch|timeout|cors|connect/i.test(err.message);
-        errType = isNet ? 'network' : 'processing';
+        const isVal = /giới hạn|định dạng|duration|thời lượng|dung lượng|giây|timeout/i.test(err.message);
+        errType = isNet ? 'network' : (isVal ? 'validation' : 'processing');
       }
       
       setPhase('error');
@@ -305,7 +401,7 @@ export function useSmartQueue(): UseSmartQueueReturn {
       setErrorType(errType);
       console.error('[useSmartQueue] Submit failed:', err);
     }
-  }, [reset, isAuthenticated]);
+  }, [reset, isAuthenticated, isAuthLoading]);
 
   const retry = useCallback(async () => {
     if (!lastSubmissionRef.current) return;
@@ -325,5 +421,8 @@ export function useSmartQueue(): UseSmartQueueReturn {
     taskId,
     reset,
     retry,
+    isAuthLoading,
+    elapsedSeconds,
+    initialEWT,
   };
 }

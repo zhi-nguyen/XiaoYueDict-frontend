@@ -43,6 +43,7 @@ export default function RootLayout({
             </div>
           </div>
         </div>
+        <SpeedInsights />
         <Analytics />
       </body>
     </html>

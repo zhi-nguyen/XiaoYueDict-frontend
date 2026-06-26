@@ -43,7 +43,7 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
 
   // Detail view state
   const [selectedNotebook, setSelectedNotebook] = useState<SystemNotebook | null>(null);
-  const [words, setWords] = useState<ZhWord[]>([]);
+  const [words, setWords] = useState<any[]>([]);
   const [isLoadingWords, setIsLoadingWords] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -67,12 +67,20 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
 
   const isPremiumUser = isActive && (tier === 'Premium' || tier === 'Pro');
 
-  // Fetch metadata on mount
+  // Auto-reset active category if lang changes to en and we are on tag
+  useEffect(() => {
+    if (lang === 'en' && activeCategory === 'tag') {
+      setActiveCategory('hsk');
+    }
+  }, [lang, activeCategory]);
+
+  // Fetch metadata when lang or subscription state changes
   useEffect(() => {
     fetchSubscription();
     const fetchMetadata = async () => {
       try {
-        const res = await djangoClient.get('/notes/system-notebooks/');
+        setIsLoading(true);
+        const res = await djangoClient.get(`/notes/system-notebooks/?lang=${lang}`);
         setNotebooks(res.data);
       } catch (err) {
         console.error('Failed to load system notebooks metadata:', err);
@@ -82,7 +90,7 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
       }
     };
     fetchMetadata();
-  }, [fetchSubscription]);
+  }, [fetchSubscription, lang]);
 
   // Fetch words when notebook changes or page changes
   useEffect(() => {
@@ -91,7 +99,7 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
     const fetchWords = async () => {
       setIsLoadingWords(true);
       try {
-        const res = await djangoClient.get(`/notes/system-notebooks/${selectedNotebook.id}/words/?page=${page}`);
+        const res = await djangoClient.get(`/notes/system-notebooks/${selectedNotebook.id}/words/?page=${page}&lang=${lang}`);
         setWords(res.data.results || []);
         setTotalWordsCount(res.data.count || 0);
         setTotalPages(Math.ceil((res.data.count || 0) / 20));
@@ -109,7 +117,7 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
     };
 
     fetchWords();
-  }, [selectedNotebook, page]);
+  }, [selectedNotebook, page, lang]);
 
   const handleNotebookClick = (notebook: SystemNotebook) => {
     if (notebook.is_premium && !isPremiumUser) {
@@ -177,7 +185,7 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
           onClick={() => {
             setIsLoading(true);
             setError(null);
-            djangoClient.get('/notes/system-notebooks/')
+            djangoClient.get(`/notes/system-notebooks/?lang=${lang}`)
               .then(res => setNotebooks(res.data))
               .catch(() => setError('Không thể tải danh sách sổ tay hệ thống.'))
               .finally(() => setIsLoading(false));
@@ -246,11 +254,13 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
                       {w.traditional && (
                         <span className="text-sm text-secondary font-medium">({w.traditional})</span>
                       )}
-                      <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100/50">
-                        {w.pinyin}
-                      </span>
+                      {(w.pinyin || w.ipa) && (
+                        <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100/50">
+                          {w.pinyin || w.ipa}
+                        </span>
+                      )}
                     </div>
-                    {w.han_viet && (
+                    {w.han_viet && lang !== 'en' && (
                       <p className="text-xs text-secondary/80 font-bold">Hán Việt: {w.han_viet.toUpperCase()}</p>
                     )}
                     <p className="text-sm text-secondary font-medium line-clamp-2 leading-relaxed mt-1">
@@ -314,17 +324,17 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
     <div className="space-y-8">
       {/* Category Tab Buttons */}
       <div className="flex justify-center gap-3">
-        {(['hsk', 'pos', 'tag'] as const).map((cat) => (
+        {(lang === 'en' ? ['hsk', 'pos'] : ['hsk', 'pos', 'tag'] as const).map((cat) => (
           <button
             key={cat}
-            onClick={() => setActiveCategory(cat)}
+            onClick={() => setActiveCategory(cat as any)}
             className={`px-5 py-2.5 rounded-full font-bold text-sm transition-all border ${
               activeCategory === cat
                 ? 'bg-primary text-white border-primary shadow-sm'
                 : 'bg-surface text-secondary border-outline hover:border-primary/45'
             }`}
           >
-            {cat === 'hsk' && 'Từ vựng HSK'}
+            {cat === 'hsk' && (lang === 'en' ? 'Cấp độ CEFR' : 'Từ vựng HSK')}
             {cat === 'pos' && (isPremiumUser ? 'Từ loại' : 'Từ loại (Premium)')}
             {cat === 'tag' && (isPremiumUser ? 'Chủ đề' : 'Chủ đề (Premium)')}
           </button>

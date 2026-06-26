@@ -6,6 +6,8 @@ import { fetchExamDetails } from '@/lib/api/exams';
 import { Exam } from '@/types/exam';
 import ConfirmModal from '@/components/ConfirmModal';
 import { saveExamState, loadExamState, clearExamState, ExamState } from '@/lib/examState';
+import { createReport } from '@/lib/api/reports';
+import { getGuestId } from '@/lib/guest';
 
 const getMediaUrl = (url: string) => {
   if (!url) return url;
@@ -245,17 +247,34 @@ export default function ExamTakePage() {
     });
   };
 
-  const handleReportQuestion = (questionId: string) => {
+  const handleReportQuestion = (dbId: number | string, questionCode: string) => {
     setModalConfig({
       isOpen: true,
       title: 'Báo cáo câu hỏi sai',
-      message: `Bạn có chắc chắn muốn báo cáo câu hỏi này bị sai thông tin/nội dung?`,
+      message: `Bạn có chắc chắn muốn báo cáo câu hỏi (${questionCode}) này bị sai thông tin/nội dung?`,
       confirmText: 'Báo cáo',
-      onConfirm: () => {
+      onConfirm: async () => {
         setModalConfig(prev => ({ ...prev, isOpen: false }));
-        setTimeout(() => {
-          alert('Cảm ơn bạn đã báo cáo lỗi. Chúng tôi sẽ sớm kiểm tra!');
-        }, 300);
+        try {
+          await createReport({
+            report_type: 'exam_question',
+            content_type: 'exam_question',
+            object_id: String(dbId),
+            reason: `Báo cáo câu hỏi ${questionCode} bị sai thông tin trong lúc thi.`,
+            guest_id: getGuestId() || undefined,
+          });
+          setTimeout(() => {
+            alert('Cảm ơn bạn đã báo cáo lỗi. Chúng tôi sẽ sớm kiểm tra!');
+          }, 300);
+        } catch (err: any) {
+          setTimeout(() => {
+            if (err.response?.status === 409) {
+              alert('Bạn đã báo cáo câu hỏi này trước đó rồi.');
+            } else {
+              alert('Có lỗi xảy ra khi gửi báo cáo. Vui lòng thử lại sau.');
+            }
+          }, 300);
+        }
       }
     });
   };
@@ -555,7 +574,7 @@ export default function ExamTakePage() {
 
                               {/* Báo cáo câu hỏi sai (Dấu chấm than / Warning icon) */}
                               <button
-                                onClick={() => handleReportQuestion(question.question_id)}
+                                onClick={() => handleReportQuestion(question.id, question.question_id)}
                                 className="w-8 h-8 flex items-center justify-center text-secondary hover:text-red-500 hover:bg-red-50 rounded-lg transition-all border border-outline hover:border-red-200"
                                 title="Báo cáo câu hỏi sai"
                               >

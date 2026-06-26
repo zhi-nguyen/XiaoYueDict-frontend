@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useRef } from 'react';
-import WordCard from '@/components/WordCard';
+import { useParams } from 'next/navigation';
+import WordCardZh from '@/components/WordCardZh';
+import WordCardEn from '@/components/WordCardEn';
 import PracticeHub from '@/components/PracticeHub';
 import TranslationCard from '@/components/study/TranslationCard';
 import { ZhWord } from '@/types/dictionary';
@@ -41,6 +43,9 @@ export default function VocabularyTab({
   onPracticeClick,
   onSelectWord,
 }: VocabularyTabProps) {
+  const params = useParams();
+  const language = (params?.lang as string) === 'en' ? 'en' : 'zh';
+
   // Case 1: Dictionary word results found
   if (wordResults.length > 0) {
     return (
@@ -65,13 +70,20 @@ export default function VocabularyTab({
                   >
                     <span className="text-base">{word.word}</span>
                     <span className={`text-xs font-mono font-medium ${isSelected ? 'text-white/80' : 'text-secondary'}`}>
-                      {word.pinyin}
+                      {language === 'zh' ? word.pinyin : (word as any).ipa}
                     </span>
-                    {word.hsk_level && (
+                    {language === 'zh' && word.hsk_level && (
                       <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md ${
                         isSelected ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'
                       }`}>
                         HSK {word.hsk_level}
+                      </span>
+                    )}
+                    {language === 'en' && (word as any).cefr_level && (word as any).cefr_level !== '0' && (
+                      <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md ${
+                        isSelected ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'
+                      }`}>
+                        {(word as any).cefr_level}
                       </span>
                     )}
                     {word.translation_vi && (
@@ -86,7 +98,11 @@ export default function VocabularyTab({
           </div>
         )}
         <div className="max-w-3xl mx-auto w-full">
-          <WordCard word={selectedWord} onPracticeClick={onPracticeClick} onCharClick={onSearch} />
+          {language === 'zh' ? (
+            <WordCardZh word={selectedWord} onPracticeClick={onPracticeClick} onCharClick={onSearch} />
+          ) : (
+            <WordCardEn word={selectedWord as any} onPracticeClick={onPracticeClick} />
+          )}
         </div>
       </div>
     );
@@ -94,7 +110,9 @@ export default function VocabularyTab({
 
   // Case 2: Exact example match or AI translation result
   if (exactExampleMatch || translationResult) {
-    const sentenceText = exactExampleMatch ? exactExampleMatch.chinese : searchQuery;
+    const sentenceText = exactExampleMatch
+      ? (exactExampleMatch.chinese || exactExampleMatch.english || searchQuery)
+      : searchQuery;
 
     return (
       <div className="max-w-3xl mx-auto w-full space-y-6 animate-in fade-in duration-300">
@@ -105,6 +123,7 @@ export default function VocabularyTab({
           translationSource={translationResult?.source || 'database'}
           isExactMatch={!!exactExampleMatch}
           onSearch={onSearch}
+          sentenceId={exactExampleMatch?.id}
         />
 
         <button

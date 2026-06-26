@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Loader2, Volume2, ChevronDown, ChevronUp } from 'lucide-react';
-import WordCard from '@/components/WordCard';
+import WordCardZh from '@/components/WordCardZh';
 import HanziStrokeBox, { HanziStrokeSequence } from '@/components/HanziStrokeBox';
 import { ZhWord } from '@/types/dictionary';
 import { getEtymology, speakChinese } from '@/lib/zhUtils';
@@ -293,7 +293,7 @@ function HanziDetailsPanel({
 
       {/* Right Column: WordCard for character details (Meaning, Hán Việt, Examples) */}
       <div className="md:col-span-7">
-        <WordCard word={charWord} onCharClick={onSearch} onPracticeClick={onPracticeClick} />
+        <WordCardZh word={charWord} onCharClick={onSearch} onPracticeClick={onPracticeClick} />
       </div>
     </div>
   );

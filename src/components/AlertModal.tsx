@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface AlertModalProps {
   isOpen: boolean;
@@ -17,7 +18,14 @@ export default function AlertModal({
   onClose,
   closeText = 'Đóng'
 }: AlertModalProps) {
-  if (!isOpen) return null;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  if (!isOpen || !mounted) return null;
 
   // Icons and Color themes based on type
   const theme = {
@@ -50,8 +58,8 @@ export default function AlertModal({
     }
   }[type];
 
-  return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-primary/40 backdrop-blur-md transition-opacity duration-300 font-sans">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-primary/40 backdrop-blur-md transition-opacity duration-300 font-sans">
 
       <div className="bg-surface rounded-3xl p-6 w-full max-w-sm border border-outline shadow-[0_20px_50px_rgba(0,0,0,0.08)] transform transition-all scale-100 animate-in fade-in zoom-in-95 duration-200 flex flex-col items-center text-center">
         
@@ -79,7 +87,8 @@ export default function AlertModal({
           {closeText}
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

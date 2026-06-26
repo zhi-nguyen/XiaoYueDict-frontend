@@ -42,7 +42,7 @@ export default function NotesClient({ initialNotebooks }: NotesClientProps) {
       const load = async () => {
         try {
           setLoadingNotebooks(true);
-          const list = await fetchNotebooks();
+          const list = await fetchNotebooks(language);
           setNotebooks(list);
         } catch (err) {
           console.error("Failed to load notebooks client-side:", err);
@@ -54,7 +54,7 @@ export default function NotesClient({ initialNotebooks }: NotesClientProps) {
     } else {
       setNotebooks([]);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, language]);
 
   const [alertConfig, setAlertConfig] = useState<{
     isOpen: boolean;
@@ -85,7 +85,7 @@ export default function NotesClient({ initialNotebooks }: NotesClientProps) {
     if (!newName.trim()) return;
     try {
       setCreating(true);
-      const newNb = await createNotebook({ name: newName.trim(), description: newDesc.trim() });
+      const newNb = await createNotebook({ name: newName.trim(), description: newDesc.trim() }, language);
       setNotebooks([newNb, ...notebooks]);
       setShowCreateModal(false);
       setNewName('');

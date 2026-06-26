@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
-import { Volume2, ChevronDown } from 'lucide-react';
-import { renderClickableHanzi, speakChinese } from '@/lib/zhUtils';
+import React, { useState } from 'react';
+import { Volume2, ChevronDown, Flag } from 'lucide-react';
+import { renderClickableHanzi, speakChinese, speakBrowserFallback } from '@/lib/zhUtils';
+import ReportModal from '@/components/ReportModal';
 
 interface ExamplesTabProps {
   matchingExamples: any[];
@@ -10,6 +11,7 @@ interface ExamplesTabProps {
   visibleCount: number;
   onLoadMore: () => void;
   onSearch: (query: string) => void;
+  language?: 'zh' | 'en';
 }
 
 /**
@@ -22,7 +24,16 @@ export default function ExamplesTab({
   visibleCount,
   onLoadMore,
   onSearch,
+  language = 'zh',
 }: ExamplesTabProps) {
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [selectedExampleId, setSelectedExampleId] = useState<string | null>(null);
+
+  const handleOpenReport = (id: string) => {
+    setSelectedExampleId(id);
+    setIsReportModalOpen(true);
+  };
+
   if (matchingExamples.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-16 bg-surface border border-outline rounded-[1.5rem] min-h-[400px] text-secondary">
@@ -42,17 +53,43 @@ export default function ExamplesTab({
           <div key={idx} className="p-5 bg-hover-bg rounded-2xl border border-outline/50 hover:border-primary/30 transition-colors group">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xl font-bold text-primary mb-2 leading-relaxed">{renderClickableHanzi(ex.chinese)}</p>
-                <p className="text-sm font-semibold text-secondary mb-1 font-mono">{ex.pinyin}</p>
-                <p className="text-base text-secondary">{ex.vietnamese}</p>
+                {language === 'en' ? (
+                  <>
+                    <p className="text-xl font-bold text-primary mb-2 leading-relaxed">{ex.english}</p>
+                    <p className="text-base text-secondary">{ex.vietnamese}</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xl font-bold text-primary mb-2 leading-relaxed">{renderClickableHanzi(ex.chinese)}</p>
+                    <p className="text-sm font-semibold text-secondary mb-1 font-mono">{ex.pinyin}</p>
+                    <p className="text-base text-secondary">{ex.vietnamese}</p>
+                  </>
+                )}
               </div>
-              <button
-                onClick={() => speakChinese(ex.chinese)}
-                className="text-secondary hover:text-primary transition-colors flex-shrink-0 focus:outline-none mt-1"
-                title="Nghe phát âm"
-              >
-                <Volume2 className="w-6 h-6" />
-              </button>
+              <div className="flex gap-2.5 flex-shrink-0 mt-1">
+                <button
+                  onClick={() => {
+                    if (language === 'en') {
+                      speakBrowserFallback(ex.english || '', 'en');
+                    } else {
+                      speakChinese(ex.chinese || '');
+                    }
+                  }}
+                  className="text-secondary hover:text-primary transition-colors focus:outline-none"
+                  title="Nghe phát âm"
+                >
+                  <Volume2 className="w-6 h-6" />
+                </button>
+                {ex.id && (
+                  <button
+                    onClick={() => handleOpenReport(ex.id)}
+                    className="text-secondary hover:text-red-600 transition-colors focus:outline-none"
+                    title="Báo cáo lỗi ví dụ"
+                  >
+                    <Flag className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ))}
@@ -66,6 +103,19 @@ export default function ExamplesTab({
           <span>Xem thêm</span>
           <ChevronDown className="w-4 h-4" />
         </button>
+      )}
+      {selectedExampleId && (
+        <ReportModal
+          isOpen={isReportModalOpen}
+          onClose={() => {
+            setIsReportModalOpen(false);
+            setSelectedExampleId(null);
+          }}
+          contentType={language === 'en' ? 'en_example' : 'zh_example'}
+          objectId={selectedExampleId}
+          defaultReportType="example"
+          title="Báo cáo lỗi ví dụ"
+        />
       )}
     </div>
   );

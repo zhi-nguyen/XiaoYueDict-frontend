@@ -20,6 +20,7 @@ interface UseStudySearchReturn {
   pendingText: string;
   setSelectedWord: (word: ZhWord | null) => void;
   handleSearch: (query: string) => Promise<void>;
+  setExactExampleDirectly: (example: any, displayQuery: string) => void;
 }
 
 /**
@@ -184,6 +185,29 @@ export function useStudySearch(): UseStudySearchReturn {
     return performSearch(query, true);
   }, [performSearch]);
 
+  // Directly set an exact example match without re-searching.
+  // Used when user clicks an example in the search bar dropdown.
+  const setExactExampleDirectly = useCallback((example: any, displayQuery: string) => {
+    const trimmed = displayQuery.trim();
+    if (!trimmed) return;
+
+    setSearchQuery(trimmed);
+    setWordResults([]);
+    setSelectedWord(null);
+    setExactExampleMatch(example);
+    setTranslationResult(null);
+    setTranslationError('');
+    setCurrentTaskId(null);
+    setIsLoading(false);
+    setIsTranslating(false);
+
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('q', trimmed);
+      window.history.pushState({ q: trimmed }, '', url.pathname + url.search);
+    }
+  }, []);
+
   // Sync state with URL query search params on popstate
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -213,5 +237,6 @@ export function useStudySearch(): UseStudySearchReturn {
     pendingText,
     setSelectedWord,
     handleSearch,
+    setExactExampleDirectly,
   };
 }

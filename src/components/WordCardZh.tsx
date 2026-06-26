@@ -1,22 +1,22 @@
 "use client";
 
 import React, { useRef, useState } from 'react';
-import { Volume2, Mic, ChevronDown } from 'lucide-react';
+import { Volume2, Mic, ChevronDown, Flag } from 'lucide-react';
 import { ZhWord } from '@/types/dictionary';
 import AddToNotebookModal from './dictionary/AddToNotebookModal';
 import AuthModal from '@/components/auth/AuthModal';
-import { speakChinese, speakBrowserFallback, playTTSWithClientCache } from '@/lib/zhUtils';
+import { speakChinese, playTTSWithClientCache } from '@/lib/zhUtils';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useParams } from 'next/navigation';
 import { djangoClient } from '@/lib/apiClient';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { getGuestId } from '@/lib/guest';
 import VocabularyImage from './dictionary/VocabularyImage';
+import ReportModal from '@/components/ReportModal';
 
 // Mapping from tags_vi.json
 import tagsVi from '@/data/tags_vi.json';
 
-interface WordCardProps {
+interface WordCardZhProps {
   word: ZhWord | null;
   onPracticeClick?: () => void;
   onCharClick?: (char: string) => void;
@@ -75,14 +75,18 @@ const renderClickableHanzi = (text: string, onCharClick?: (char: string) => void
   });
 };
 
-export default function WordCard({ word, onPracticeClick, onCharClick }: WordCardProps) {
+export default function WordCardZh({ word, onPracticeClick, onCharClick }: WordCardZhProps) {
   const { isAuthenticated } = useAuthStore();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [visibleExamplesCount, setVisibleExamplesCount] = useState(5);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [activeReportType, setActiveReportType] = useState<'image' | 'translation' | 'pinyin' | 'example' | 'exam_question' | 'audio' | 'other'>('other');
 
-  const params = useParams();
-  const lang = ((params?.lang as string) === 'en' ? 'en' : 'zh') as 'zh' | 'en';
+  const handleOpenReport = (type: typeof activeReportType) => {
+    setActiveReportType(type);
+    setIsReportModalOpen(true);
+  };
 
   React.useEffect(() => {
     setVisibleExamplesCount(5);
@@ -90,7 +94,6 @@ export default function WordCard({ word, onPracticeClick, onCharClick }: WordCar
 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageStatus, setImageStatus] = useState<'idle' | 'generating' | 'regenerating' | 'ready' | 'failed'>('idle');
-  const [isReporting, setIsReporting] = useState(false);
 
   const isUUID = (str: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
 
@@ -98,7 +101,7 @@ export default function WordCard({ word, onPracticeClick, onCharClick }: WordCar
     if (!word || !word.id || !isUUID(word.id)) return;
     try {
       const guestId = !isAuthenticated ? getGuestId() : null;
-      const res = await djangoClient.get(`/media/image/${lang}/${word.id}/`, {
+      const res = await djangoClient.get(`/media/image/zh/${word.id}/`, {
         params: guestId ? { guest_id: guestId } : undefined
       });
       
@@ -114,7 +117,7 @@ export default function WordCard({ word, onPracticeClick, onCharClick }: WordCar
       console.error('Failed to fetch image status:', err);
       setImageStatus('failed');
     }
-  }, [word?.id, lang, isAuthenticated]);
+  }, [word?.id, isAuthenticated]);
 
   React.useEffect(() => {
     if (!word || !word.id || !isUUID(word.id)) {
@@ -126,13 +129,11 @@ export default function WordCard({ word, onPracticeClick, onCharClick }: WordCar
     setImageUrl(null);
     setImageStatus('generating');
     fetchImageStatus();
-  }, [word?.id, lang, isAuthenticated, fetchImageStatus]);
+  }, [word?.id, isAuthenticated, fetchImageStatus]);
 
-  // Listen to WebSocket events for image completions
   useWebSocket({
     onMessage: (msg) => {
       if (word && msg.payload?.word_id === word.id) {
-        console.log('[WordCard WS] Received image message:', msg);
         if (msg.type === 'image_complete') {
           setImageUrl(msg.payload.image_url as string);
           setImageStatus('ready');
@@ -143,35 +144,13 @@ export default function WordCard({ word, onPracticeClick, onCharClick }: WordCar
     }
   });
 
-  const handleReportImage = async () => {
-    if (!word || !word.id) return;
-    setIsReporting(true);
-    try {
-      await djangoClient.post('/media/image/report/', {
-        word_id: word.id,
-        lang: lang
-      });
-      setImageUrl(null);
-      setImageStatus('regenerating');
-    } catch (err) {
-      console.error('Failed to report image:', err);
-      alert('Không thể báo cáo ảnh lỗi. Vui lòng thử lại sau.');
-    } finally {
-      setIsReporting(false);
-    }
-  };
-
   const handleRetryFetchImage = () => {
     setImageUrl(null);
     setImageStatus('generating');
     fetchImageStatus();
   };
 
-  const isBridged = imageUrl ? (
-    (lang === 'zh' && imageUrl.includes('/images/en/')) ||
-    (lang === 'en' && imageUrl.includes('/images/zh/'))
-  ) : false;
-
+  const isBridged = imageUrl ? imageUrl.includes('/images/en/') : false;
 
   const posList = word?.part_of_speech
     ? word.part_of_speech
@@ -196,19 +175,15 @@ export default function WordCard({ word, onPracticeClick, onCharClick }: WordCar
 
   return (
     <div className="bg-surface border border-outline rounded-[1.5rem] p-8 sticky top-6 shadow-sm overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-500">
-
-      {/* Header Section: Only Word and Speaker/Mic buttons */}
       <div className="flex justify-between items-center mb-6">
-        {/* Word (Simplified) */}
         <h1 className={`leading-none font-bold text-primary ${word.word.length <= 4 ? "text-[4rem]" : word.word.length <= 8 ? "text-[3rem]" : "text-3xl"}`}>
           {renderClickableHanzi(word.word, onCharClick)}
         </h1>
 
-        {/* 2 nút Icon Loa và Icon Mic ở trên bên phải Card */}
         <div className="flex gap-3 flex-shrink-0 ml-4">
           <button
             type="button"
-            onClick={() => playTTSWithClientCache(word.word, lang)}
+            onClick={() => playTTSWithClientCache(word.word, 'zh')}
             disabled={!word || !word.word}
             title="Phát âm"
             className="text-secondary hover:text-primary disabled:opacity-30 disabled:pointer-events-none transition-colors flex-shrink-0 focus:outline-none"
@@ -224,22 +199,26 @@ export default function WordCard({ word, onPracticeClick, onCharClick }: WordCar
           >
             <Mic className="w-6 h-6" />
           </button>
+          <button
+            type="button"
+            onClick={() => handleOpenReport('translation')}
+            title="Báo cáo lỗi từ vựng"
+            className="text-secondary hover:text-red-600 transition-colors flex-shrink-0 focus:outline-none"
+          >
+            <Flag className="w-5.5 h-5.5" />
+          </button>
         </div>
       </div>
 
-      {/* Details list below the header, spanning full width */}
       <div className="space-y-3 mb-6">
-        {/* Từ Hán (Phồn thể) */}
         {word.traditional && word.traditional !== word.word && (
           <p className="text-lg text-secondary font-medium">
             Từ Hán (Phồn thể): <span className="text-primary font-semibold text-xl">{renderClickableHanzi(word.traditional, onCharClick)}</span>
           </p>
         )}
 
-        {/* Pinyin */}
         <p className="text-2xl text-secondary font-semibold">{word.pinyin}</p>
 
-        {/* Hán Việt (nếu có) */}
         {word.han_viet && (
           <div className="flex items-center gap-2">
             <span className="text-base text-secondary font-medium">Hán Việt:</span>
@@ -249,14 +228,12 @@ export default function WordCard({ word, onPracticeClick, onCharClick }: WordCar
           </div>
         )}
 
-        {/* Từ loại (dịch sang tiếng Việt) */}
         {posList.length > 0 && (
           <p className="text-base text-secondary font-medium">
             Từ loại: <span className="text-primary font-semibold">{posList.join(', ')}</span>
           </p>
         )}
 
-        {/* Level & Tags (xếp cùng hàng) */}
         <div className="flex flex-wrap gap-2 items-center">
           {word.hsk_level && (
             <span className="px-3 py-1 rounded-full bg-blue-500/10 text-blue-600 font-bold text-sm">
@@ -273,7 +250,6 @@ export default function WordCard({ word, onPracticeClick, onCharClick }: WordCar
           })}
         </div>
 
-        {/* Nút thêm vào sổ tay (cuối cùng) */}
         {word.word.length <= 14 && (
           <button
             type="button"
@@ -294,7 +270,6 @@ export default function WordCard({ word, onPracticeClick, onCharClick }: WordCar
 
       <hr className="border-outline/50 mb-8" />
 
-      {/* Translation Section */}
       <div className="mb-8">
         <h2 className="text-[13px] font-bold uppercase tracking-wider text-secondary mb-3">
           Nghĩa Tiếng Việt
@@ -309,7 +284,6 @@ export default function WordCard({ word, onPracticeClick, onCharClick }: WordCar
         )}
       </div>
 
-      {/* Image Illustration Section */}
       {word && word.id && isUUID(word.id) && imageStatus !== 'idle' && (
         <div className="mb-8">
           <h2 className="text-[13px] font-bold uppercase tracking-wider text-secondary mb-3">
@@ -343,9 +317,9 @@ export default function WordCard({ word, onPracticeClick, onCharClick }: WordCar
               <VocabularyImage 
                 src={imageUrl} 
                 alt={`Minh họa cho ${word.word}`}
-                onReport={handleReportImage}
-                isReporting={isReporting}
                 isBridged={isBridged}
+                onReport={() => handleOpenReport('image')}
+                isReporting={(imageStatus as string) === 'regenerating'}
               />
               {isBridged && (
                 <p className="text-xs text-center text-secondary/60 italic max-w-[320px] mx-auto leading-relaxed">
@@ -357,7 +331,6 @@ export default function WordCard({ word, onPracticeClick, onCharClick }: WordCar
         </div>
       )}
 
-      {/* Examples Section */}
       {word.examples && word.examples.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-[13px] font-bold uppercase tracking-wider text-secondary mb-4">
@@ -409,17 +382,23 @@ export default function WordCard({ word, onPracticeClick, onCharClick }: WordCar
         </div>
       )}
 
-      {/* Add To Notebook Modal */}
       <AddToNotebookModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         word={word}
       />
 
-      {/* Auth Modal fallback */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+      />
+
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        contentType="zh_word"
+        objectId={word.id}
+        defaultReportType={activeReportType}
       />
     </div>
   );

@@ -409,7 +409,7 @@ export default function NotebookDetailClient({
                     value={lookupQuery}
                     onChange={e => setLookupQuery(e.target.value)}
                     className="w-full border border-outline rounded-xl pl-4 pr-10 py-2.5 bg-white focus:outline-none focus:border-primary transition-colors text-sm"
-                    placeholder="Gõ Chữ Hán, Pinyin hoặc nghĩa..."
+                    placeholder={language === 'en' ? "Gõ từ Tiếng Anh hoặc nghĩa..." : "Gõ Chữ Hán, Pinyin hoặc nghĩa..."}
                   />
                   {isLookupLoading && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 text-primary">
@@ -427,7 +427,7 @@ export default function NotebookDetailClient({
                         type="button"
                         onClick={() => {
                           setNewVocab(item.word);
-                          setNewPinyin(item.pinyin);
+                          setNewPinyin(item.pinyin || item.ipa || '');
                           setNewMeaning(item.translation_vi);
                           setLookupQuery('');
                           setLookupSuggestions([]);
@@ -443,7 +443,7 @@ export default function NotebookDetailClient({
                               </span>
                             )}
                           </div>
-                          <span className="text-secondary text-xs font-mono mt-0.5">[{item.pinyin}]</span>
+                          <span className="text-secondary text-xs font-mono mt-0.5">[{item.pinyin || item.ipa}]</span>
                         </div>
                         <span className="text-secondary text-xs truncate max-w-[200px] text-right font-medium">
                           {item.translation_vi}
@@ -461,24 +461,28 @@ export default function NotebookDetailClient({
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-secondary mb-1">Từ vựng (Tiếng Trung)</label>
+                  <label className="block text-sm font-medium text-secondary mb-1">
+                    Từ vựng ({language === 'en' ? 'Tiếng Anh' : 'Tiếng Trung'})
+                  </label>
                   <input
                     type="text"
                     value={newVocab}
                     onChange={e => setNewVocab(e.target.value)}
                     className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors font-noto-sc text-lg font-bold"
-                    placeholder="VD: 学习"
+                    placeholder={language === 'en' ? "VD: learn" : "VD: 学习"}
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-secondary mb-1">Pinyin (Bính âm)</label>
+                  <label className="block text-sm font-medium text-secondary mb-1">
+                    {language === 'en' ? 'Phiên âm (IPA)' : 'Pinyin (Bính âm)'}
+                  </label>
                   <input
                     type="text"
                     value={newPinyin}
                     onChange={e => setNewPinyin(e.target.value)}
                     className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors text-sm font-medium text-[#10b981]"
-                    placeholder="VD: xuéxí"
+                    placeholder={language === 'en' ? "VD: /lɜːn/" : "VD: xuéxí"}
                   />
                 </div>
                 <div>
@@ -488,7 +492,7 @@ export default function NotebookDetailClient({
                     value={newMeaning}
                     onChange={e => setNewMeaning(e.target.value)}
                     className="w-full border border-outline rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary transition-colors text-sm font-medium"
-                    placeholder="VD: Học tập"
+                    placeholder={language === 'en' ? "VD: Học tập" : "VD: Học tập"}
                     required
                   />
                 </div>

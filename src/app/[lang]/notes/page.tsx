@@ -5,7 +5,14 @@ import { getServerAuthToken } from '@/lib/serverAuth';
 
 export const dynamic = 'force-dynamic';
 
-export default async function NotesPage() {
+interface PageProps {
+  params: {
+    lang: string;
+  };
+}
+
+export default async function NotesPage({ params }: PageProps) {
+  const lang = params?.lang || 'zh';
   let initialNotebooks: Notebook[] = [];
   try {
     const GATEWAY_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
@@ -15,7 +22,7 @@ export default async function NotesPage() {
       headers.set('Authorization', `Bearer ${token}`);
     }
 
-    const res = await fetch(`${GATEWAY_URL}/api/core/notes/notebooks/`, {
+    const res = await fetch(`${GATEWAY_URL}/api/core/notes/notebooks/?lang=${lang}`, {
       method: 'GET',
       headers,
       cache: 'no-store'

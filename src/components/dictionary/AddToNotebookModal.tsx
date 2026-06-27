@@ -9,15 +9,18 @@ import { ZhWord } from '@/types/dictionary';
 interface AddToNotebookModalProps {
   isOpen: boolean;
   onClose: () => void;
-  word: ZhWord;
+  word: any; // Chấp nhận cả ZhWord và EnWord
 }
 
 export default function AddToNotebookModal({ isOpen, onClose, word }: AddToNotebookModalProps) {
+  const isEnglish = !word.pinyin && (!!word.ipa || !!word.cefr_level || !/[\u4e00-\u9fff]/.test(word.word));
+  const lang = isEnglish ? 'en' : 'zh';
+
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
-  const [selectedNotebookId, setSelectedNotebookId] = useState<number | ''>('');
-  const [vocab, setVocab] = useState(word.word);
-  const [pinyin, setPinyin] = useState(word.pinyin);
-  const [meaning, setMeaning] = useState(word.translation_vi);
+  const [selectedNotebookId, setSelectedNotebookId] = useState<string | ''>('');
+  const [vocab, setVocab] = useState('');
+  const [pinyin, setPinyin] = useState('');
+  const [meaning, setMeaning] = useState('');
   const [note, setNote] = useState('');
 
   const [isLoading, setIsLoading] = useState(false);
@@ -34,21 +37,21 @@ export default function AddToNotebookModal({ isOpen, onClose, word }: AddToNoteb
 
   useEffect(() => {
     if (isOpen) {
-      loadNotebooks();
+      loadNotebooks(lang);
       // Reset state for new word
-      setVocab(word.word);
-      setPinyin(word.pinyin);
-      setMeaning(word.translation_vi);
+      setVocab(word.word || '');
+      setPinyin(word.pinyin || word.ipa || '');
+      setMeaning(word.translation_vi || '');
       setNote('');
       setErrorMsg('');
       setSuccessMsg('');
     }
-  }, [isOpen, word]);
+  }, [isOpen, word, lang]);
 
-  async function loadNotebooks() {
+  async function loadNotebooks(targetLang: string) {
     try {
       setIsLoading(true);
-      const list = await fetchNotebooks();
+      const list = await fetchNotebooks(targetLang);
       setNotebooks(list);
       if (list.length > 0) {
         setSelectedNotebookId(list[0].id);
@@ -136,14 +139,14 @@ export default function AddToNotebookModal({ isOpen, onClose, word }: AddToNoteb
             ) : notebooks.length === 0 ? (
               <div className="p-3 border border-dashed border-outline rounded-xl text-center text-secondary text-sm">
                 Bạn chưa có sổ tay nào.
-                <a href={`/${word.hsk_level ? 'zh' : 'en'}/notes`} className="text-primary font-bold block mt-1 hover:underline">
+                <a href={`/${lang}/notes`} className="text-primary font-bold block mt-1 hover:underline">
                   Tạo sổ tay mới
                 </a>
               </div>
             ) : (
               <select
                 value={selectedNotebookId}
-                onChange={e => setSelectedNotebookId(Number(e.target.value))}
+                onChange={e => setSelectedNotebookId(e.target.value)}
                 className="w-full border border-outline rounded-xl px-4 py-2.5 bg-white focus:outline-none focus:border-primary transition-colors text-sm font-medium"
               >
                 {notebooks.map(nb => (
@@ -162,7 +165,9 @@ export default function AddToNotebookModal({ isOpen, onClose, word }: AddToNoteb
             <h3 className="text-xs font-bold uppercase tracking-wider text-secondary">Xem lại thông tin</h3>
             
             <div>
-              <label className="block text-sm font-medium text-secondary mb-1">Từ vựng (Tiếng Trung)</label>
+              <label className="block text-sm font-medium text-secondary mb-1">
+                Từ vựng ({lang === 'en' ? 'Tiếng Anh' : 'Tiếng Trung'})
+              </label>
               <input 
                 type="text" 
                 value={vocab}
@@ -173,7 +178,9 @@ export default function AddToNotebookModal({ isOpen, onClose, word }: AddToNoteb
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-secondary mb-1">Pinyin (Bính âm)</label>
+              <label className="block text-sm font-medium text-secondary mb-1">
+                {lang === 'en' ? 'Phiên âm (IPA)' : 'Pinyin (Bính âm)'}
+              </label>
               <input 
                 type="text" 
                 value={pinyin}

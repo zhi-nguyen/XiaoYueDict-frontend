@@ -2,6 +2,36 @@
 
 import React, { useEffect, useRef } from 'react';
 
+const charCache: Record<string, any | undefined> = {};
+const pendingPromises: Record<string, Promise<any> | undefined> = {};
+
+export const getCharData = (char: string): Promise<any> => {
+  if (charCache[char]) {
+    return Promise.resolve(charCache[char]);
+  }
+  if (pendingPromises[char]) {
+    return pendingPromises[char];
+  }
+
+  const promise = fetch(`https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0.1/${encodeURIComponent(char)}.json`)
+    .then((res) => {
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      return res.json();
+    })
+    .then((data) => {
+      charCache[char] = data;
+      delete pendingPromises[char];
+      return data;
+    })
+    .catch((err) => {
+      delete pendingPromises[char];
+      throw err;
+    });
+
+  pendingPromises[char] = promise;
+  return promise;
+};
+
 interface HanziStrokeBoxProps {
   char: string;
 }
@@ -34,6 +64,9 @@ export default function HanziStrokeBox({ char }: HanziStrokeBoxProps) {
           strokeColor: '#1e3a8a', // Dark blue
           outlineColor: '#f3f4f6', // Light gray
           drawingColor: '#10b981', // Emerald green for writing quiz
+          charDataLoader: (charToLoad, onLoad, onError) => {
+            getCharData(charToLoad).then(onLoad).catch(onError);
+          }
         });
         
         // Auto-play stroke order animation on render
@@ -130,8 +163,7 @@ export function HanziStrokeSequence({ char }: HanziStrokeSequenceProps) {
     setIsLoading(true);
     const loadData = async () => {
       try {
-        const HanziWriter = (await import('hanzi-writer')).default;
-        const data = await HanziWriter.loadCharacterData(char);
+        const data = await getCharData(char);
         if (active && data) {
           setCharData(data as { strokes: string[] });
         }

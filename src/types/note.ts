@@ -1,5 +1,5 @@
 export interface Notebook {
-  id: number;
+  id: string;
   name: string;
   description: string;
   created_at: string;
@@ -8,8 +8,8 @@ export interface Notebook {
 }
 
 export interface Word {
-  id: number;
-  notebook: number;
+  id: string;
+  notebook: string;
   vocabulary: string;
   pinyin: string;
   meaning: string;

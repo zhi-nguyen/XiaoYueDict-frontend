@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import ImageCropper from '@/components/profile/ImageCropper';
 
 interface ProfileInfoTabProps {
@@ -65,9 +66,18 @@ export default function ProfileInfoTab({ user, tier, onUpdateProfile }: ProfileI
           <div className="relative group">
             <label htmlFor="avatar-upload" className="cursor-pointer relative w-24 h-24 rounded-full bg-primary flex items-center justify-center text-white text-4xl font-bold overflow-hidden shadow-sm hover:ring-2 hover:ring-primary/50 transition-all">
               {previewAvatar ? (
-                <img src={previewAvatar} alt="Avatar" className="w-full h-full object-cover" />
+                <Image 
+                  src={previewAvatar} 
+                  alt="Avatar" 
+                  width={96} 
+                  height={96} 
+                  unoptimized
+                  className="w-full h-full object-cover" 
+                />
               ) : (
-                user.username.substring(0, 2).toUpperCase()
+                user.first_name && user.last_name
+                  ? (user.first_name.charAt(0) + user.last_name.charAt(0)).toUpperCase()
+                  : (user.first_name || user.username).substring(0, 2).toUpperCase()
               )}
               {isEditingInfo && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -85,7 +95,9 @@ export default function ProfileInfoTab({ user, tier, onUpdateProfile }: ProfileI
             />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-primary">{user.username}</h2>
+            <h2 className="text-2xl font-bold text-primary">
+              {user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user.username}
+            </h2>
             <p className="text-secondary">{user.email}</p>
             <div className="mt-2 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-surface border border-outline text-xs font-bold text-primary">
               Gói hiện tại: <span className="text-yellow-600 uppercase tracking-wider">{tier || 'Free'}</span>

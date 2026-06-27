@@ -26,6 +26,7 @@ export interface ZhWord {
   word_frequency: number;
   popularity_rank: number;
   audio_url: string;
+  image_url?: string;
   examples: ZhExample[];
 }
 

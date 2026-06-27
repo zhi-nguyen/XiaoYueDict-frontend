@@ -7,3 +7,9 @@ export const getGuestId = (): string | null => {
   }
   return gid;
 };
+
+/** Remove guest_id from localStorage upon successful login. */
+export const clearGuestId = (): void => {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('guest_id');
+};

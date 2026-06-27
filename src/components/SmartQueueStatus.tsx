@@ -9,6 +9,10 @@ interface SmartQueueStatusProps {
   onRetry?: () => void;
   errorMessage?: string | null;
   errorType?: 'network' | 'validation' | 'processing' | 'rate_limit' | null;
+  queuePosition?: number;
+  estimatedWait?: number;
+  initialEWT?: number;
+  elapsedSeconds?: number;
 }
 
 export default function SmartQueueStatus({
@@ -17,48 +21,59 @@ export default function SmartQueueStatus({
   onRetry,
   errorMessage,
   errorType = null,
+  queuePosition = 0,
+  estimatedWait = 0,
+  initialEWT = 0,
+  elapsedSeconds,
 }: SmartQueueStatusProps) {
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [localElapsed, setLocalElapsed] = useState(0);
   const [currentTip, setCurrentTip] = useState('');
 
-  // 1. Kích hoạt tự động bộ đếm thời gian dựa trên Phase của tiến trình
+  const activeElapsed = elapsedSeconds !== undefined ? elapsedSeconds : localElapsed;
+
+  // 1. Kích hoạt tự động bộ đếm thời gian nếu không truyền prop elapsedSeconds
   useEffect(() => {
+    if (elapsedSeconds !== undefined) return;
     if (['uploading', 'queued', 'processing'].includes(phase)) {
       const interval = setInterval(() => {
-        setElapsedSeconds((prev) => prev + 1);
+        setLocalElapsed((prev) => prev + 1);
       }, 1000);
       return () => clearInterval(interval);
     } else {
-      setElapsedSeconds(0);
+      setLocalElapsed(0);
     }
-  }, [phase]);
+  }, [phase, elapsedSeconds]);
 
-  // 2. Trích xuất ngẫu nhiên nội dung Tips khi tiến trình bước sang Giai đoạn 2 (giây thứ 3)
+  // 2. Trích xuất ngẫu nhiên nội dung Tips khi thời gian trôi qua vượt EWT ban đầu
+  const triggerTipSeconds = initialEWT && initialEWT > 0 ? initialEWT : 3;
   useEffect(() => {
-    if (elapsedSeconds === 3 && strategy?.tips?.length > 0) {
+    if (activeElapsed === triggerTipSeconds && strategy?.tips?.length > 0) {
       const randomTip = strategy.tips[Math.floor(Math.random() * strategy.tips.length)];
       setCurrentTip(randomTip);
     }
-  }, [elapsedSeconds, strategy?.tips]);
+  }, [activeElapsed, triggerTipSeconds, strategy?.tips]);
 
   if (phase === 'idle' || phase === 'success' || phase === 'completed') {
     return null;
   }
 
   // 3. Logic phân phối nội dung thông báo động theo các mốc thời gian
+  const threshold = initialEWT && initialEWT > 0 ? initialEWT : 5;
+  const isStage3 = activeElapsed >= threshold;
+  const isCongested = activeElapsed >= 2 * threshold;
+
   let displayMessage = '';
   const { stage1 = [], stage2 = [], stage3 = [] } = strategy?.messages || {};
 
-  if (elapsedSeconds < 3) {
-    displayMessage = stage1.length > 0 ? stage1[elapsedSeconds % stage1.length] : 'Đang khởi tạo...';
-  } else if (elapsedSeconds < 7) {
-    displayMessage = stage2.length > 0 ? stage2[(elapsedSeconds - 3) % stage2.length] : 'Đang xử lý...';
+  if (activeElapsed < 3) {
+    displayMessage = stage1.length > 0 ? stage1[activeElapsed % stage1.length] : 'Đang khởi tạo...';
+  } else if (activeElapsed < threshold) {
+    displayMessage = stage2.length > 0 ? stage2[(activeElapsed - 3) % stage2.length] : 'Đang xử lý...';
+  } else if (isCongested) {
+    displayMessage = 'Hệ thống đang xử lý chậm hơn bình thường. Vui lòng kiên nhẫn...';
   } else {
     displayMessage = stage3[0] || 'Vui lòng chờ trong giây lát...';
   }
-
-  const isStage2 = elapsedSeconds >= 3 && elapsedSeconds < 7;
-  const isStage3 = elapsedSeconds >= 7;
 
   // 4. Phân tích lỗi (Error Classification) để hiển thị tiêu đề và nội dung phù hợp
   let effectiveErrorType = errorType;
@@ -66,7 +81,7 @@ export default function SmartQueueStatus({
     const msg = errorMessage.toLowerCase();
     if (msg.includes('hạn mức') || msg.includes('lượt') || msg.includes('rate limit')) {
       effectiveErrorType = 'rate_limit';
-    } else if (msg.includes('giọng nói') || msg.includes('ngắn') || msg.includes('dài') || msg.includes('hợp lệ') || msg.includes('định dạng') || msg.includes('invalid') || msg.includes('chính tả')) {
+    } else if (msg.includes('giọng nói') || msg.includes('ngắn') || msg.includes('dài') || msg.includes('hợp lệ') || msg.includes('định dạng') || msg.includes('invalid') || msg.includes('chính tả') || msg.includes('timeout') || msg.includes('quá thời gian')) {
       effectiveErrorType = 'validation';
     } else if (msg.includes('kết nối') || msg.includes('mạng') || msg.includes('đường truyền') || msg.includes('network') || msg.includes('fetch')) {
       effectiveErrorType = 'network';
@@ -92,19 +107,26 @@ export default function SmartQueueStatus({
   return (
     <div className="animate-slide-up w-full">
       {phase === 'error' ? (
-        // XỬ LÝ NGOẠI LỆ: Báo lỗi và Kêu gọi Hành động (Graceful Degradation - Hồng/Đỏ nhạt)
+        // XỬ LÝ NGOẠI LỆ: Báo lỗi và Kêu gọi Hành động (Graceful Degradation)
         <div className="relative overflow-hidden rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm transition-all duration-300">
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0">
-              <span className="material-symbols-outlined text-[22px]">error</span>
+          <div className="flex flex-col gap-4">
+            {/* Hàng 1: 2 cột - Cột 1 là icon, Cột 2 là Title */}
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+                <span className="material-symbols-outlined text-[22px]">error</span>
+              </div>
+              <h4 className="font-bold text-red-800 text-sm leading-snug">{errorTitle}</h4>
             </div>
-            <div className="flex-1">
-              <h4 className="font-bold text-red-800 text-sm">{errorTitle}</h4>
-              <p className="text-red-700 text-xs mt-1 leading-relaxed">
-                {errorDescription}
-              </p>
+            
+            {/* Hàng 2: Hàng 1 cột duy nhất chứa subtitle */}
+            <p className="text-red-700 text-xs leading-relaxed">
+              {errorDescription}
+            </p>
+            
+            {/* Hàng 3: Hàng 1 cột duy nhất chứa chi tiết lỗi và nút bấm */}
+            <div className="w-full space-y-4">
               {errorMessage && (
-                <div className="mt-2.5 p-3 rounded-xl bg-white border border-red-200/60 text-red-800 text-xs leading-relaxed font-medium">
+                <div className="p-3 rounded-xl bg-white border border-red-200/60 text-red-800 text-xs leading-relaxed font-medium">
                   Chi tiết: {errorMessage}
                 </div>
               )}
@@ -112,7 +134,7 @@ export default function SmartQueueStatus({
                 <button
                   type="button"
                   onClick={onRetry}
-                  className="mt-4 flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm hover:shadow active:scale-[0.98] focus:outline-none"
+                  className="w-full flex items-center justify-center gap-1.5 py-3 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm hover:shadow active:scale-[0.98] focus:outline-none"
                 >
                   <span className="material-symbols-outlined text-sm">refresh</span>
                   Thử lại ngay
@@ -138,15 +160,27 @@ export default function SmartQueueStatus({
           <div className="relative z-10 space-y-4">
             <div className="flex items-center gap-4">
               <div className="flex-1 min-w-0">
-                <p
-                  className={`font-semibold text-sm leading-snug transition-all duration-300 ${
-                    isStage3 ? 'text-amber-900 font-bold' : 'text-primary'
-                  }`}
-                >
-                  {displayMessage}
-                </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p
+                    className={`font-semibold text-sm leading-snug transition-all duration-300 ${
+                      isStage3 ? 'text-amber-900 font-bold' : 'text-primary'
+                    }`}
+                  >
+                    {displayMessage}
+                  </p>
+                  {phase === 'queued' && queuePosition > 0 && (
+                    <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-[10px] font-bold rounded-full animate-pulse">
+                      Hàng đợi: #{queuePosition}
+                    </span>
+                  )}
+                </div>
                 <p className={`text-[11px] mt-0.5 ${isStage3 ? 'text-amber-800' : 'text-secondary'}`}>
-                  Thời gian đã trôi qua: <span className="font-semibold">{elapsedSeconds} giây</span>
+                  Thời gian đã trôi qua: <span className="font-semibold">{activeElapsed} giây</span>
+                  {estimatedWait > 0 && (
+                    <>
+                      {' · '}Ước tính còn lại: <span className="font-semibold">{estimatedWait} giây</span>
+                    </>
+                  )}
                 </p>
               </div>
             </div>
@@ -164,15 +198,32 @@ export default function SmartQueueStatus({
               />
             </div>
 
-            {/* GIAI ĐOẠN 2: THẺ TIPS HIỆU ỨNG FADE-IN */}
-            {elapsedSeconds >= 3 && currentTip && (
-              <div className="animate-fade-in flex gap-2.5 bg-amber-50 border border-amber-100 p-3.5 rounded-xl text-xs text-amber-900 leading-relaxed font-sans">
-                <span className="material-symbols-outlined text-[18px] text-amber-600 shrink-0 mt-0.5">
-                  lightbulb
+            {/* GIAI ĐOẠN 2: THẺ TIPS HIỆU ỨNG FADE-IN (Chỉ hiển thị sau khi qua EWT ban đầu) */}
+            {activeElapsed >= triggerTipSeconds && currentTip && (
+              <div className="animate-fade-in bg-amber-50 border border-amber-100 p-3.5 rounded-xl text-xs text-amber-900 leading-relaxed font-sans space-y-2">
+                {/* Hàng 1: gồm 2 cột, cột 1 cho icon đèn, cột 2 cho: "Mẹo học thuật:" */}
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-amber-600 shrink-0">
+                    lightbulb
+                  </span>
+                  <span className="font-bold">Mẹo học thuật:</span>
+                </div>
+                {/* Hàng 2: chỉ 1 cột duy nhất hiển thị nội dung mẹo */}
+                <div className="text-secondary/90 leading-relaxed">
+                  {currentTip}
+                </div>
+              </div>
+            )}
+
+            {/* CẢNH BÁO KHI GẤP ĐÔI THỜI GIAN CHỜ ƯỚC TÍNH */}
+            {isCongested && (
+              <div className="animate-fade-in flex gap-2.5 bg-red-50 border border-red-200 p-3.5 rounded-xl text-xs text-red-900 leading-relaxed font-sans mt-2">
+                <span className="material-symbols-outlined text-[18px] text-red-600 shrink-0 mt-0.5 animate-pulse">
+                  warning
                 </span>
                 <div>
-                  <span className="font-bold block mb-0.5">Mẹo học thuật:</span>
-                  {currentTip}
+                  <span className="font-bold block mb-0.5">Hệ thống đang quá tải:</span>
+                  Dịch vụ phản hồi chậm hơn bình thường. Vui lòng kiên nhẫn đợi thêm chút nữa, hệ thống đang nỗ lực xử lý bài làm của bạn.
                 </div>
               </div>
             )}

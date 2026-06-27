@@ -20,6 +20,7 @@ interface UseStudySearchReturn {
   pendingText: string;
   setSelectedWord: (word: ZhWord | null) => void;
   handleSearch: (query: string) => Promise<void>;
+  setExactExampleDirectly: (example: any, displayQuery: string) => void;
 }
 
 /**
@@ -49,7 +50,11 @@ export function useStudySearch(): UseStudySearchReturn {
   // Listen for WebSocket translation results
   useWebSocket({
     onMessage: (msg) => {
-      if (!currentTaskId || msg.payload?.task_id !== currentTaskId) return;
+      console.log('[useStudySearch] onMessage received:', msg.type, 'payload task_id:', msg.payload?.task_id, 'currentTaskId:', currentTaskId);
+      if (!currentTaskId || msg.payload?.task_id !== currentTaskId) {
+        console.log('[useStudySearch] Ignored message (task ID mismatch or no active task)');
+        return;
+      }
 
       if (msg.type === 'translation_complete') {
         const payload = msg.payload as any;
@@ -89,7 +94,7 @@ export function useStudySearch(): UseStudySearchReturn {
           source: res.data.source || 'ai_translation'
         });
         setIsTranslating(false);
-      } else if (res.data.status === 'PENDING' && res.data.task_id) {
+      } else if (res.data.task_id) {
         setCurrentTaskId(res.data.task_id);
       } else {
         setTranslationError('Lỗi dịch thuật từ máy chủ.');
@@ -128,6 +133,15 @@ export function useStudySearch(): UseStudySearchReturn {
       const url = new URL(window.location.href);
       url.searchParams.set('q', trimmed);
       window.history.pushState({ q: trimmed }, '', url.pathname + url.search);
+    }
+
+    const isChinese = language === 'zh';
+    const isTooLongForSearch = isChinese ? trimmed.length > 100 : trimmed.split(/\s+/).length > 30;
+
+    if (isTooLongForSearch) {
+      handleDirectTranslation(trimmed);
+      setIsLoading(false);
+      return;
     }
 
     try {
@@ -171,6 +185,29 @@ export function useStudySearch(): UseStudySearchReturn {
     return performSearch(query, true);
   }, [performSearch]);
 
+  // Directly set an exact example match without re-searching.
+  // Used when user clicks an example in the search bar dropdown.
+  const setExactExampleDirectly = useCallback((example: any, displayQuery: string) => {
+    const trimmed = displayQuery.trim();
+    if (!trimmed) return;
+
+    setSearchQuery(trimmed);
+    setWordResults([]);
+    setSelectedWord(null);
+    setExactExampleMatch(example);
+    setTranslationResult(null);
+    setTranslationError('');
+    setCurrentTaskId(null);
+    setIsLoading(false);
+    setIsTranslating(false);
+
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('q', trimmed);
+      window.history.pushState({ q: trimmed }, '', url.pathname + url.search);
+    }
+  }, []);
+
   // Sync state with URL query search params on popstate
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -200,5 +237,6 @@ export function useStudySearch(): UseStudySearchReturn {
     pendingText,
     setSelectedWord,
     handleSearch,
+    setExactExampleDirectly,
   };
 }

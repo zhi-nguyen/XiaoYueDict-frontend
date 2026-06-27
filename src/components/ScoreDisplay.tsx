@@ -90,10 +90,10 @@ export default function ScoreDisplay({ result, overallScore }: ScoreDisplayProps
           {/* Score Summary */}
           <div className="flex-1 text-center sm:text-left">
             <h3 className={`text-lg font-bold ${colors.text}`}>
-              {level === 'excellent' && '🎉 Xuất sắc!'}
-              {level === 'good' && '👍 Tốt lắm!'}
-              {level === 'moderate' && '💪 Cần cải thiện'}
-              {level === 'poor' && '📝 Hãy luyện tập thêm'}
+              {level === 'excellent' && 'Xuất sắc!'}
+              {level === 'good' && 'Tốt lắm!'}
+              {level === 'moderate' && 'Cần cải thiện'}
+              {level === 'poor' && 'Hãy luyện tập thêm'}
             </h3>
 
             {isReadAloudAny(result) && (

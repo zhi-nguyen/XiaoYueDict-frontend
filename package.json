@@ -10,8 +10,10 @@
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
     "axios": "^1.16.1",
     "date-fns": "^4.3.0",
+    "firebase": "^12.15.0",
     "hanzi-writer": "^3.7.3",
     "js-cookie": "^3.0.8",
     "jwt-decode": "^4.0.0",

@@ -1,18 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'next/navigation';
 import { Search, X, Loader2, Quote } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { djangoClient } from '@/lib/apiClient';
-import { ZhWord } from '@/types/dictionary';
+
+export interface SearchResult {
+  id: string;
+  word: string;
+  ipa?: string;
+  translation_vi: string;
+  part_of_speech?: string[] | string;
+  cefr_level?: string;
+}
 
 interface SearchBarProps {
-  onSelectWord: (word: ZhWord) => void;
+  onSelectWord: (word: SearchResult) => void;
   onSearch?: (query: string) => void;
+  onSelectExample?: (example: { english: string; vietnamese: string }) => void;
 }
 
 interface ExactExample {
-  chinese: string;
-  pinyin: string;
+  english?: string;
   vietnamese: string;
 }
 
@@ -21,14 +28,52 @@ const capitalizeFirstLetter = (str: string): string => {
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
-export default function SearchBar({ onSelectWord, onSearch }: SearchBarProps) {
-  const params = useParams();
-  const language = (params?.lang as string) === 'en' ? 'en' : 'zh';
+const capitalizeWords = (str: string): string => {
+  if (!str) return '';
+  return str
+    .split(/\s+/)
+    .map(word => {
+      if (!word) return '';
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(' ');
+};
 
+const translatePartOfSpeech = (pos: string): string => {
+  if (!pos) return '';
+  const mapping: Record<string, string> = {
+    noun: 'Danh từ',
+    verb: 'Động từ',
+    adjective: 'Tính từ',
+    adverb: 'Phó từ',
+    pronoun: 'Đại từ',
+    number: 'Số từ',
+    numeral: 'Số từ',
+    classifier: 'Lượng từ',
+    preposition: 'Giới từ',
+    conjunction: 'Liên từ',
+    particle: 'Trợ từ',
+    auxiliary: 'Trợ động từ',
+    interjection: 'Thán từ',
+    onomatopoeia: 'Từ tượng thanh',
+    suffix: 'Hậu tố',
+    prefix: 'Tiền tố',
+    idiom: 'Thành ngữ',
+    phrase: 'Cụm từ',
+    sentence: 'Câu',
+    punctuation: 'Dấu câu',
+    'modal auxiliary': 'Trợ động từ khuyết thiếu',
+  };
+  const normalized = pos.trim().toLowerCase();
+  const res = mapping[normalized] || pos;
+  return capitalizeWords(res);
+};
+
+export default function SearchBarEn({ onSelectWord, onSearch, onSelectExample }: SearchBarProps) {
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 800);
 
-  const [results, setResults] = useState<ZhWord[]>([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
   const [exactExample, setExactExample] = useState<ExactExample | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -36,7 +81,6 @@ export default function SearchBar({ onSelectWord, onSearch }: SearchBarProps) {
   const lastSubmittedQuery = useRef('');
 
   useEffect(() => {
-    // Click outside to close
     function handleClickOutside(event: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setIsOpen(false);
@@ -49,7 +93,9 @@ export default function SearchBar({ onSelectWord, onSearch }: SearchBarProps) {
   useEffect(() => {
     async function searchWords() {
       const trimmedQuery = debouncedQuery.trim();
-      if (!trimmedQuery || trimmedQuery === lastSubmittedQuery.current) {
+      const isTooLongForSearch = trimmedQuery.split(/\s+/).length > 30;
+
+      if (!trimmedQuery || trimmedQuery === lastSubmittedQuery.current || isTooLongForSearch) {
         setResults([]);
         setExactExample(null);
         setIsOpen(false);
@@ -58,7 +104,7 @@ export default function SearchBar({ onSelectWord, onSearch }: SearchBarProps) {
 
       setIsLoading(true);
       try {
-        const res = await djangoClient.get(`/dictionary/${language}/search/?q=${encodeURIComponent(debouncedQuery)}`);
+        const res = await djangoClient.get(`/dictionary/en/search/?q=${encodeURIComponent(debouncedQuery)}`);
         const data = res.data;
         setResults(data.results || []);
         setExactExample(data.exact_example_match || null);
@@ -73,7 +119,7 @@ export default function SearchBar({ onSelectWord, onSearch }: SearchBarProps) {
     searchWords();
   }, [debouncedQuery]);
 
-  const handleSelect = (word: ZhWord) => {
+  const handleSelect = (word: SearchResult) => {
     lastSubmittedQuery.current = '';
     onSelectWord(word);
     if (onSearch) {
@@ -95,7 +141,7 @@ export default function SearchBar({ onSelectWord, onSearch }: SearchBarProps) {
         <input
           type="text"
           className="flex-1 h-full bg-transparent outline-none text-lg text-primary placeholder:text-secondary font-medium"
-          placeholder="Tra từ"
+          placeholder="Tra từ tiếng Anh..."
           value={query}
           onChange={(e) => {
             const val = e.target.value;
@@ -154,28 +200,25 @@ export default function SearchBar({ onSelectWord, onSearch }: SearchBarProps) {
               {exactExample && (
                 <div className="mx-2 mb-2 animate-in slide-in-from-top-2">
                   <button
-                    onClick={() => handleSelect({
-                      id: 'exact-example-match',
-                      word: exactExample.chinese,
-                      traditional: '',
-                      pinyin: exactExample.pinyin,
-                      toneless_pinyin: '',
-                      han_viet: '',
-                      translation_vi: exactExample.vietnamese,
-                      translation_en: '',
-                      part_of_speech: ['sentence'],
-                      hsk_level: '',
-                      radical: [],
-                      stroke_number: [],
-                      components: [],
-                      synonyms: [],
-                      antonyms: [],
-                      tags: ['Câu ví dụ'],
-                      word_frequency: 0,
-                      popularity_rank: 0,
-                      audio_url: '',
-                      examples: []
-                    } as unknown as ZhWord)}
+                    onClick={() => {
+                      // Use dedicated callback to directly set example data
+                      // instead of re-searching the full sentence
+                      if (onSelectExample && exactExample.english) {
+                        onSelectExample({
+                          english: exactExample.english,
+                          vietnamese: exactExample.vietnamese,
+                        });
+                      } else {
+                        handleSelect({
+                          id: 'exact-example-match',
+                          word: exactExample.english || '',
+                          translation_vi: exactExample.vietnamese,
+                          part_of_speech: 'sentence'
+                        });
+                      }
+                      setIsOpen(false);
+                      setQuery('');
+                    }}
                     className="w-full text-left p-4 bg-primary/5 hover:bg-primary/10 transition-colors rounded-xl border border-primary/10 flex flex-col gap-1.5"
                   >
                     <div className="flex items-center gap-2 mb-1">
@@ -183,10 +226,7 @@ export default function SearchBar({ onSelectWord, onSearch }: SearchBarProps) {
                       <span className="text-xs font-bold uppercase tracking-wider text-primary opacity-80">Ví dụ khớp</span>
                     </div>
                     <div className="text-xl font-bold text-primary tracking-wide">
-                      {exactExample.chinese}
-                    </div>
-                    <div className="text-sm font-semibold text-primary/80 font-mono">
-                      {exactExample.pinyin}
+                      {exactExample.english}
                     </div>
                     <div className="text-sm font-medium text-secondary mt-0.5">
                       {capitalizeFirstLetter(exactExample.vietnamese)}
@@ -201,25 +241,35 @@ export default function SearchBar({ onSelectWord, onSearch }: SearchBarProps) {
                   <li key={word.id}>
                     <button
                       onClick={() => handleSelect(word)}
-                      className="w-full text-left px-5 py-3 hover:bg-hover-bg transition-colors flex items-center justify-between group border-b border-outline/30 last:border-0"
+                      className="w-full text-left px-5 py-3 hover:bg-hover-bg transition-colors flex flex-col border-b border-outline/30 last:border-0 cursor-pointer"
                     >
-                      <div className="flex flex-col">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-2xl font-bold text-primary">{word.word}</span>
-                          {word.traditional && <span className="text-sm text-secondary">({word.traditional})</span>}
-                        </div>
-                        <span className="text-sm font-medium text-secondary truncate max-w-sm mt-1">
-                          {capitalizeFirstLetter(word.translation_vi)}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-col items-end">
-                        <span className="text-sm font-semibold text-primary">{word.pinyin}</span>
-                        {word.hsk_level && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary mt-1">
-                            HSK {word.hsk_level}
+                      {/* Hàng 1: Hàng ngang 2 cột chứa từ và phát âm */}
+                      <div className="flex justify-between items-baseline w-full">
+                        <span className="text-xl font-bold text-primary">{capitalizeWords(word.word)}</span>
+                        {word.ipa && (
+                          <span className="text-sm font-semibold text-primary/80 font-mono">
+                            {word.ipa}
                           </span>
                         )}
+                      </div>
+
+                      {/* Hàng 2: Hàng ngang chứa nghĩa và từ loại */}
+                      <div className="flex justify-between items-center w-full mt-1.5 pb-0.5">
+                        {/* Cột 1: Nghĩa */}
+                        <div className="text-sm font-medium text-secondary truncate text-left flex-1 pr-4">
+                          {capitalizeFirstLetter(word.translation_vi)}
+                        </div>
+
+                        {/* Cột 2: Từ loại */}
+                        <div className="text-right flex-shrink-0">
+                          {word.part_of_speech && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-secondary/10 text-secondary inline-block truncate max-w-[150px]">
+                              {Array.isArray(word.part_of_speech)
+                                ? word.part_of_speech.map(translatePartOfSpeech).join(', ')
+                                : translatePartOfSpeech(word.part_of_speech)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </button>
                   </li>

@@ -304,7 +304,7 @@ export default function ScoringTest() {
           {/* Raw JSON */}
           <details className="group">
             <summary className="cursor-pointer text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors">
-              📋 View raw JSON response
+              View raw JSON response
             </summary>
             <pre
               id="scoring-raw-json"

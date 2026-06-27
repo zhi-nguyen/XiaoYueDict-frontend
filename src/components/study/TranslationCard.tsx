@@ -1,8 +1,11 @@
 'use client';
 
-import React from 'react';
-import { Volume2, Bookmark, ArrowUpDown } from 'lucide-react';
-import { renderClickableHanzi, speakChinese } from '@/lib/zhUtils';
+import React, { useState } from 'react';
+import { useParams } from 'next/navigation';
+import { Bookmark, ArrowUpDown, Flag } from 'lucide-react';
+import SpeakerIcon from '@/components/dictionary/SpeakerIcon';
+import { renderClickableHanzi } from '@/lib/zhUtils';
+import ReportModal from '@/components/ReportModal';
 
 interface TranslationCardProps {
   sentenceText: string;
@@ -11,6 +14,7 @@ interface TranslationCardProps {
   translationSource: 'database' | 'ai_translation' | string;
   isExactMatch: boolean;
   onSearch: (query: string) => void;
+  sentenceId?: string;
 }
 
 /**
@@ -27,7 +31,11 @@ export default function TranslationCard({
   translationSource,
   isExactMatch,
   onSearch,
+  sentenceId,
 }: TranslationCardProps) {
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const params = useParams();
+  const lang = (params?.lang as 'zh' | 'en') === 'en' ? 'en' : 'zh';
   const isSystemTranslation = isExactMatch || translationSource === 'database';
 
   return (
@@ -37,13 +45,7 @@ export default function TranslationCard({
           {renderClickableHanzi(sentenceText, isExactMatch ? undefined : onSearch)}
         </h2>
         <div className="flex gap-3 flex-shrink-0 ml-4">
-          <button
-            onClick={() => speakChinese(sentenceText)}
-            title="Phát âm"
-            className="text-secondary hover:text-primary transition-colors flex-shrink-0 focus:outline-none"
-          >
-            <Volume2 className="w-6 h-6" />
-          </button>
+          <SpeakerIcon text={sentenceText} lang={lang} size={24} />
           <button
             title="Lưu vào sổ tay"
             className="text-secondary hover:text-primary transition-colors flex-shrink-0 focus:outline-none"
@@ -77,9 +79,17 @@ export default function TranslationCard({
 
       {/* Card Footer Buttons */}
       <div className="flex justify-between items-center mt-8 pt-4 border-t border-outline/30">
-        <button className="px-4 py-2 bg-hover-bg border border-outline rounded-full text-secondary hover:text-primary transition-all text-xs font-bold shadow-sm">
-          Đóng góp bản dịch
-        </button>
+        {sentenceId ? (
+          <button
+            onClick={() => setIsReportModalOpen(true)}
+            className="px-4 py-2 bg-hover-bg border border-outline rounded-full text-secondary hover:text-primary hover:border-primary/50 transition-all text-xs font-bold shadow-sm flex items-center gap-1.5 focus:outline-none"
+          >
+            <Flag className="w-3.5 h-3.5" />
+            <span>Báo cáo dịch sai / Đóng góp</span>
+          </button>
+        ) : (
+          <div />
+        )}
         <div className="flex gap-2">
           <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
             isSystemTranslation
@@ -90,6 +100,17 @@ export default function TranslationCard({
           </span>
         </div>
       </div>
+
+      {sentenceId && (
+        <ReportModal
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
+          contentType={lang === 'en' ? 'en_example' : 'zh_example'}
+          objectId={sentenceId}
+          defaultReportType="translation"
+          title="Báo cáo lỗi bản dịch"
+        />
+      )}
     </div>
   );
 }

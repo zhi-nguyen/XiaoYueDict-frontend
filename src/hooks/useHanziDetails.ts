@@ -54,15 +54,13 @@ export function useHanziDetails(
   const [resolvedRadicals, setResolvedRadicals] = useState<Record<string, string>>({});
   const [isLoadingHanziDetails, setIsLoadingHanziDetails] = useState(false);
 
-  // Extract Chinese characters from search query
-  const hanziChars = Array.from(searchQuery).filter(isChineseChar);
-
-  // Auto-select first hanzi char in Hán tự tab
+  // Auto-select first hanzi char in Hán tự tab when tab becomes active or query changes
   useEffect(() => {
-    if (activeTab === 'hanzi' && hanziChars.length > 0 && !selectedHanziChar) {
-      setSelectedHanziChar(hanziChars[0]);
+    const chars = Array.from(searchQuery).filter(isChineseChar);
+    if (activeTab === 'hanzi' && chars.length > 0) {
+      setSelectedHanziChar(chars[0]);
     }
-  }, [activeTab, searchQuery, selectedHanziChar, hanziChars]);
+  }, [activeTab, searchQuery]);
 
   // Load Hanzi character details
   useEffect(() => {
@@ -111,7 +109,7 @@ export function useHanziDetails(
             results.forEach((w: ZhWord) => {
               if (w.examples) {
                 w.examples.forEach((ex) => {
-                  if (ex.chinese.includes(selectedHanziChar) && !seen.has(ex.chinese)) {
+                  if (ex && ex.chinese && ex.chinese.includes(selectedHanziChar) && !seen.has(ex.chinese)) {
                     seen.add(ex.chinese);
                     collectedExamples.push(ex);
                   }

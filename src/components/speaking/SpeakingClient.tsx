@@ -67,6 +67,7 @@ export default function SpeakingClient() {
   });
 
   const isIdle = queue.phase === 'idle';
+  const isServiceUnavailable = usageData?.service_available === false;
   const isBusy = queue.phase !== 'idle' && queue.phase !== 'completed' && queue.phase !== 'error';
   const showResult = queue.phase === 'completed' && queue.resultData;
 
@@ -74,9 +75,9 @@ export default function SpeakingClient() {
   const hasSpellErrors = spellCheck.result && !spellCheck.result.is_valid;
 
   const handleCheckText = useCallback(async () => {
-    if (!targetText.trim()) return;
+    if (!targetText.trim() || isServiceUnavailable) return;
     await spellCheck.checkText(targetText);
-  }, [targetText, spellCheck]);
+  }, [targetText, spellCheck, isServiceUnavailable]);
 
   const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setTargetText(e.target.value);
@@ -99,9 +100,9 @@ export default function SpeakingClient() {
   // ── Gesture Event Handlers ──
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    if (isBusy || hasSpellErrors) return;
+    if (isBusy || isServiceUnavailable || hasSpellErrors) return;
     recording.startRecording();
-  }, [isBusy, hasSpellErrors, recording]);
+  }, [isBusy, isServiceUnavailable, hasSpellErrors, recording]);
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -110,9 +111,9 @@ export default function SpeakingClient() {
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     e.preventDefault();
-    if (isBusy || hasSpellErrors) return;
+    if (isBusy || isServiceUnavailable || hasSpellErrors) return;
     recording.startRecording();
-  }, [isBusy, hasSpellErrors, recording]);
+  }, [isBusy, isServiceUnavailable, hasSpellErrors, recording]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     e.preventDefault();
@@ -121,7 +122,7 @@ export default function SpeakingClient() {
 
   // ── Submit with confirmation ──
   const handleSubmitAudio = useCallback(() => {
-    if (!recording.audioBlob) return;
+    if (!recording.audioBlob || isServiceUnavailable) return;
     if (hasSpellErrors) return;
 
     setConfirmConfig({
@@ -139,7 +140,7 @@ export default function SpeakingClient() {
         }
       }
     });
-  }, [recording.audioBlob, language, targetText, queue, hasSpellErrors, recording]);
+  }, [recording.audioBlob, language, targetText, queue, hasSpellErrors, recording, isServiceUnavailable]);
 
   return (
     <div className="w-full p-8 pb-16">
@@ -156,6 +157,19 @@ export default function SpeakingClient() {
         {/* ── Main Card ── */}
         <div className="bg-surface border border-outline rounded-[1.5rem] p-8 shadow-sm space-y-6">
 
+          {/* Maintenance Banner */}
+          {isServiceUnavailable && (
+            <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl animate-fade-in">
+              <span className="material-symbols-outlined text-amber-600 text-xl animate-pulse">engineering</span>
+              <div>
+                <p className="text-sm font-bold text-amber-950">Dịch vụ đang bảo trì</p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Hệ thống chấm điểm hiện đang tạm bảo trì để nâng cấp chất lượng dịch vụ. Vui lòng quay lại sau.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* ── Volume Limit Progress Bar ── */}
           {usageData && <UploadLimitBar usageData={usageData} />}
 
@@ -165,7 +179,7 @@ export default function SpeakingClient() {
             targetText={targetText}
             onTextChange={handleTextChange}
             spellCheck={spellCheck}
-            isBusy={isBusy}
+            isBusy={isBusy || isServiceUnavailable}
             hasSpellErrors={hasSpellErrors}
             onCheckText={handleCheckText}
           />
@@ -180,7 +194,7 @@ export default function SpeakingClient() {
           {/* Recording & Upload Controls */}
           <RecordingControls
             isRecording={recording.isRecording}
-            isBusy={isBusy}
+            isBusy={isBusy || isServiceUnavailable}
             isIdle={isIdle}
             audioBlob={recording.audioBlob}
             hasSpellErrors={hasSpellErrors}
@@ -196,6 +210,7 @@ export default function SpeakingClient() {
             onTogglePlayback={recording.handleTogglePlayback}
             onResetAudio={recording.handleResetAudio}
             onSubmit={handleSubmitAudio}
+            isAuthLoading={queue.isAuthLoading}
           />
 
           {/* Spell Error Warning */}
@@ -216,6 +231,10 @@ export default function SpeakingClient() {
           onRetry={queue.retry}
           errorMessage={queue.errorMessage}
           errorType={queue.errorType}
+          queuePosition={queue.queuePosition}
+          estimatedWait={queue.estimatedWait}
+          initialEWT={queue.initialEWT}
+          elapsedSeconds={queue.elapsedSeconds}
         />
 
         {/* ── Score Result ── */}

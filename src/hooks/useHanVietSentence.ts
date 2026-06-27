@@ -40,11 +40,14 @@ export function useHanVietSentence(
 
     const resolveSentenceHanViet = async () => {
       const chars = Array.from(queryText);
+      const skipApiLookup = chars.length > 30;
       const resolved = await Promise.all(
         chars.map(async (char) => {
           if (isChineseChar(char)) {
             try {
               if (COMMON_HAN_VIET[char]) return COMMON_HAN_VIET[char];
+
+              if (skipApiLookup) return ''; // Skip API lookup for long text to avoid high volume of parallel requests
 
               const res = await djangoClient.get(`/dictionary/zh/search/?q=${encodeURIComponent(char)}`);
               if (res.data.results && res.data.results.length > 0) {

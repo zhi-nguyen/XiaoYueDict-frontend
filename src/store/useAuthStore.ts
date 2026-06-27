@@ -1,8 +1,11 @@
 import { create } from 'zustand';
 import axios from 'axios';
+import { auth as firebaseAuth } from '@/lib/firebase';
+import { onAuthStateChanged, signOut as fbSignOut } from 'firebase/auth';
+import { clearGuestId } from '@/lib/guest';
 
 interface User {
-  id: number;
+  id: string;
   username: string;
   email: string;
   first_name: string;
@@ -24,7 +27,9 @@ interface AuthState {
   updateProfile: (data: Partial<User>) => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+let isAuthStateListenerSet = false;
+
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   accessToken: null,
   isAuthenticated: false,
@@ -42,32 +47,60 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: async () => {
     try {
+      // 1. Sign out from Firebase
+      await fbSignOut(firebaseAuth);
+    } catch (e) {
+      console.error('Firebase logout error', e);
+    }
+
+    try {
+      // 2. Sign out from Django backend by clearing cookies
       await axios.post('/api/auth/logout');
     } catch (e) {
-      console.error('Logout error', e);
+      console.error('Django logout error', e);
     } finally {
       set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false });
     }
   },
 
   checkAuth: async () => {
-    try {
-      // Attempt silent refresh first
-      const { data: refreshData } = await axios.post('/api/auth/refresh');
-      const token = refreshData.access;
-      
-      // Set access token and authentication state immediately so subsequent calls can use the token
-      set({ accessToken: token, isAuthenticated: true, isLoading: false });
-      
-      // Then fetch user profile in the background
-      const { data: userData } = await axios.get('/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      set({ user: userData });
-    } catch (e) {
-      // Silent refresh failed (no valid refresh token), so user is not logged in
-      set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false });
-    }
+    if (isAuthStateListenerSet) return;
+    isAuthStateListenerSet = true;
+
+    // Set up Firebase auth state listener
+    onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          // Get the current ID token from Firebase
+          const idToken = await firebaseUser.getIdToken();
+          
+          // Send to Next.js BFF -> Django to verify and set secure cookies
+          const { data } = await axios.post('/api/auth/firebase-login', { id_token: idToken });
+          
+          set({ 
+            user: data.user, 
+            accessToken: data.access, 
+            isAuthenticated: true, 
+            isLoading: false 
+          });
+          // Remove stale guest identity — prevent WS/task identity leak
+          clearGuestId();
+        } catch (e) {
+          console.error('Failed to sync Firebase session with Django backend', e);
+          // If token exchange fails, reset state
+          set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false });
+        }
+      } else {
+        // No firebase user, make sure backend session is cleared
+        try {
+          if (get().isAuthenticated) {
+            await axios.post('/api/auth/logout');
+          }
+        } catch (e) {
+          // Ignore
+        }
+        set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false });
+      }
+    });
   }
 }));

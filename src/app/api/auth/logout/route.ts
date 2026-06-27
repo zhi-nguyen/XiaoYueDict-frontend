@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { handleProxy } from '@/lib/api/proxy';
 
-export async function POST() {
-  const response = NextResponse.json({ message: 'Logged out successfully' });
-  response.cookies.delete('refresh_token');
-  return response;
+const DJANGO_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
+
+export async function POST(request: NextRequest) {
+  return handleProxy(request, DJANGO_API_URL, '/api/auth/logout', '/api/core/users/token/logout');
 }

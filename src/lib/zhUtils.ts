@@ -150,13 +150,18 @@ export const renderClickableHanzi = (
 
 // ── TTS Browser Fallback ──────────────────────────────────────────────────────
 
-export const speakChinese = (text: string): void => {
+export const speakBrowserFallback = (text: string, lang: 'zh' | 'en'): void => {
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'zh-CN';
+    utterance.lang = lang === 'zh' ? 'zh-CN' : 'en-US';
     window.speechSynthesis.speak(utterance);
   }
+};
+export const speakChinese = (text: string): void => {
+  playTTSWithClientCache(text, 'zh').catch((err) => {
+    console.warn('[speakChinese] playTTSWithClientCache failed, fallback should have run internally:', err);
+  });
 };
 
 // ── Common Radical Name Map ───────────────────────────────────────────────────
@@ -176,3 +181,44 @@ export const COMMON_HAN_VIET: Readonly<Record<string, string>> = {
   '今': 'KIM', '天': 'THIÊN', '下': 'HẠ', '了': 'LIỄU', '很': 'NGẬN', '大': 'ĐẠI', '的': 'ĐÍCH', '雪': 'TUYẾT',
   '喜': 'HỶ', '欢': 'HOAN', '歡': 'HOAN', '我': 'NGÃ', '爱': 'ÁI', '愛': 'ÁI',
 };
+
+// ── Client-Side TTS Cache Player ──────────────────────────────────────────────
+
+export const playTTSWithClientCache = async (text: string, lang: 'zh' | 'en'): Promise<void> => {
+  if (!text) return;
+  const langCode = lang === 'en' ? 'en' : 'zh';
+  const requestUrl = `/api/tts?text=${encodeURIComponent(text.trim())}&lang=${langCode}`;
+
+  try {
+    if (typeof window !== 'undefined' && 'caches' in window) {
+      const cache = await caches.open('tts-audio-cache');
+      const cachedResponse = await cache.match(requestUrl);
+
+      if (cachedResponse) {
+        const blob = await cachedResponse.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const audio = new Audio(blobUrl);
+        await audio.play();
+        return;
+      }
+
+      const response = await fetch(requestUrl);
+      if (!response.ok) {
+        throw new Error(`TTS API error status=${response.status}`);
+      }
+
+      await cache.put(requestUrl, response.clone());
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const audio = new Audio(blobUrl);
+      await audio.play();
+    } else {
+      const audio = new Audio(requestUrl);
+      await audio.play();
+    }
+  } catch (err) {
+    console.warn('TTS client-side cache or fetch failed, falling back to browser SpeechSynthesis:', err);
+    speakBrowserFallback(text, langCode);
+  }
+};
+

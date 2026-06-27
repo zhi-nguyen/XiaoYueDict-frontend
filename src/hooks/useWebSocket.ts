@@ -57,10 +57,8 @@ const MAX_RECONNECT_DELAY_MS = 16_000;       // Cap at 16s
 export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketReturn {
   const optionsRef = useRef(options);
   
-  // Keep options ref up-to-date without triggering re-renders or effect re-runs
-  useEffect(() => {
-    optionsRef.current = options;
-  }, [options]);
+  // Update options ref synchronously on every render to avoid stale closure or useEffect delay
+  optionsRef.current = options;
 
   const [isConnected, setIsConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState<WsMessage | null>(null);
@@ -74,7 +72,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Read auth state outside of effect to avoid stale closures
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, isLoading: isAuthLoading } = useAuthStore();
 
   // ── Cleanup helpers ──────────────────────────────────────
   const clearHeartbeat = useCallback(() => {
@@ -94,6 +92,10 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
   // ── Core connect function ────────────────────────────────
   const connect = useCallback(async () => {
     if (!isMountedRef.current) return;
+
+    // Don't connect while auth is still checking — wait for stable identity
+    // to prevent premature guest connection (ghost connection leak)
+    if (isAuthLoading) return;
     
     // Abort any in-flight token request
     if (abortControllerRef.current) {
@@ -119,9 +121,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
 
     try {
       // Step 1: Obtain short-lived WS token (2-minute TTL)
-      const { data } = await djangoClient.post('/users/ws-token/', {
-        guest_id: guestId
-      }, {
+      const { data } = await djangoClient.get('/users/ws-token/', {
+        params: guestId ? { guest_id: guestId } : undefined,
         signal: abortController.signal
       });
       
@@ -181,10 +182,11 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
 
         try {
           const message: WsMessage = JSON.parse(event.data);
+          console.log('[useWebSocket] Received message:', message);
           setLastMessage(message);
           optionsRef.current.onMessage?.(message);
-        } catch {
-          // Non-JSON message, ignore
+        } catch (err) {
+          console.warn('[useWebSocket] Error parsing message:', err);
         }
       };
 
@@ -233,7 +235,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         connect();
       }, delay);
     }
-  }, [isAuthenticated, user?.id, clearHeartbeat, clearReconnectTimeout]);
+  }, [isAuthenticated, isAuthLoading, user?.id, clearHeartbeat, clearReconnectTimeout]);
 
   // ── Send message helper ──────────────────────────────────
   const sendMessage = useCallback((data: string) => {
@@ -264,7 +266,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         socketRef.current = null;
       }
     };
-  }, [isAuthenticated, user?.id, connect]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, isAuthLoading, user?.id, connect]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { isConnected, lastMessage, sendMessage };
 }

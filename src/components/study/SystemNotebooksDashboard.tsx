@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Loader2, ArrowLeft, Lock, Volume2, AlertCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, Lock, AlertCircle } from 'lucide-react';
+import SpeakerIcon from '@/components/dictionary/SpeakerIcon';
 import { djangoClient } from '@/lib/apiClient';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import { ZhWord } from '@/types/dictionary';
@@ -268,13 +269,12 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => playAudio(w.word, lang)}
+                    <SpeakerIcon
+                      text={w.word}
+                      lang={lang === 'en' ? 'en' : 'zh'}
+                      size={16}
                       className="p-2 rounded-full hover:bg-primary/10 text-secondary hover:text-primary transition-colors flex items-center justify-center border border-transparent hover:border-primary/20 bg-surface"
-                      title="Nghe phát âm"
-                    >
-                      <Volume2 className="w-4 h-4" />
-                    </button>
+                    />
                     <button
                       onClick={() => {
                         setToastMessage(`Đã ghi nhận báo cáo sai sót cho từ "${w.word}". Cảm ơn bạn!`);

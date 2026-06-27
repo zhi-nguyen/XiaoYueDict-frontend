@@ -52,7 +52,7 @@ export default function ConfirmModal({
       };
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-primary/40 backdrop-blur-md transition-opacity duration-300 font-sans">
+    <div data-portal="confirm-modal" className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-primary/40 backdrop-blur-md transition-opacity duration-300 font-sans">
 
       <div className="bg-surface rounded-3xl p-6 w-full max-w-sm border border-outline shadow-[0_20px_50px_rgba(0,0,0,0.08)] transform transition-all scale-100 animate-in fade-in zoom-in-95 duration-200 flex flex-col items-center text-center">
         

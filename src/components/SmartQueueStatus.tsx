@@ -109,17 +109,24 @@ export default function SmartQueueStatus({
       {phase === 'error' ? (
         // XỬ LÝ NGOẠI LỆ: Báo lỗi và Kêu gọi Hành động (Graceful Degradation)
         <div className="relative overflow-hidden rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm transition-all duration-300">
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0">
-              <span className="material-symbols-outlined text-[22px]">error</span>
+          <div className="flex flex-col gap-4">
+            {/* Hàng 1: 2 cột - Cột 1 là icon, Cột 2 là Title */}
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+                <span className="material-symbols-outlined text-[22px]">error</span>
+              </div>
+              <h4 className="font-bold text-red-800 text-sm leading-snug">{errorTitle}</h4>
             </div>
-            <div className="flex-1">
-              <h4 className="font-bold text-red-800 text-sm">{errorTitle}</h4>
-              <p className="text-red-700 text-xs mt-1 leading-relaxed">
-                {errorDescription}
-              </p>
+            
+            {/* Hàng 2: Hàng 1 cột duy nhất chứa subtitle */}
+            <p className="text-red-700 text-xs leading-relaxed">
+              {errorDescription}
+            </p>
+            
+            {/* Hàng 3: Hàng 1 cột duy nhất chứa chi tiết lỗi và nút bấm */}
+            <div className="w-full space-y-4">
               {errorMessage && (
-                <div className="mt-2.5 p-3 rounded-xl bg-white border border-red-200/60 text-red-800 text-xs leading-relaxed font-medium">
+                <div className="p-3 rounded-xl bg-white border border-red-200/60 text-red-800 text-xs leading-relaxed font-medium">
                   Chi tiết: {errorMessage}
                 </div>
               )}
@@ -127,7 +134,7 @@ export default function SmartQueueStatus({
                 <button
                   type="button"
                   onClick={onRetry}
-                  className="mt-4 flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm hover:shadow active:scale-[0.98] focus:outline-none"
+                  className="w-full flex items-center justify-center gap-1.5 py-3 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm hover:shadow active:scale-[0.98] focus:outline-none"
                 >
                   <span className="material-symbols-outlined text-sm">refresh</span>
                   Thử lại ngay
@@ -193,12 +200,16 @@ export default function SmartQueueStatus({
 
             {/* GIAI ĐOẠN 2: THẺ TIPS HIỆU ỨNG FADE-IN (Chỉ hiển thị sau khi qua EWT ban đầu) */}
             {activeElapsed >= triggerTipSeconds && currentTip && (
-              <div className="animate-fade-in flex gap-2.5 bg-amber-50 border border-amber-100 p-3.5 rounded-xl text-xs text-amber-900 leading-relaxed font-sans">
-                <span className="material-symbols-outlined text-[18px] text-amber-600 shrink-0 mt-0.5 animate-bounce">
-                  lightbulb
-                </span>
-                <div>
-                  <span className="font-bold block mb-0.5">Mẹo học thuật:</span>
+              <div className="animate-fade-in bg-amber-50 border border-amber-100 p-3.5 rounded-xl text-xs text-amber-900 leading-relaxed font-sans space-y-2">
+                {/* Hàng 1: gồm 2 cột, cột 1 cho icon đèn, cột 2 cho: "Mẹo học thuật:" */}
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-amber-600 shrink-0">
+                    lightbulb
+                  </span>
+                  <span className="font-bold">Mẹo học thuật:</span>
+                </div>
+                {/* Hàng 2: chỉ 1 cột duy nhất hiển thị nội dung mẹo */}
+                <div className="text-secondary/90 leading-relaxed">
                   {currentTip}
                 </div>
               </div>

@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Volume2, Bookmark, ArrowUpDown, Flag } from 'lucide-react';
-import { renderClickableHanzi, playTTSWithClientCache } from '@/lib/zhUtils';
+import { Bookmark, ArrowUpDown, Flag } from 'lucide-react';
+import SpeakerIcon from '@/components/dictionary/SpeakerIcon';
+import { renderClickableHanzi } from '@/lib/zhUtils';
 import ReportModal from '@/components/ReportModal';
 
 interface TranslationCardProps {
@@ -44,13 +45,7 @@ export default function TranslationCard({
           {renderClickableHanzi(sentenceText, isExactMatch ? undefined : onSearch)}
         </h2>
         <div className="flex gap-3 flex-shrink-0 ml-4">
-          <button
-            onClick={() => playTTSWithClientCache(sentenceText, lang)}
-            title="Phát âm"
-            className="text-secondary hover:text-primary transition-colors flex-shrink-0 focus:outline-none"
-          >
-            <Volume2 className="w-6 h-6" />
-          </button>
+          <SpeakerIcon text={sentenceText} lang={lang} size={24} />
           <button
             title="Lưu vào sổ tay"
             className="text-secondary hover:text-primary transition-colors flex-shrink-0 focus:outline-none"

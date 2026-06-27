@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Loader2, Volume2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import SpeakerIcon from '@/components/dictionary/SpeakerIcon';
 import WordCardZh from '@/components/WordCardZh';
 import HanziStrokeBox, { HanziStrokeSequence } from '@/components/HanziStrokeBox';
 import { ZhWord } from '@/types/dictionary';
@@ -239,14 +240,12 @@ function HanziDetailsPanel({
             <div className="flex items-center gap-2">
               <span className="text-secondary/70 font-normal">Bính âm:</span>
               <span className="text-primary font-bold text-xl">{charWord?.pinyin || 'Chưa rõ'}</span>
-              <button
-                type="button"
-                onClick={() => speakChinese(selectedHanziChar)}
+              <SpeakerIcon
+                text={selectedHanziChar || ''}
+                lang="zh"
+                size={16}
                 className="p-1.5 rounded-full hover:bg-hover-bg text-primary transition-colors focus:outline-none"
-                title="Nghe phát âm"
-              >
-                <Volume2 className="w-4 h-4" />
-              </button>
+              />
             </div>
             <div>
               <span className="text-secondary/70 font-normal">Thành phần:</span>

@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Volume2, ChevronDown, Flag } from 'lucide-react';
-import { renderClickableHanzi, speakChinese, speakBrowserFallback } from '@/lib/zhUtils';
+import { ChevronDown, Flag } from 'lucide-react';
+import SpeakerIcon from '@/components/dictionary/SpeakerIcon';
+import { renderClickableHanzi } from '@/lib/zhUtils';
 import ReportModal from '@/components/ReportModal';
 
 interface ExamplesTabProps {
@@ -67,19 +68,13 @@ export default function ExamplesTab({
                 )}
               </div>
               <div className="flex gap-2.5 flex-shrink-0 mt-1">
-                <button
-                  onClick={() => {
-                    if (language === 'en') {
-                      speakBrowserFallback(ex.english || '', 'en');
-                    } else {
-                      speakChinese(ex.chinese || '');
-                    }
-                  }}
-                  className="text-secondary hover:text-primary transition-colors focus:outline-none"
-                  title="Nghe phát âm"
-                >
-                  <Volume2 className="w-6 h-6" />
-                </button>
+                <SpeakerIcon
+                  audioUrl={ex.audio_url ? `http://localhost${ex.audio_url}` : undefined}
+                  text={language === 'en' ? (ex.english || '') : (ex.chinese || '')}
+                  lang={language === 'en' ? 'en' : 'zh'}
+                  size={24}
+                  className="text-secondary hover:text-primary transition-colors flex-shrink-0 focus:outline-none"
+                />
                 {ex.id && (
                   <button
                     onClick={() => handleOpenReport(ex.id)}

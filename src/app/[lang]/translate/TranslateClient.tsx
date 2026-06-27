@@ -8,7 +8,7 @@ import { QUEUE_STRATEGIES } from '@/constants/queueStrategies';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { getGuestId } from '@/lib/guest';
 import { useAuthStore } from '@/store/useAuthStore';
-import { playTTSWithClientCache } from '@/lib/zhUtils';
+import SpeakerIcon from '@/components/dictionary/SpeakerIcon';
 
 interface TranslationRecord {
   original: string;
@@ -39,6 +39,14 @@ export default function TranslateClient() {
   const [translationPhase, setTranslationPhase] = useState<'idle' | 'processing' | 'error' | 'success'>('idle');
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [pendingText, setPendingText] = useState('');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Auto-dismiss toast after 3 seconds
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timer = setTimeout(() => setToastMessage(null), 3000);
+    return () => clearTimeout(timer);
+  }, [toastMessage]);
 
   // Update direction default when language URL param changes
   useEffect(() => {
@@ -164,6 +172,7 @@ export default function TranslateClient() {
   const handleCopy = () => {
     if (translatedText) {
       navigator.clipboard.writeText(translatedText);
+      setToastMessage('Đã copy');
     }
   };
 
@@ -203,13 +212,13 @@ export default function TranslateClient() {
             <span className="font-semibold text-secondary">{sourceLangLabel}</span>
             <div className="flex items-center gap-2">
               {direction !== 'vi_zh' && direction !== 'vi_en' && inputText.trim() && (
-                <button
-                  onClick={() => playTTSWithClientCache(inputText, direction === 'zh_vi' ? 'zh' : 'en')}
+                <SpeakerIcon
+                  text={inputText}
+                  lang={direction === 'zh_vi' ? 'zh' : 'en'}
+                  size={20}
+                  variant="material"
                   className="text-secondary/60 hover:text-primary transition-colors p-1 flex items-center"
-                  title="Nghe phát âm"
-                >
-                  <span className="material-symbols-outlined text-[20px]">volume_up</span>
-                </button>
+                />
               )}
               {inputText && (
                 <button 
@@ -260,13 +269,13 @@ export default function TranslateClient() {
             <span className="font-semibold text-secondary">{targetLangLabel}</span>
             <div className="flex items-center gap-2">
               {(direction === 'vi_zh' || direction === 'vi_en') && translatedText.trim() && (
-                <button
-                  onClick={() => playTTSWithClientCache(translatedText, direction === 'vi_zh' ? 'zh' : 'en')}
+                <SpeakerIcon
+                  text={translatedText}
+                  lang={direction === 'vi_zh' ? 'zh' : 'en'}
+                  size={20}
+                  variant="material"
                   className="text-secondary/60 hover:text-primary transition-colors p-1 flex items-center"
-                  title="Nghe phát âm"
-                >
-                  <span className="material-symbols-outlined text-[20px]">volume_up</span>
-                </button>
+                />
               )}
               <button 
                 onClick={handleCopy}
@@ -348,6 +357,14 @@ export default function TranslateClient() {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] px-4 py-3 bg-slate-900 text-white rounded-xl shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <span className="material-symbols-outlined text-emerald-400 text-xl">check_circle</span>
+          <span className="text-sm">{toastMessage}</span>
         </div>
       )}
     </div>

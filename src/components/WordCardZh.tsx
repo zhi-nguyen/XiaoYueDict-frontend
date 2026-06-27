@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useRef, useState } from 'react';
-import { Volume2, Mic, ChevronDown, Flag } from 'lucide-react';
+import { Mic, ChevronDown, Flag } from 'lucide-react';
+import SpeakerIcon from '@/components/dictionary/SpeakerIcon';
 import { ZhWord } from '@/types/dictionary';
 import AddToNotebookModal from './dictionary/AddToNotebookModal';
 import AuthModal from '@/components/auth/AuthModal';
@@ -181,15 +182,7 @@ export default function WordCardZh({ word, onPracticeClick, onCharClick }: WordC
         </h1>
 
         <div className="flex gap-3 flex-shrink-0 ml-4">
-          <button
-            type="button"
-            onClick={() => playTTSWithClientCache(word.word, 'zh')}
-            disabled={!word || !word.word}
-            title="Phát âm"
-            className="text-secondary hover:text-primary disabled:opacity-30 disabled:pointer-events-none transition-colors flex-shrink-0 focus:outline-none"
-          >
-            <Volume2 className="w-6 h-6" />
-          </button>
+          <SpeakerIcon text={word.word} lang="zh" size={24} />
           <button
             type="button"
             onClick={onPracticeClick}
@@ -346,24 +339,13 @@ export default function WordCardZh({ word, onPracticeClick, onCharClick }: WordC
                     <p className="text-sm font-medium text-secondary mb-1">{example.pinyin}</p>
                     <p className="text-base text-secondary">{example.vietnamese}</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (example.audio_url) {
-                        const audio = new Audio(`http://localhost${example.audio_url}`);
-                        audio.play().catch((err) => {
-                          console.warn("Playback failed, falling back to TTS:", err);
-                          speakChinese(example.chinese);
-                        });
-                      } else {
-                        speakChinese(example.chinese);
-                      }
-                    }}
+                  <SpeakerIcon
+                    audioUrl={example.audio_url ? `http://localhost${example.audio_url}` : undefined}
+                    text={example.chinese}
+                    lang="zh"
+                    size={24}
                     className="text-secondary hover:text-primary transition-colors flex-shrink-0 focus:outline-none mt-1"
-                    title="Nghe phát âm"
-                  >
-                    <Volume2 className="w-6 h-6" />
-                  </button>
+                  />
                 </div>
               </div>
             ))}

@@ -109,7 +109,7 @@ export function useHanziDetails(
             results.forEach((w: ZhWord) => {
               if (w.examples) {
                 w.examples.forEach((ex) => {
-                  if (ex.chinese.includes(selectedHanziChar) && !seen.has(ex.chinese)) {
+                  if (ex && ex.chinese && ex.chinese.includes(selectedHanziChar) && !seen.has(ex.chinese)) {
                     seen.add(ex.chinese);
                     collectedExamples.push(ex);
                   }

@@ -184,6 +184,20 @@ export function useSmartQueue(): UseSmartQueueReturn {
           setPhase('error');
           setErrorMessage('Thời gian xử lý quá lâu (Timeout). Hệ thống đang bận, vui lòng thử lại sau.');
           setErrorType('processing');
+          
+          // Trigger atomic refund for timed out task
+          if (taskId) {
+            const guestId = getGuestId();
+            djangoClient.post('/assessments/refund/', {
+              task_id: taskId,
+              guest_id: guestId || undefined
+            }).then(() => {
+              // Refresh subscription usage data immediately
+              useSubscriptionStore.getState().fetchUsage();
+            }).catch((err) => {
+              console.error('[useSmartQueue] Quota refund failed:', err);
+            });
+          }
         }
         return next;
       });
@@ -202,7 +216,7 @@ export function useSmartQueue(): UseSmartQueueReturn {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [phase]);
+  }, [phase, taskId]);
 
   const handleWsMessage = useCallback((msg: any) => {
     if (!isMountedRef.current || !taskId) return;

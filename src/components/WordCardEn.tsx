@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Volume2, Mic, Flag } from 'lucide-react';
+import { Mic, Flag } from 'lucide-react';
+import SpeakerIcon from '@/components/dictionary/SpeakerIcon';
 import AddToNotebookModal from './dictionary/AddToNotebookModal';
 import AuthModal from '@/components/auth/AuthModal';
 import { speakBrowserFallback } from '@/lib/zhUtils';
@@ -197,15 +198,7 @@ export default function WordCardEn({ word, onPracticeClick }: WordCardEnProps) {
         </h1>
 
         <div className="flex gap-3 flex-shrink-0 ml-4">
-          <button
-            type="button"
-            onClick={() => speakBrowserFallback(word.word, 'en')}
-            disabled={!word || !word.word}
-            title="Phát âm"
-            className="text-secondary hover:text-primary disabled:opacity-30 disabled:pointer-events-none transition-colors flex-shrink-0 focus:outline-none"
-          >
-            <Volume2 className="w-6 h-6" />
-          </button>
+          <SpeakerIcon text={word.word} lang="en" size={24} />
           <button
             type="button"
             onClick={onPracticeClick}
@@ -370,14 +363,12 @@ export default function WordCardEn({ word, onPracticeClick }: WordCardEnProps) {
                             <p className="text-lg font-medium text-primary mb-1 leading-relaxed">{ex.english}</p>
                             <p className="text-sm text-secondary">{ex.vietnamese}</p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => speakBrowserFallback(ex.english, 'en')}
+                          <SpeakerIcon
+                            text={ex.english}
+                            lang="en"
+                            size={20}
                             className="text-secondary hover:text-primary transition-colors flex-shrink-0 focus:outline-none mt-1"
-                            title="Nghe phát âm"
-                          >
-                            <Volume2 className="w-5 h-5" />
-                          </button>
+                          />
                         </div>
                       ))}
                     </div>
@@ -411,14 +402,12 @@ export default function WordCardEn({ word, onPracticeClick }: WordCardEnProps) {
                       <p className="text-xl font-medium text-primary mb-2 leading-relaxed">{example.english}</p>
                       <p className="text-base text-secondary">{example.vietnamese}</p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => speakBrowserFallback(example.english, 'en')}
+                    <SpeakerIcon
+                      text={example.english}
+                      lang="en"
+                      size={24}
                       className="text-secondary hover:text-primary transition-colors flex-shrink-0 focus:outline-none mt-1"
-                      title="Nghe phát âm"
-                    >
-                      <Volume2 className="w-6 h-6" />
-                    </button>
+                    />
                   </div>
                 ))}
               </div>

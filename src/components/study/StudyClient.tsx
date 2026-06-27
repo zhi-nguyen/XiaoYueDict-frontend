@@ -39,7 +39,19 @@ export default function StudyClient() {
   // Close sidebar on click outside or escape key
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (isPracticeOpen && sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
+      if (!isPracticeOpen || !sidebarRef.current) return;
+
+      const target = event.target as HTMLElement;
+
+      // Do not close sidebar if the click originates from inside a modal portal
+      if (
+        target.closest('[data-portal="confirm-modal"]') ||
+        target.closest('[data-portal="alert-modal"]')
+      ) {
+        return;
+      }
+
+      if (!sidebarRef.current.contains(target)) {
         setIsPracticeOpen(false);
       }
     };
@@ -87,14 +99,18 @@ export default function StudyClient() {
         const collected: ZhExample[] = [];
         const seen = new Set<string>();
 
-        results.forEach((word: ZhWord) => {
+        results.forEach((word: any) => {
           if (word.examples) {
-            word.examples.forEach((ex: ZhExample) => {
-              if (
-                (ex.chinese.includes(activeWordText) || ex.vietnamese.includes(activeWordText)) &&
-                !seen.has(ex.chinese)
-              ) {
-                seen.add(ex.chinese);
+            word.examples.forEach((ex: any) => {
+              const mainText = language === 'zh' ? ex.chinese : ex.english;
+              if (!mainText) return;
+
+              const matchText = activeWordText || '';
+              const matchesMain = mainText.includes(matchText);
+              const matchesVietnamese = ex.vietnamese ? ex.vietnamese.includes(matchText) : false;
+
+              if ((matchesMain || matchesVietnamese) && !seen.has(mainText)) {
+                seen.add(mainText);
                 collected.push(ex);
               }
             });
@@ -149,8 +165,12 @@ export default function StudyClient() {
           const mainText = language === 'zh' ? ex.chinese : (ex as any).english;
           if (!mainText) return;
 
+          const matchText = activeWordText || '';
+          const matchesMain = mainText.includes(matchText);
+          const matchesVietnamese = ex.vietnamese ? ex.vietnamese.includes(matchText) : false;
+
           if (
-            (mainText.includes(activeWordText) || ex.vietnamese.includes(activeWordText)) &&
+            (matchesMain || matchesVietnamese) &&
             !seen.has(mainText)
           ) {
             seen.add(mainText);

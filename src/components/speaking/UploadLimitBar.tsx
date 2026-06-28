@@ -24,19 +24,23 @@ const TIER_BADGE_STYLES: Record<string, string> = {
 const DEFAULT_BADGE_STYLE = 'bg-surface text-gray-500 border-gray-500/35';
 
 /**
- * Glassmorphic progress bar showing audio upload volume limits.
+ * Glassmorphic progress bar showing audio upload volume limits (UsageHub).
  * Displays per-minute, per-hour, and per-day usage with tier badge.
+ * Formats sizes dynamically in KB or MB for polished precision.
  */
 export default function UploadLimitBar({ usageData }: UploadLimitBarProps) {
-  const formatMB = useCallback((bytes: number) => {
-    return (bytes / (1024 * 1024)).toFixed(2);
+  const formatSize = useCallback((bytes: number) => {
+    if (bytes === 0) return '0 KB';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   }, []);
 
-  const percentage = (usageData.used_hr / usageData.limit_hr) * 100;
+  const percentage = usageData.limit_hr > 0 ? (usageData.used_hr / usageData.limit_hr) * 100 : 0;
   const badgeStyle = TIER_BADGE_STYLES[usageData.tier] || DEFAULT_BADGE_STYLE;
 
   return (
-    <div className="relative rounded-2xl border border-outline bg-hover-bg/30 backdrop-blur-md p-5 shadow-sm transition-all hover:bg-hover-bg/50 animate-fade-in">
+    <div className="relative rounded-2xl border border-outline bg-hover-bg/30 backdrop-blur-md p-5 shadow-sm transition-all hover:bg-hover-bg/50 animate-fade-in font-sans">
       {/* Dynamic Tier Tag positioned at the top-middle of the border */}
       <span className={`absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 inline-flex items-center px-3 py-0.5 rounded-full text-[10px] font-extrabold uppercase border shadow-sm ${badgeStyle}`}>
         {usageData.tier}
@@ -57,7 +61,7 @@ export default function UploadLimitBar({ usageData }: UploadLimitBarProps) {
         <div className="w-full">
           <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
             <span className="text-primary font-bold">
-              {formatMB(usageData.used_hr)} MB <span className="text-secondary/60 font-normal">/ {formatMB(usageData.limit_hr)} MB</span>
+              {formatSize(usageData.used_hr)} <span className="text-secondary/60 font-normal">/ {formatSize(usageData.limit_hr)}</span>
             </span>
             <span className="text-secondary">
               {percentage.toFixed(1)}%
@@ -73,9 +77,9 @@ export default function UploadLimitBar({ usageData }: UploadLimitBarProps) {
           </div>
 
           {/* Additional info */}
-          <div className="flex items-center justify-between text-[10px] text-secondary mt-1.5 font-semibold">
-            <span>Theo phút: {formatMB(usageData.used_min)} / {formatMB(usageData.limit_min)} MB</span>
-            <span>Theo ngày: {formatMB(usageData.used_day)} / {formatMB(usageData.limit_day)} MB</span>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-[10px] text-secondary mt-1.5 font-semibold gap-1">
+            <span>Theo phút: {formatSize(usageData.used_min)} / {formatSize(usageData.limit_min)}</span>
+            <span>Theo ngày: {formatSize(usageData.used_day)} / {formatSize(usageData.limit_day)}</span>
           </div>
         </div>
       </div>

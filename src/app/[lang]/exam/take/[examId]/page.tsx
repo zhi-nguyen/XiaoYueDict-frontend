@@ -8,6 +8,7 @@ import ConfirmModal from '@/components/ConfirmModal';
 import { saveExamState, loadExamState, clearExamState, ExamState } from '@/lib/examState';
 import { createReport } from '@/lib/api/reports';
 import { getGuestId } from '@/lib/guest';
+import { useGamificationStore } from '@/store/useGamificationStore';
 
 const getMediaUrl = (url: string) => {
   if (!url) return url;
@@ -209,19 +210,33 @@ export default function ExamTakePage() {
     setAnswers(prev => ({ ...prev, [questionId]: optionId }));
   };
 
-  const handleFinalSubmit = () => {
+  /**
+   * Finalises the exam session:
+   * 1. Compute the score locally (no backend exam-submit API exists yet).
+   * 2. Persist UI state so the results screen can render immediately.
+   * 3. Log gamification activity ONLY after step 1–2 succeed, preserving
+   *    data integrity: if scoring logic throws, logActivity is never called.
+   *
+   * The function is async so that adding a real backend submission API in
+   * the future (step 1.5) requires no structural refactoring — simply:
+   *   await submitExamToBackend(examData);
+   * between steps 1 and 3.
+   */
+  const handleFinalSubmit = async () => {
     if (!exam || !exam.sections) return;
 
-    let totalScore = 0;
+    // ── Step 1: Local scoring (infallible — pure computation) ──────────
+    let correctCount = 0;
     exam.sections.forEach(sec => {
       sec.questions.forEach(q => {
         if (answers[q.question_id] === q.correct_answer) {
-          totalScore += q.points;
+          correctCount += q.points;
         }
       });
     });
 
-    setScore(totalScore);
+    // ── Step 2: Commit UI state ─────────────────────────────────────────
+    setScore(correctCount);
     setIsSubmitted(true);
     window.scrollTo(0, 0);
 
@@ -232,6 +247,22 @@ export default function ExamTakePage() {
       timeRemaining: timeRemaining || 0,
       isSubmitted: true,
       lastSaved: Date.now()
+    });
+
+    // ── Step 3: Gamification logging — sequenced AFTER successful submit ─
+    // Time elapsed = total exam time minus remaining time (clamped to ≥ 0)
+    const elapsedSeconds = Math.max(
+      0,
+      (exam.total_time_minutes * 60) - (timeRemaining ?? 0)
+    );
+
+    useGamificationStore.getState().logActivity({
+      vocabulary_learned: correctCount,
+      study_duration_seconds: elapsedSeconds,
+    }).catch((err) => {
+      // Secondary system failure — do NOT disrupt the exam result screen.
+      // The exam result is already committed; this is best-effort telemetry.
+      console.error('Failed to log exam activity', err);
     });
   };
 

@@ -8,11 +8,11 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Analytics } from "@vercel/analytics/next"
 
 export const metadata: Metadata = {
-  title: 'XiaoYueDict — Pronunciation Assessment',
+  title: 'CnenDict — Pronunciation Assessment',
   description: 'Pronunciation scoring for English and Chinese. Get word-level feedback in 5 seconds.',
   keywords: ['pronunciation', 'scoring', 'English', 'Chinese', 'Mandarin', 'HSK', 'IELTS'],
   openGraph: {
-    title: 'XiaoYueDict — Pronunciation Assessment',
+    title: 'CnenDict — Pronunciation Assessment',
     description: 'Pronunciation scoring for English and Chinese.',
     type: 'website',
   },

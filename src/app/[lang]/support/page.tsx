@@ -45,21 +45,21 @@ const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
 ];
 
 const FEATURE_AREAS: { value: CreateFeatureReportPayload['feature_area']; label: string }[] = [
-  { value: 'dictionary', label: '📖 Tra từ & Học tập' },
-  { value: 'speaking', label: '🎤 Luyện nói' },
-  { value: 'writing', label: '✍️ Luyện viết' },
-  { value: 'exam', label: '🏆 Luyện thi' },
-  { value: 'notes', label: '📒 Sổ tay' },
-  { value: 'translate', label: '🌐 Dịch thông minh' },
-  { value: 'ui_ux', label: '🎨 Giao diện & Trải nghiệm' },
-  { value: 'other', label: '💬 Khác' },
+  { value: 'dictionary', label: 'Tra từ & Học tập' },
+  { value: 'speaking', label: 'Luyện nói' },
+  { value: 'writing', label: 'Luyện viết' },
+  { value: 'exam', label: 'Luyện thi' },
+  { value: 'notes', label: 'Sổ tay' },
+  { value: 'translate', label: 'Dịch thông minh' },
+  { value: 'ui_ux', label: 'Giao diện & Trải nghiệm' },
+  { value: 'other', label: 'Khác' },
 ];
 
 const SUPPORT_CATEGORIES: { value: CreateSupportRequestPayload['category']; label: string }[] = [
-  { value: 'bug', label: '🐛 Lỗi hệ thống' },
-  { value: 'billing', label: '💳 Thanh toán & Đăng ký' },
-  { value: 'account', label: '🔐 Tài khoản & Bảo mật' },
-  { value: 'other', label: '💬 Hỗ trợ khác' },
+  { value: 'bug', label: 'Lỗi hệ thống' },
+  { value: 'billing', label: 'Thanh toán & Đăng ký' },
+  { value: 'account', label: 'Tài khoản & Bảo mật' },
+  { value: 'other', label: 'Hỗ trợ khác' },
 ];
 
 const STATUS_BADGE_MAP: Record<string, { label: string; classes: string }> = {
@@ -89,11 +89,10 @@ function AlertMessage({ type, message }: { type: 'success' | 'error'; message: s
   const isSuccess = type === 'success';
   return (
     <div
-      className={`flex items-start gap-2.5 p-4 rounded-2xl animate-in fade-in duration-300 border ${
-        isSuccess
+      className={`flex items-start gap-2.5 p-4 rounded-2xl animate-in fade-in duration-300 border ${isSuccess
           ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
           : 'bg-red-50 border-red-200 text-red-800'
-      }`}
+        }`}
     >
       {isSuccess ? (
         <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
@@ -120,9 +119,9 @@ export default function SupportPage() {
         {/* Hero Banner */}
         <div className="relative overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-8 text-white shadow-lg">
           <div className="relative z-10">
-            <h1 className="text-3xl font-bold mb-2">Trung tâm Hỗ trợ & Góp ý 💡</h1>
+            <h1 className="text-3xl font-bold mb-2">Trung tâm Hỗ trợ & Góp ý</h1>
             <p className="text-white/80 text-lg">
-              Giúp chúng tôi cải thiện XiaoYueDict tốt hơn mỗi ngày
+              Giúp chúng tôi cải thiện CnenDict tốt hơn mỗi ngày
             </p>
           </div>
           <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10" />
@@ -136,11 +135,10 @@ export default function SupportPage() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                activeTab === tab.key
+              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === tab.key
                   ? 'bg-primary text-white shadow-md'
                   : 'text-secondary hover:bg-outline/20 hover:text-primary'
-              }`}
+                }`}
             >
               {tab.icon}
               <span className="hidden sm:inline">{tab.label}</span>
@@ -211,7 +209,7 @@ function FeatureReportForm({ isAuthenticated }: { isAuthenticated: boolean }) {
           Đề xuất Tính năng mới
         </h2>
         <p className="text-sm text-secondary mt-1">
-          Chia sẻ ý tưởng giúp XiaoYueDict hoàn thiện hơn
+          Chia sẻ ý tưởng giúp CnenDict hoàn thiện hơn
         </p>
       </div>
 

@@ -18,8 +18,8 @@ export default function WelcomeBanner({ language }: WelcomeBannerProps) {
         <h1 className="text-3xl font-bold mb-2">Chào mừng trở lại! 👋</h1>
         <p className="text-white/80 text-lg">
           {language === 'zh'
-            ? 'Hãy tiếp tục hành trình học tiếng Trung của bạn với XiaoYueDict'
-            : 'Hãy tiếp tục hành trình học tiếng Anh của bạn với XiaoYueDict'}
+            ? 'Hãy tiếp tục hành trình học tiếng Trung của bạn với CnenDict'
+            : 'Hãy tiếp tục hành trình học tiếng Anh của bạn với CnenDict'}
         </p>
         <div className="flex gap-3 mt-6">
           <Link

@@ -36,7 +36,7 @@ export default function ExportPDFModal({
   const [showMeaning, setShowMeaning] = useState(true);
   const [showNotes, setShowNotes] = useState(true);
   const [showCover, setShowCover] = useState(true);
-  const [brandingName, setBrandingName] = useState('XiaoYue Dict');
+  const [brandingName, setBrandingName] = useState('CnenDict');
   const [exportScope, setExportScope] = useState<'all' | 'selected'>('all');
 
   // Advanced customization state
@@ -265,7 +265,7 @@ export default function ExportPDFModal({
         show_meaning: showMeaning,
         show_notes: showNotes,
         show_cover: isFreeTier ? true : showCover,
-        branding_name: isFreeTier ? 'XiaoYue Dict' : brandingName,
+        branding_name: isFreeTier ? 'CnenDict' : brandingName,
         extra_rows: extraRows,
         empty_pages: emptyPages,
         empty_page_grid_size: emptyPageGridSize,
@@ -471,7 +471,7 @@ export default function ExportPDFModal({
                 </div>
                 <input
                   type="text"
-                  value={isFreeTier ? 'XiaoYue Dict' : brandingName}
+                  value={isFreeTier ? 'CnenDict' : brandingName}
                   disabled={isFreeTier}
                   onChange={(e) => setBrandingName(e.target.value)}
                   placeholder="Nhập tên người học (ví dụ: Học viên Minh Anh)"

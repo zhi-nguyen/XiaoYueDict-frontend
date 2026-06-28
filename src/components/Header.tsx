@@ -76,7 +76,7 @@ export default function Header() {
 
         {/* Mobile Brand */}
         <div className="font-lexend font-bold text-lg text-primary tracking-tight md:hidden shrink-0">
-          XiaoYueDict
+          CnenDict
         </div>
         
         <div className="relative w-full hidden md:block ml-2">

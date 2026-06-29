@@ -6,6 +6,7 @@
  */
 
 import React from 'react';
+import { useSettingsStore } from '@/store/useSettingsStore';
 
 // ── Etymology Helper ──────────────────────────────────────────────────────────
 
@@ -164,7 +165,16 @@ export const speakBrowserFallback = (text: string, lang: 'zh' | 'en'): void => {
   }
 };
 export const speakChinese = (text: string): void => {
-  playTTSWithClientCache(text, 'zh').catch((err) => {
+  let voice: string | undefined = undefined;
+  try {
+    if (typeof window !== 'undefined') {
+      voice = useSettingsStore.getState().getVoiceName('zh');
+    }
+  } catch (e) {
+    console.warn('Failed to retrieve voice name from useSettingsStore in speakChinese:', e);
+  }
+
+  playTTSWithClientCache(text, 'zh', voice).catch((err) => {
     console.warn('[speakChinese] playTTSWithClientCache failed, fallback should have run internally:', err);
   });
 };
@@ -189,10 +199,30 @@ export const COMMON_HAN_VIET: Readonly<Record<string, string>> = {
 
 // ── Client-Side TTS Cache Player ──────────────────────────────────────────────
 
-export const playTTSWithClientCache = async (text: string, lang: 'zh' | 'en'): Promise<void> => {
+export const playTTSWithClientCache = async (text: string, lang: 'zh' | 'en', voice?: string): Promise<void> => {
   if (!text) return;
   const langCode = lang === 'en' ? 'en' : 'zh';
-  const requestUrl = `/api/tts?text=${encodeURIComponent(text.trim())}&lang=${langCode}`;
+
+  let resolvedVoice = voice;
+  if (!resolvedVoice) {
+    try {
+      if (typeof window !== 'undefined') {
+        resolvedVoice = useSettingsStore.getState().getVoiceName(lang);
+      }
+    } catch (e) {
+      // Ignored
+    }
+  }
+
+  if (resolvedVoice === 'browser_base') {
+    speakBrowserFallback(text, langCode);
+    return;
+  }
+
+  let requestUrl = `/api/tts?text=${encodeURIComponent(text.trim())}&lang=${langCode}`;
+  if (resolvedVoice) {
+    requestUrl += `&voice=${encodeURIComponent(resolvedVoice)}`;
+  }
 
   try {
     if (typeof window !== 'undefined' && 'caches' in window) {

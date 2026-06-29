@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 const TTS_SERVICE_URL = process.env.TTS_SERVICE_URL || 'http://localhost:8002';
 
 export async function GET(request: NextRequest) {

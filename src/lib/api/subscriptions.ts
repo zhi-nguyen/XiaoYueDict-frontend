@@ -18,6 +18,13 @@ export interface SubscriptionPlan {
   vat: string;
   total_price: string;
   description: string;
+  limits?: {
+    mb_per_minute: number;
+    mb_per_hour: number;
+    mb_per_day: number;
+    pdf_daily_limit: number;
+    pdf_word_limit: number;
+  };
 }
 
 export interface SubscriptionHistoryItem {

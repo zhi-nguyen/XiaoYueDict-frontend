@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { 
-  getSubscriptionHistory, 
-  SubscriptionHistoryItem 
+import {
+  getSubscriptionHistory,
+  SubscriptionHistoryItem
 } from '@/lib/api/subscriptions';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import ConfirmModal from '@/components/ConfirmModal';
@@ -16,10 +16,10 @@ import { RegisterResponse } from '@/lib/api/subscriptions';
  */
 export default function SubscriptionHistoryTab() {
   const [subHistory, setSubHistory] = useState<SubscriptionHistoryItem[]>([]);
-  const { 
-    tier: currentTier, 
-    isActive, 
-    pendingDowngradeTier, 
+  const {
+    tier: currentTier,
+    isActive,
+    pendingDowngradeTier,
     endDate,
     plans,
     isLoading,
@@ -30,7 +30,7 @@ export default function SubscriptionHistoryTab() {
   } = useSubscriptionStore();
 
   const [showVat, setShowVat] = useState(true);
-  
+
   // Modals state
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;
@@ -43,7 +43,7 @@ export default function SubscriptionHistoryTab() {
     title: '',
     message: '',
     isDestructive: false,
-    onConfirm: () => {}
+    onConfirm: () => { }
   });
 
   const [alertConfig, setAlertConfig] = useState<{
@@ -207,12 +207,12 @@ export default function SubscriptionHistoryTab() {
   const formatPrice = (priceStr: string, planTier: string) => {
     const priceNum = parseFloat(priceStr);
     if (priceNum === 0) return 'Miễn phí';
-    
+
     let priceWithTax = priceNum;
     if (showVat) {
       priceWithTax = priceNum * 1.1;
     }
-    
+
     const formatted = Math.round(priceWithTax).toLocaleString('vi-VN') + ' đ';
     return planTier === 'Premium' ? formatted : `${formatted} / tháng`;
   };
@@ -226,7 +226,6 @@ export default function SubscriptionHistoryTab() {
           { name: 'Tra từ Trung-Việt, Anh-Việt cơ bản', available: true },
           { name: 'Dung lượng tải file: 2MB/phút, 100MB/ngày', available: true },
           { name: 'Tạo tối đa 2 sổ tay học tập', available: true },
-          { name: 'Luyện nói & luyện viết chấm điểm AI', available: false },
           { name: 'Xuất file từ vựng PDF', available: false },
           { name: 'Đặc quyền VIP & Trọn đời vĩnh viễn', available: false },
         ];
@@ -237,7 +236,6 @@ export default function SubscriptionHistoryTab() {
           { name: 'Không giới hạn số lượng sổ tay', available: true },
           { name: 'Xuất tối đa 10 file PDF từ vựng/ngày', available: true },
           { name: 'Hỗ trợ AI phân tích cơ bản', available: true },
-          { name: 'Luyện nói & luyện viết chấm điểm AI', available: false },
           { name: 'Đặc quyền VIP & Trọn đời vĩnh viễn', available: false },
         ];
       case 'Pro':
@@ -246,17 +244,12 @@ export default function SubscriptionHistoryTab() {
           { name: 'Dung lượng tải file: 20MB/phút, 1GB/ngày', available: true },
           { name: 'Xuất tối đa 50 file PDF từ vựng/ngày', available: true },
           { name: 'Full tính năng Luyện Nói & Viết AI', available: true },
-          { name: 'Không giới hạn tính năng chấm điểm AI', available: true },
           { name: 'Ưu tiên đường truyền AI tốc độ cao', available: true },
           { name: 'Đặc quyền VIP & Trọn đời vĩnh viễn', available: false },
         ];
       case 'Premium':
         return [
-          { name: 'Tra từ song ngữ đầy đủ', available: true },
-          { name: 'Dung lượng tải file: 20MB/phút, 1GB/ngày', available: true },
-          { name: 'Xuất tối đa 50 file PDF từ vựng/ngày', available: true },
-          { name: 'Full tính năng Luyện Nói & Viết AI', available: true },
-          { name: 'Không giới hạn tính năng chấm điểm AI', available: true },
+          { name: 'Bao gồm đặc quyền của gói Pro', available: true },
           { name: 'Mua một lần dùng trọn đời vĩnh viễn', available: true },
           { name: 'Không mất chi phí duy trì hàng tháng', available: true },
         ];
@@ -274,7 +267,7 @@ export default function SubscriptionHistoryTab() {
           <span className="material-symbols-outlined text-primary">stars</span>
           Gói hiện tại của bạn
         </h3>
-        
+
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
@@ -307,7 +300,7 @@ export default function SubscriptionHistoryTab() {
               <p className="text-[10px] text-yellow-700/80 mt-0.5">
                 Quyền lợi hiện tại vẫn giữ nguyên cho đến ngày hết hạn của gói.
               </p>
-              <button 
+              <button
                 onClick={handleCancelDowngrade}
                 className="mt-2 text-xs text-red-500 hover:text-red-600 font-extrabold flex items-center gap-0.5 hover:underline"
               >
@@ -330,7 +323,7 @@ export default function SubscriptionHistoryTab() {
           {/* Toggle VAT inside tab */}
           <div className="inline-flex items-center gap-2 bg-hover-bg border border-outline px-3 py-1.5 rounded-full self-start sm:self-center">
             <span className={`text-[11px] font-semibold ${!showVat ? 'text-primary' : 'text-secondary'}`}>Chưa gồm thuế</span>
-            <button 
+            <button
               onClick={() => setShowVat(!showVat)}
               className={`relative w-8 h-5 flex items-center rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${showVat ? 'bg-primary' : 'bg-outline'}`}
             >
@@ -348,14 +341,14 @@ export default function SubscriptionHistoryTab() {
             const features = getFeatures(plan.tier);
             const isPopular = plan.tier === 'Premium';
 
-            const cardBg = isCurrent 
+            const cardBg = isCurrent
               ? 'bg-emerald-50/20 border-emerald-300 ring-2 ring-emerald-500/10'
               : isPopular
                 ? 'bg-gradient-to-b from-yellow-50/50 to-amber-50/20 border-yellow-400 shadow-sm'
                 : 'bg-surface border-outline shadow-sm hover:shadow transition-shadow';
 
             return (
-              <div 
+              <div
                 key={plan.id}
                 className={`flex flex-col rounded-2xl p-4 border transition-all duration-300 relative overflow-hidden ${cardBg}`}
               >
@@ -369,18 +362,17 @@ export default function SubscriptionHistoryTab() {
                 {/* Card Title & Icon */}
                 <div className="mb-4">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <span className={`material-symbols-outlined text-xl ${
-                      plan.tier === 'Free' ? 'text-secondary' :
+                    <span className={`material-symbols-outlined text-xl ${plan.tier === 'Free' ? 'text-secondary' :
                       plan.tier === 'Plus' ? 'text-sage' :
-                      plan.tier === 'Pro' ? 'text-primary' : 'text-yellow-600 filled'
-                    }`}>
+                        plan.tier === 'Pro' ? 'text-primary' : 'text-yellow-600 filled'
+                      }`}>
                       {plan.tier === 'Free' ? 'volunteer_activism' :
-                       plan.tier === 'Plus' ? 'stars' :
-                       plan.tier === 'Pro' ? 'workspace_premium' : 'diamond'}
+                        plan.tier === 'Plus' ? 'stars' :
+                          plan.tier === 'Pro' ? 'workspace_premium' : 'diamond'}
                     </span>
                     <h4 className="font-extrabold text-primary text-sm sm:text-base tracking-tight">{plan.tier}</h4>
                   </div>
-                  
+
                   {/* Price */}
                   <div className="text-lg font-black text-primary">
                     {formatPrice(plan.price, plan.tier)}
@@ -407,8 +399,8 @@ export default function SubscriptionHistoryTab() {
                 <div className="mt-4">
                   {isCurrent ? (
                     <div className="w-full flex flex-col gap-1">
-                      <button 
-                        disabled 
+                      <button
+                        disabled
                         className="w-full py-2 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-xs rounded-xl flex items-center justify-center gap-1 cursor-default"
                       >
                         <span className="material-symbols-outlined text-xs filled">check_circle</span>
@@ -416,8 +408,8 @@ export default function SubscriptionHistoryTab() {
                       </button>
                     </div>
                   ) : isPending ? (
-                    <button 
-                      disabled 
+                    <button
+                      disabled
                       className="w-full py-2 bg-yellow-50 border border-yellow-200 text-yellow-700 font-bold text-xs rounded-xl cursor-default"
                     >
                       Chờ hạ cấp
@@ -425,11 +417,10 @@ export default function SubscriptionHistoryTab() {
                   ) : (
                     <button
                       onClick={() => handleAction(plan.tier)}
-                      className={`w-full py-2 text-xs font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-1 ${
-                        plan.tier === 'Premium' 
-                          ? 'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white shadow-sm' 
-                          : 'bg-primary hover:opacity-90 text-white shadow-sm'
-                      }`}
+                      className={`w-full py-2 text-xs font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-1 ${plan.tier === 'Premium'
+                        ? 'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white shadow-sm'
+                        : 'bg-primary hover:opacity-90 text-white shadow-sm'
+                        }`}
                     >
                       {['Free', 'Plus', 'Pro', 'Premium'].indexOf(plan.tier) > ['Free', 'Plus', 'Pro', 'Premium'].indexOf(normalizedUserTier)
                         ? 'Nâng cấp'
@@ -471,15 +462,14 @@ export default function SubscriptionHistoryTab() {
                   <tr key={item.id} className="hover:bg-hover-bg transition-colors">
                     <td className="px-5 py-3.5 whitespace-nowrap">{new Date(item.changed_at).toLocaleString('vi-VN')}</td>
                     <td className="px-5 py-3.5 whitespace-nowrap">
-                      <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase ${
-                        item.action === 'UPGRADE' ? 'bg-green-50 text-green-700 border border-green-200' :
+                      <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase ${item.action === 'UPGRADE' ? 'bg-green-50 text-green-700 border border-green-200' :
                         item.action === 'DOWNGRADE' ? 'bg-orange-50 text-orange-700 border border-orange-200' :
-                        item.action === 'RENEW' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 
-                        'bg-red-50 text-red-700 border border-red-200'
-                      }`}>
+                          item.action === 'RENEW' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                            'bg-red-50 text-red-700 border border-red-200'
+                        }`}>
                         {item.action === 'UPGRADE' ? 'Nâng cấp' :
-                         item.action === 'DOWNGRADE' ? 'Hạ cấp' :
-                         item.action === 'RENEW' ? 'Gia hạn' : 'Hủy gói'}
+                          item.action === 'DOWNGRADE' ? 'Hạ cấp' :
+                            item.action === 'RENEW' ? 'Gia hạn' : 'Hủy gói'}
                       </span>
                     </td>
                     <td className="px-5 py-3.5 font-bold text-primary">{item.tier}</td>

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useParams } from 'next/navigation';
 import { useUIStore } from '@/store/useUIStore';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import SettingsPanel from '@/components/SettingsPanel';
 
 const navItems = [
   { href: '/dashboard', icon: 'dashboard', label: 'Tổng quan' },
@@ -27,7 +28,7 @@ export default function Sidebar() {
   }, []);
 
   const language = isMounted ? ((params?.lang as string) || 'zh') : 'zh';
-  const { isSidebarOpen, setSidebarOpen, isDesktopSidebarCollapsed, toggleDesktopSidebar } = useUIStore();
+  const { isSidebarOpen, setSidebarOpen, isDesktopSidebarCollapsed, toggleDesktopSidebar, setSettingsOpen } = useUIStore();
   const { tier: subscriptionTier } = useSubscriptionStore();
   const sidebarRef = React.useRef<HTMLElement>(null);
 
@@ -125,12 +126,19 @@ export default function Sidebar() {
 
       {/* Bottom Actions */}
       <div className="p-4 shrink-0 border-t border-outline flex flex-col gap-2">
-        <Link href="#" className={`flex items-center h-12 rounded-full text-secondary hover:bg-hover-bg hover:text-primary transition-all ${isDesktopSidebarCollapsed ? 'md:justify-center px-3 md:px-0' : 'px-3 justify-start'}`}>
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className={`flex items-center h-12 rounded-full text-secondary hover:bg-hover-bg hover:text-primary transition-all ${isDesktopSidebarCollapsed ? 'md:justify-center px-3 md:px-0' : 'px-3 justify-start'}`}
+        >
           <span className="material-symbols-outlined w-6 flex justify-center shrink-0">settings</span>
           <span className={`font-medium text-[15px] whitespace-nowrap transition-all duration-300 ml-3 ${isDesktopSidebarCollapsed ? 'md:opacity-0 md:w-0 md:ml-0 overflow-hidden' : 'md:opacity-100 md:w-auto'}`}>Cài đặt</span>
-        </Link>
+        </button>
       </div>
     </aside>
+
+    {/* Settings Panel (slide-over) */}
+    <SettingsPanel />
     </>
   );
 }
+

@@ -25,6 +25,26 @@ const truncateTranslation = (str: string, maxLen = 15) => {
   return str.length > maxLen ? str.substring(0, maxLen) + '...' : str;
 };
 
+const isLongSentence = (query: string, language: string): boolean => {
+  const trimmed = query.trim();
+  if (language === 'zh') {
+    // Nếu chứa các ký tự dấu câu tiếng Trung hoặc khoảng trắng
+    if (/[\s。，、！？；：「」『』()（）[\]{}“”‘’'"]/.test(trimmed)) {
+      return true;
+    }
+    // Hoặc nếu độ dài chữ Hán > 4 (từ ghép thường <= 4 chữ)
+    return trimmed.length > 4;
+  } else {
+    // Cho tiếng Anh/Latin
+    if (/[.,\/#!$%\^&\*;:{}=\-_`~()?]/.test(trimmed)) {
+      return true;
+    }
+    // Hoặc nếu có nhiều hơn 2 từ (3 từ trở lên thì coi là câu)
+    const words = trimmed.split(/\s+/);
+    return words.length > 2;
+  }
+};
+
 /**
  * Vocabulary tab panel for the Study page.
  * Renders either:
@@ -46,7 +66,15 @@ export default function VocabularyTab({
   const params = useParams();
   const language = (params?.lang as string) === 'en' ? 'en' : 'zh';
 
-  const isSentenceQuery = !!(exactExampleMatch || translationResult);
+  const hasExactWordMatch = wordResults.some(
+    (w) => w.word.toLowerCase() === searchQuery.toLowerCase() || 
+           (w.traditional && w.traditional.toLowerCase() === searchQuery.toLowerCase())
+  );
+
+  const isSentenceQuery = !!(exactExampleMatch || translationResult) && 
+                          !hasExactWordMatch && 
+                          (isLongSentence(searchQuery, language) || wordResults.length === 0);
+
 
   // Helper to render the vocabulary list and details
   const renderVocabularyBreakdown = () => {

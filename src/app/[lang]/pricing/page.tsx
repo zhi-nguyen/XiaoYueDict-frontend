@@ -15,10 +15,10 @@ export default function PricingPage() {
   const lang = (params?.lang as string) || 'zh';
 
   const { isAuthenticated } = useAuthStore();
-  const { 
-    tier: currentTier, 
-    isActive, 
-    pendingDowngradeTier, 
+  const {
+    tier: currentTier,
+    isActive,
+    pendingDowngradeTier,
     endDate,
     plans,
     isLoading,
@@ -30,7 +30,7 @@ export default function PricingPage() {
 
   const [showVat, setShowVat] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
-  
+
   // Modals state
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;
@@ -43,7 +43,7 @@ export default function PricingPage() {
     title: '',
     message: '',
     isDestructive: false,
-    onConfirm: () => {}
+    onConfirm: () => { }
   });
 
   const [alertConfig, setAlertConfig] = useState<{
@@ -207,12 +207,12 @@ export default function PricingPage() {
   const formatPrice = (priceStr: string, planTier: string) => {
     const priceNum = parseFloat(priceStr);
     if (priceNum === 0) return 'Miễn phí';
-    
+
     let priceWithTax = priceNum;
     if (showVat) {
       priceWithTax = priceNum * 1.1; // 10% VAT
     }
-    
+
     const formatted = Math.round(priceWithTax).toLocaleString('vi-VN') + ' đ';
     return planTier === 'Premium' ? formatted : `${formatted} / tháng`;
   };
@@ -221,32 +221,49 @@ export default function PricingPage() {
   const normalizedUserTier = currentTier || 'Free';
 
   // Feature items per plan
-  const getFeatures = (tierName: string) => {
+  const getFeatures = (plan: any) => {
+    const tierName = plan.tier;
+    const limits = plan.limits || {};
+
+    const getLimitVal = (key: string, fallback: number) => {
+      return typeof limits[key] === 'number' ? limits[key] : fallback;
+    };
+
+    const mbMin = getLimitVal('mb_per_minute', tierName === 'Free' ? 1 : tierName === 'Plus' ? 2 : 5);
+    const mbDay = getLimitVal('mb_per_day', tierName === 'Free' ? 10 : tierName === 'Plus' ? 30 : 100);
+    const pdfDailyLimit = getLimitVal('pdf_daily_limit', tierName === 'Free' ? 2 : tierName === 'Plus' ? 10 : 50);
+    const pdfWordLimit = getLimitVal('pdf_word_limit', tierName === 'Free' ? 10 : tierName === 'Plus' ? 50 : 200);
+
+    const formatMbVal = (val: number) => {
+      if (val >= 1024) {
+        return `${(val / 1024).toFixed(0)}GB`;
+      }
+      return `${val}MB`;
+    };
+
     switch (tierName) {
       case 'Free':
         return [
           { name: 'Tra từ Trung-Việt, Anh-Việt cơ bản', available: true },
-          { name: 'Dung lượng tải file: 2MB/phút, 100MB/ngày', available: true },
+          { name: `Dung lượng tải file: ${formatMbVal(mbMin)}/phút, ${formatMbVal(mbDay)}/ngày`, available: true },
           { name: 'Tạo tối đa 2 sổ tay học tập', available: true },
-          { name: 'Luyện nói & luyện viết chấm điểm AI', available: false },
           { name: 'Xuất file từ vựng PDF', available: false },
           { name: 'Đặc quyền VIP & Trọn đời vĩnh viễn', available: false },
         ];
       case 'Plus':
         return [
           { name: 'Tra từ song ngữ đầy đủ', available: true },
-          { name: 'Dung lượng tải file: 5MB/phút, 300MB/ngày', available: true },
+          { name: `Dung lượng tải file: ${formatMbVal(mbMin)}/phút, ${formatMbVal(mbDay)}/ngày`, available: true },
           { name: 'Không giới hạn số lượng sổ tay', available: true },
-          { name: 'Xuất tối đa 10 file PDF từ vựng/ngày', available: true },
+          { name: `Xuất tối đa ${pdfDailyLimit} file PDF từ vựng/ngày (tối đa ${pdfWordLimit} từ/file)`, available: true },
           { name: 'Hỗ trợ AI phân tích cơ bản', available: true },
-          { name: 'Luyện nói & luyện viết chấm điểm AI', available: false },
           { name: 'Đặc quyền VIP & Trọn đời vĩnh viễn', available: false },
         ];
       case 'Pro':
         return [
           { name: 'Tra từ song ngữ đầy đủ', available: true },
-          { name: 'Dung lượng tải file: 20MB/phút, 1GB/ngày', available: true },
-          { name: 'Xuất tối đa 50 file PDF từ vựng/ngày', available: true },
+          { name: `Dung lượng tải file: ${formatMbVal(mbMin)}/phút, ${formatMbVal(mbDay)}/ngày`, available: true },
+          { name: `Xuất tối đa ${pdfDailyLimit} file PDF từ vựng/ngày (tối đa ${pdfWordLimit} từ/file)`, available: true },
           { name: 'Full tính năng Luyện Nói & Viết AI', available: true },
           { name: 'Không giới hạn tính năng chấm điểm AI', available: true },
           { name: 'Ưu tiên đường truyền AI tốc độ cao', available: true },
@@ -255,8 +272,8 @@ export default function PricingPage() {
       case 'Premium':
         return [
           { name: 'Tra từ song ngữ đầy đủ', available: true },
-          { name: 'Dung lượng tải file: 20MB/phút, 1GB/ngày', available: true },
-          { name: 'Xuất tối đa 50 file PDF từ vựng/ngày', available: true },
+          { name: `Dung lượng tải file: ${formatMbVal(mbMin)}/phút, ${formatMbVal(mbDay)}/ngày`, available: true },
+          { name: `Xuất tối đa ${pdfDailyLimit} file PDF từ vựng/ngày (tối đa ${pdfWordLimit} từ/file)`, available: true },
           { name: 'Full tính năng Luyện Nói & Viết AI', available: true },
           { name: 'Không giới hạn tính năng chấm điểm AI', available: true },
           { name: 'Mua một lần dùng trọn đời vĩnh viễn', available: true },
@@ -283,7 +300,7 @@ export default function PricingPage() {
             {/* VAT Toggle */}
             <div className="inline-flex items-center gap-3 bg-surface border border-outline px-4 py-2 rounded-full shadow-sm">
               <span className={`text-xs font-semibold ${!showVat ? 'text-primary' : 'text-secondary'}`}>Chưa gồm thuế</span>
-              <button 
+              <button
                 onClick={() => setShowVat(!showVat)}
                 className={`relative w-10 h-6 flex items-center rounded-full p-1 transition-colors duration-200 focus:outline-none ${showVat ? 'bg-primary' : 'bg-outline'}`}
               >
@@ -298,16 +315,16 @@ export default function PricingPage() {
             {plans.map((plan) => {
               const isCurrent = normalizedUserTier === plan.tier && isActive;
               const isPending = pendingDowngradeTier === plan.tier;
-              const features = getFeatures(plan.tier);
-              
+              const features = getFeatures(plan);
+
               // Determine card styling based on tier
               const isPopular = plan.tier === 'Premium';
-              const cardBg = isPopular 
-                ? 'bg-gradient-to-b from-yellow-50/50 to-amber-50/20 border-yellow-400 shadow-md ring-2 ring-yellow-400/20' 
+              const cardBg = isPopular
+                ? 'bg-gradient-to-b from-yellow-50/50 to-amber-50/20 border-yellow-400 shadow-md ring-2 ring-yellow-400/20'
                 : 'bg-surface border-outline shadow-sm hover:shadow-md transition-shadow';
 
               return (
-                <div 
+                <div
                   key={plan.id}
                   className={`flex flex-col rounded-3xl p-6 border transition-all duration-300 relative overflow-hidden ${cardBg}`}
                 >
@@ -321,18 +338,17 @@ export default function PricingPage() {
                   {/* Header Tier */}
                   <div className="mb-5">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className={`material-symbols-outlined text-2xl ${
-                        plan.tier === 'Free' ? 'text-secondary' :
+                      <span className={`material-symbols-outlined text-2xl ${plan.tier === 'Free' ? 'text-secondary' :
                         plan.tier === 'Plus' ? 'text-sage' :
-                        plan.tier === 'Pro' ? 'text-primary' : 'text-yellow-600 filled'
-                      }`}>
+                          plan.tier === 'Pro' ? 'text-primary' : 'text-yellow-600 filled'
+                        }`}>
                         {plan.tier === 'Free' ? 'volunteer_activism' :
-                         plan.tier === 'Plus' ? 'stars' :
-                         plan.tier === 'Pro' ? 'workspace_premium' : 'diamond'}
+                          plan.tier === 'Plus' ? 'stars' :
+                            plan.tier === 'Pro' ? 'workspace_premium' : 'diamond'}
                       </span>
                       <h3 className="text-xl font-extrabold text-primary tracking-tight">{plan.tier}</h3>
                     </div>
-                    
+
                     {/* Price */}
                     <div className="flex items-baseline mb-2">
                       <span className="text-2xl md:text-3xl font-extrabold text-primary">
@@ -366,8 +382,8 @@ export default function PricingPage() {
                   <div className="mt-6">
                     {isCurrent ? (
                       <div className="w-full flex flex-col gap-2">
-                        <button 
-                          disabled 
+                        <button
+                          disabled
                           className="w-full py-3 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm rounded-2xl flex items-center justify-center gap-2 cursor-default"
                         >
                           <span className="material-symbols-outlined text-sm filled">check_circle</span>
@@ -378,8 +394,8 @@ export default function PricingPage() {
                             <p className="text-[10px] text-yellow-800 font-semibold leading-tight">
                               Đã lên lịch hạ cấp xuống gói {pendingDowngradeTier.toUpperCase()}
                             </p>
-                            <button 
-                              onClick={handleCancelDowngrade} 
+                            <button
+                              onClick={handleCancelDowngrade}
                               className="text-[11px] text-red-500 font-bold hover:underline mt-1 block w-full"
                             >
                               Hủy yêu cầu hạ cấp
@@ -388,8 +404,8 @@ export default function PricingPage() {
                         )}
                       </div>
                     ) : isPending ? (
-                      <button 
-                        disabled 
+                      <button
+                        disabled
                         className="w-full py-3 bg-yellow-50 border border-yellow-200 text-yellow-700 font-bold text-sm rounded-2xl cursor-default"
                       >
                         Chờ hạ cấp về gói này
@@ -397,11 +413,10 @@ export default function PricingPage() {
                     ) : (
                       <button
                         onClick={() => handleAction(plan.tier)}
-                        className={`w-full py-3 text-sm font-bold rounded-2xl transition-all duration-200 flex items-center justify-center gap-1 ${
-                          plan.tier === 'Premium' 
-                            ? 'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white shadow-sm hover:shadow' 
-                            : 'bg-primary hover:opacity-90 text-white shadow-sm'
-                        }`}
+                        className={`w-full py-3 text-sm font-bold rounded-2xl transition-all duration-200 flex items-center justify-center gap-1 ${plan.tier === 'Premium'
+                          ? 'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white shadow-sm hover:shadow'
+                          : 'bg-primary hover:opacity-90 text-white shadow-sm'
+                          }`}
                       >
                         {!isAuthenticated ? (
                           'Đăng nhập để đăng ký'
@@ -425,7 +440,7 @@ export default function PricingPage() {
               <span className="material-symbols-outlined text-primary">live_help</span>
               Các câu hỏi thường gặp
             </h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <h4 className="font-bold text-primary text-sm md:text-base mb-2">Gói Premium (Vĩnh viễn) hoạt động thế nào?</h4>
@@ -433,7 +448,7 @@ export default function PricingPage() {
                   Gói Premium là gói Lifetime. Bạn chỉ cần trả phí một lần duy nhất để mở khóa vĩnh viễn tất cả các đặc quyền thuộc gói Pro (gói cao cấp nhất về tính năng học tập & AI) mà không phải trả thêm phí gia hạn mỗi tháng.
                 </p>
               </div>
-              
+
               <div>
                 <h4 className="font-bold text-primary text-sm md:text-base mb-2">Chính sách hạ cấp hoạt động ra sao?</h4>
                 <p className="text-secondary text-xs md:text-sm leading-relaxed">

@@ -142,12 +142,14 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     set({ isLoading: true });
     try {
       const res = await cancelDowngrade();
-      set({
-        tier: res.subscription.tier,
-        isActive: res.subscription.is_active,
-        pendingDowngradeTier: res.subscription.pending_downgrade_tier || null,
-        endDate: res.subscription.end_date,
-      });
+      if (res.subscription) {
+        set({
+          tier: res.subscription.tier,
+          isActive: res.subscription.is_active,
+          pendingDowngradeTier: res.subscription.pending_downgrade_tier || null,
+          endDate: res.subscription.end_date,
+        });
+      }
     } catch (error) {
       console.error("Failed to cancel pending downgrade:", error);
       throw error;

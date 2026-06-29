@@ -50,9 +50,13 @@ export function useStudySearch(): UseStudySearchReturn {
   // Listen for WebSocket translation results
   useWebSocket({
     onMessage: (msg) => {
-      console.log('[useStudySearch] onMessage received:', msg.type, 'payload task_id:', msg.payload?.task_id, 'currentTaskId:', currentTaskId);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[useStudySearch] onMessage received:', msg.type, 'payload task_id:', msg.payload?.task_id, 'currentTaskId:', currentTaskId);
+      }
       if (!currentTaskId || msg.payload?.task_id !== currentTaskId) {
-        console.log('[useStudySearch] Ignored message (task ID mismatch or no active task)');
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[useStudySearch] Ignored message (task ID mismatch or no active task)');
+        }
         return;
       }
 

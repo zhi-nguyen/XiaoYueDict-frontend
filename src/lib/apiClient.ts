@@ -26,6 +26,21 @@ export const djangoClient = axios.create({
   xsrfHeaderName: 'X-CSRFToken',
 });
 
+// VPS direct connection for high-performance reading APIs (bypassing Vercel BFF)
+const isLocal = typeof window !== 'undefined' && 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+const VPS_API_BASE_URL = process.env.NEXT_PUBLIC_VPS_API_URL || 
+  (isLocal ? 'http://localhost/api/core' : 'https://api.cnendict.xyz/api/core');
+
+export const directVpsClient = axios.create({
+  baseURL: VPS_API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: false,
+});
+
 let isRefreshing = false;
 let failedQueue: { resolve: (token: string) => void; reject: (error: any) => void }[] = [];
 
@@ -61,6 +76,7 @@ const requestInterceptor = (config: InternalAxiosRequestConfig) => {
 
 apiClient.interceptors.request.use(requestInterceptor, error => Promise.reject(error));
 djangoClient.interceptors.request.use(requestInterceptor, error => Promise.reject(error));
+directVpsClient.interceptors.request.use(requestInterceptor, error => Promise.reject(error));
 
 // Response interceptor to handle 401s and silent refresh
 const responseInterceptor = async (error: AxiosError) => {
@@ -136,3 +152,4 @@ const responseInterceptor = async (error: AxiosError) => {
 
 apiClient.interceptors.response.use(response => response, responseInterceptor);
 djangoClient.interceptors.response.use(response => response, responseInterceptor);
+directVpsClient.interceptors.response.use(response => response, responseInterceptor);

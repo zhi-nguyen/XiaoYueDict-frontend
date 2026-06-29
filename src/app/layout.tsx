@@ -6,6 +6,7 @@ import Footer from '@/components/Footer'
 import ScrollToTop from '@/components/ScrollToTop'
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Analytics } from "@vercel/analytics/next"
+import QueryProvider from '@/context/QueryProvider'
 
 export const metadata: Metadata = {
   title: 'CnenDict — Pronunciation Assessment',
@@ -31,20 +32,22 @@ export default function RootLayout({
         <meta name="theme-color" content="#334155" />
       </head>
       <body className="font-lexend text-primary bg-content-bg">
-        <div className="flex h-screen w-full bg-content-bg overflow-hidden font-lexend text-primary">
-          <Sidebar />
-          <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-            <Header />
-            {/* Main Content Area */}
-            <div className="flex-1 overflow-y-auto flex flex-col justify-between">
-              <div className="flex-1 flex flex-col">
-                {children}
+        <QueryProvider>
+          <div className="flex h-screen w-full bg-content-bg overflow-hidden font-lexend text-primary">
+            <Sidebar />
+            <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+              <Header />
+              {/* Main Content Area */}
+              <div className="flex-1 overflow-y-auto flex flex-col justify-between">
+                <div className="flex-1 flex flex-col">
+                  {children}
+                </div>
+                <Footer />
+                <ScrollToTop />
               </div>
-              <Footer />
-              <ScrollToTop />
             </div>
           </div>
-        </div>
+        </QueryProvider>
         <Analytics />
       </body>
     </html>

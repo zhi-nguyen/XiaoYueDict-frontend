@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { directVpsClient } from '@/lib/apiClient';
 
 // ── Etymology Helper ──────────────────────────────────────────────────────────
 
@@ -199,6 +200,39 @@ export const COMMON_HAN_VIET: Readonly<Record<string, string>> = {
 
 // ── Client-Side TTS Cache Player ──────────────────────────────────────────────
 
+// Helper to wait for the WebSocket notification of TTS audio generation
+const waitForTTS = (taskId: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const handleCompleted = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.task_id === taskId) {
+        cleanup();
+        resolve(detail.audio_url);
+      }
+    };
+    const handleFailed = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.task_id === taskId) {
+        cleanup();
+        reject(new Error(detail.error || 'TTS generation failed'));
+      }
+    };
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error('TTS request timeout (15s)'));
+    }, 15000);
+
+    const cleanup = () => {
+      clearTimeout(timeout);
+      window.removeEventListener('tts_task_completed', handleCompleted);
+      window.removeEventListener('tts_task_failed', handleFailed);
+    };
+
+    window.addEventListener('tts_task_completed', handleCompleted);
+    window.addEventListener('tts_task_failed', handleFailed);
+  });
+};
+
 export const playTTSWithClientCache = async (text: string, lang: 'zh' | 'en', voice?: string): Promise<void> => {
   if (!text) return;
   const langCode = lang === 'en' ? 'en' : 'zh';
@@ -219,15 +253,16 @@ export const playTTSWithClientCache = async (text: string, lang: 'zh' | 'en', vo
     return;
   }
 
-  let requestUrl = `/api/tts?text=${encodeURIComponent(text.trim())}&lang=${langCode}`;
+  // Local cache key using standard relative URL structure
+  let cacheKeyUrl = `/api/tts?text=${encodeURIComponent(text.trim())}&lang=${langCode}`;
   if (resolvedVoice) {
-    requestUrl += `&voice=${encodeURIComponent(resolvedVoice)}`;
+    cacheKeyUrl += `&voice=${encodeURIComponent(resolvedVoice)}`;
   }
 
   try {
     if (typeof window !== 'undefined' && 'caches' in window) {
       const cache = await caches.open('tts-audio-cache');
-      const cachedResponse = await cache.match(requestUrl);
+      const cachedResponse = await cache.match(cacheKeyUrl);
 
       if (cachedResponse) {
         const blob = await cachedResponse.blob();
@@ -237,22 +272,58 @@ export const playTTSWithClientCache = async (text: string, lang: 'zh' | 'en', vo
         return;
       }
 
-      const response = await fetch(requestUrl);
-      if (!response.ok) {
-        throw new Error(`TTS API error status=${response.status}`);
+      // Call Direct VPS to trigger or fetch cached audio
+      const response = await directVpsClient.get(`/media/tts/`, {
+        params: {
+          text: text.trim(),
+          voice: resolvedVoice || ''
+        }
+      });
+
+      let audioUrl = '';
+      if (response.data.status === 'SUCCESS') {
+        audioUrl = response.data.audio_url;
+      } else if (response.data.status === 'PENDING') {
+        // Wait for WebSocket event
+        audioUrl = await waitForTTS(response.data.task_id);
+      } else {
+        throw new Error('Invalid TTS response status');
       }
 
-      await cache.put(requestUrl, response.clone());
-      const blob = await response.blob();
+      // Fetch the binary file from GCS or Media storage to cache it locally
+      const audioResponse = await fetch(audioUrl);
+      if (!audioResponse.ok) {
+        throw new Error('Failed to download generated TTS audio file');
+      }
+
+      // Put cloned response to local cache using standard local key
+      await cache.put(cacheKeyUrl, audioResponse.clone());
+
+      const blob = await audioResponse.blob();
       const blobUrl = URL.createObjectURL(blob);
       const audio = new Audio(blobUrl);
       await audio.play();
     } else {
-      const audio = new Audio(requestUrl);
+      // Fallback for environment without Caches API support
+      const response = await directVpsClient.get(`/media/tts/`, {
+        params: {
+          text: text.trim(),
+          voice: resolvedVoice || ''
+        }
+      });
+
+      let audioUrl = '';
+      if (response.data.status === 'SUCCESS') {
+        audioUrl = response.data.audio_url;
+      } else if (response.data.status === 'PENDING') {
+        audioUrl = await waitForTTS(response.data.task_id);
+      }
+
+      const audio = new Audio(audioUrl);
       await audio.play();
     }
   } catch (err) {
-    console.warn('TTS client-side cache or fetch failed, falling back to browser SpeechSynthesis:', err);
+    console.warn('TTS async orchestration failed, falling back to browser SpeechSynthesis:', err);
     speakBrowserFallback(text, langCode);
   }
 };

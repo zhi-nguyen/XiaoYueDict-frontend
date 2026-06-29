@@ -25,7 +25,7 @@ const nextConfig = {
       },
       {
         source: '/api/core/:path*',
-        destination: `${apiUrl}/api/core/:path*/`, // Append if missing
+        destination: `${apiUrl}/api/core/:path*`, // Keep original slash behavior
       },
       {
         source: '/api/gamification/:path*/',
@@ -33,7 +33,7 @@ const nextConfig = {
       },
       {
         source: '/api/gamification/:path*',
-        destination: `${apiUrl}/api/core/gamification/:path*/`,
+        destination: `${apiUrl}/api/core/gamification/:path*`, // Keep original slash behavior
       },
       {
         source: '/api/subscriptions/:path*/',
@@ -41,7 +41,7 @@ const nextConfig = {
       },
       {
         source: '/api/subscriptions/:path*',
-        destination: `${apiUrl}/api/core/subscriptions/:path*/`,
+        destination: `${apiUrl}/api/core/subscriptions/:path*`, // Keep original slash behavior
       },
       {
         source: '/api/notifications/:path*/',
@@ -49,7 +49,7 @@ const nextConfig = {
       },
       {
         source: '/api/notifications/:path*',
-        destination: `${apiUrl}/api/core/notifications/:path*/`,
+        destination: `${apiUrl}/api/core/notifications/:path*`, // Keep original slash behavior
       },
       {
         source: '/media/:path*',

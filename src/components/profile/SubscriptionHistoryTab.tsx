@@ -60,13 +60,13 @@ export default function SubscriptionHistoryTab() {
     fetchPlans();
     fetchSubscription();
     getSubscriptionHistory()
-      .then(data => setSubHistory(data))
+      .then((data: any) => setSubHistory(Array.isArray(data) ? data : (data?.results || [])))
       .catch(console.error);
   }, [fetchPlans, fetchSubscription]);
 
   const refreshHistory = () => {
     getSubscriptionHistory()
-      .then(data => setSubHistory(data))
+      .then((data: any) => setSubHistory(Array.isArray(data) ? data : (data?.results || [])))
       .catch(console.error);
   };
 

@@ -32,6 +32,9 @@ export default function NotebookDetailClient({
   const [words, setWords] = useState<Word[]>(initialWords);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // PDF export is only available for Chinese (ZH) notebooks
+  const isPdfExportAvailable = initialNotebook.lang !== 'en';
   const [alertConfig, setAlertConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -106,12 +109,16 @@ export default function NotebookDetailClient({
         const suggestions: any[] = [];
 
         if (res.data.exact_example_match) {
-          const sentenceText = res.data.exact_example_match.chinese || '';
-          if (sentenceText.length <= 14) {
+          const sentenceText = language === 'en'
+            ? (res.data.exact_example_match.english || '')
+            : (res.data.exact_example_match.chinese || '');
+          if (sentenceText && sentenceText.length <= 14) {
             suggestions.push({
               id: 'exact-example',
               word: sentenceText,
-              pinyin: res.data.exact_example_match.pinyin || '',
+              pinyin: language === 'en'
+                ? ''
+                : (res.data.exact_example_match.pinyin || ''),
               translation_vi: res.data.exact_example_match.vietnamese || '',
               isExample: true
             });
@@ -260,14 +267,16 @@ export default function NotebookDetailClient({
           </div>
         </div>
         <div className="flex gap-2 sm:gap-3 shrink-0 self-end sm:self-auto">
-          <button
-            onClick={() => setShowExportModal(true)}
-            className="p-2.5 text-secondary border border-outline rounded-xl hover:bg-hover-bg transition-colors flex items-center justify-center gap-1.5 sm:px-4 font-semibold text-sm border-dashed hover:border-primary/50"
-            title="Xuất vở tập viết PDF"
-          >
-            <span className="material-symbols-outlined text-red-500">picture_as_pdf</span>
-            <span className="hidden sm:inline">Xuất PDF</span>
-          </button>
+          {isPdfExportAvailable && (
+            <button
+              onClick={() => setShowExportModal(true)}
+              className="p-2.5 text-secondary border border-outline rounded-xl hover:bg-hover-bg transition-colors flex items-center justify-center gap-1.5 sm:px-4 font-semibold text-sm border-dashed hover:border-primary/50"
+              title="Xuất vở tập viết PDF"
+            >
+              <span className="material-symbols-outlined text-red-500">picture_as_pdf</span>
+              <span className="hidden sm:inline">Xuất PDF</span>
+            </button>
+          )}
           <button
             onClick={() => setShowSettingsModal(true)}
             className="p-2.5 text-secondary border border-outline rounded-xl hover:bg-hover-bg transition-colors flex items-center justify-center"
@@ -293,13 +302,13 @@ export default function NotebookDetailClient({
               <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-secondary">search</span>
               <input
                 type="text"
-                placeholder="Tìm từ vựng, pinyin hoặc nghĩa..."
+                placeholder={language === 'en' ? "Tìm từ vựng, phiên âm hoặc nghĩa..." : "Tìm từ vựng, pinyin hoặc nghĩa..."}
                 className="w-full pl-12 pr-4 py-3 bg-white border border-outline rounded-xl focus:outline-none focus:border-primary transition-colors shadow-sm"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
             </div>
-            {words.length > 0 && (
+            {isPdfExportAvailable && words.length > 0 && (
               <div className="flex gap-2 shrink-0">
                 <button
                   type="button"
@@ -340,26 +349,28 @@ export default function NotebookDetailClient({
                     <span className="material-symbols-outlined text-xl">delete</span>
                   </button>
                   <div className="flex items-start gap-4">
-                    <div className="flex items-center self-center shrink-0">
-                      <input
-                        type="checkbox"
-                        checked={selectedWordIds.includes(word.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedWordIds([...selectedWordIds, word.id]);
-                          } else {
-                            setSelectedWordIds(selectedWordIds.filter(id => id !== word.id));
-                          }
-                        }}
-                        className="w-4 h-4 rounded border-outline text-primary focus:ring-primary cursor-pointer accent-primary"
-                        title="Chọn để xuất PDF"
-                      />
-                    </div>
-                    <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-2xl font-bold shrink-0 font-noto-sc">
+                    {isPdfExportAvailable && (
+                      <div className="flex items-center self-center shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={selectedWordIds.includes(word.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedWordIds([...selectedWordIds, word.id]);
+                            } else {
+                              setSelectedWordIds(selectedWordIds.filter(id => id !== word.id));
+                            }
+                          }}
+                          className="w-4 h-4 rounded border-outline text-primary focus:ring-primary cursor-pointer accent-primary"
+                          title="Chọn để xuất PDF"
+                        />
+                      </div>
+                    )}
+                    <div className={`w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-2xl font-bold shrink-0 ${language === 'zh' ? 'font-noto-sc' : ''}`}>
                       {word.vocabulary.charAt(0)}
                     </div>
                     <div>
-                      <div className="font-noto-sc text-2xl font-bold text-primary mb-1">{word.vocabulary}</div>
+                      <div className={`text-2xl font-bold text-primary mb-1 ${language === 'zh' ? 'font-noto-sc' : ''}`}>{word.vocabulary}</div>
                       <div className="text-sm font-medium text-[#10b981] mb-2">{word.pinyin}</div>
                       <div className="text-base text-gray-800 font-medium">{word.meaning}</div>
                       {word.note && (
@@ -591,14 +602,16 @@ export default function NotebookDetailClient({
         document.body
       )}
 
-      <ExportPDFModal
-        isOpen={showExportModal}
-        onClose={() => setShowExportModal(false)}
-        notebookId={notebookId}
-        notebookName={notebook.name}
-        totalWords={words.length}
-        selectedWordIds={selectedWordIds}
-      />
+      {isPdfExportAvailable && (
+        <ExportPDFModal
+          isOpen={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          notebookId={notebookId}
+          notebookName={notebook.name}
+          totalWords={words.length}
+          selectedWordIds={selectedWordIds}
+        />
+      )}
 
       <ConfirmModal
         isOpen={confirmConfig.isOpen}

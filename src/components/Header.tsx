@@ -9,6 +9,11 @@ import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import Link from 'next/link';
 import Image from 'next/image';
 import AuthModal from '@/components/auth/AuthModal';
+import { useNotificationStore } from '@/store/useNotificationStore';
+import { useNotificationWebSocket } from '@/hooks/useNotificationWebSocket';
+import NotificationPanel from '@/components/NotificationPanel';
+import ToastContainer from '@/components/ToastContainer';
+import ScoreResultModal from '@/components/ScoreResultModal';
 
 export default function Header() {
   const params = useParams();
@@ -28,7 +33,13 @@ export default function Header() {
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [scoreModalData, setScoreModalData] = useState<any>(null);
+
+  // Initialize notification WebSocket
+  useNotificationWebSocket();
+  const unreadCount = useNotificationStore((state) => state.unreadCount);
   
   const language = isMounted ? ((params?.lang as string) || 'zh') : 'zh';
   const { currentStreak, fetchGamificationData, isInitialized: isGamificationInit } = useGamificationStore();
@@ -136,10 +147,31 @@ export default function Header() {
           </div>
         )}
 
-        <button className="hidden md:flex w-10 h-10 items-center justify-center rounded-full hover:bg-hover-bg text-secondary relative">
-          <span className="material-symbols-outlined">notifications</span>
-          <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 border border-surface"></span>
-        </button>
+        {isMounted && isAuthenticated && (
+          <div className="relative">
+            <button
+              id="notification-bell-btn"
+              onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+              className="flex w-10 h-10 items-center justify-center rounded-full hover:bg-hover-bg text-secondary relative transition-colors"
+              title="Thông báo"
+            >
+              <span className="material-symbols-outlined">notifications</span>
+              {unreadCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center border border-surface">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </button>
+            <NotificationPanel
+              isOpen={isNotificationOpen}
+              onClose={() => setIsNotificationOpen(false)}
+              onShowScore={(scoreData) => {
+                setScoreModalData(scoreData);
+                setIsNotificationOpen(false);
+              }}
+            />
+          </div>
+        )}
 
         {!isMounted ? (
           <div className="w-10 h-10 rounded-full bg-primary/10 animate-pulse"></div>
@@ -220,6 +252,12 @@ export default function Header() {
       </div>
 
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+      <ToastContainer />
+      <ScoreResultModal
+        isOpen={!!scoreModalData}
+        onClose={() => setScoreModalData(null)}
+        data={scoreModalData}
+      />
     </header>
   );
 }

@@ -116,8 +116,13 @@ export const splitPinyin = (pinyin: string): string[] => {
 
 // ── Chinese Character Detection ───────────────────────────────────────────────
 
-export const isChineseChar = (char: string): boolean =>
-  /[\u4e00-\u9fa5]/.test(char);
+export const isChineseChar = (char: string): boolean => {
+  try {
+    return new RegExp('\\p{Unified_Ideograph}', 'u').test(char);
+  } catch (e) {
+    return /[\u4e00-\u9fa5]/.test(char);
+  }
+};
 
 // ── Clickable Hanzi Rendering ─────────────────────────────────────────────────
 

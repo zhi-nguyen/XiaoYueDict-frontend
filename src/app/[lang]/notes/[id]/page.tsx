@@ -57,7 +57,8 @@ export default async function NotebookDetailPage({ params }: PageProps) {
     if (!wordsRes.ok) {
       throw new Error(`Failed to fetch words: ${wordsRes.status}`);
     }
-    const words = await wordsRes.json();
+    const wordsData = await wordsRes.json();
+    const words = Array.isArray(wordsData) ? wordsData : (wordsData.results || []);
 
     return (
       <NotebookDetailClient

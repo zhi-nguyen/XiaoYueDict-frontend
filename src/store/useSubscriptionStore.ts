@@ -33,7 +33,7 @@ interface SubscriptionState {
   pendingDowngradeTier: 'Free' | 'Plus' | 'Pro' | 'Premium' | null;
   endDate: string | null;
   
-  fetchSubscription: () => Promise<void>;
+  fetchSubscription: (force?: boolean) => Promise<void>;
   fetchUsage: () => Promise<void>;
   fetchPlans: () => Promise<void>;
   registerPlan: (tier: string) => Promise<RegisterResponse>;
@@ -51,8 +51,8 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
   pendingDowngradeTier: null,
   endDate: null,
 
-  fetchSubscription: async () => {
-    if (get().isInitialized) return;
+  fetchSubscription: async (force?: boolean) => {
+    if (!force && get().isInitialized) return;
     
     // Return early if not authenticated yet to avoid failed requests
     if (!useAuthStore.getState().isAuthenticated) return;

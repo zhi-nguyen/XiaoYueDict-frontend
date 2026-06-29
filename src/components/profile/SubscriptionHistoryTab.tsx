@@ -8,6 +8,8 @@ import {
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import ConfirmModal from '@/components/ConfirmModal';
 import AlertModal from '@/components/AlertModal';
+import PaymentQRModal from '@/components/PaymentQRModal';
+import { RegisterResponse } from '@/lib/api/subscriptions';
 
 /**
  * Subscription tab with current status, pricing cards, and transaction history.
@@ -54,6 +56,14 @@ export default function SubscriptionHistoryTab() {
     title: '',
     message: '',
     type: 'info'
+  });
+
+  const [paymentModalConfig, setPaymentModalConfig] = useState<{
+    isOpen: boolean;
+    paymentData: RegisterResponse['payment'] | null;
+  }>({
+    isOpen: false,
+    paymentData: null,
   });
 
   useEffect(() => {
@@ -120,7 +130,13 @@ export default function SubscriptionHistoryTab() {
     setConfirmConfig(prev => ({ ...prev, isOpen: false }));
     try {
       const res = await registerPlan(tier);
-      if (res.status === 'upgraded' || res.status === 'downgraded_immediately') {
+      if (res.status === 'payment_pending' && res.payment) {
+        // Upgrade requires payment — show QR modal
+        setPaymentModalConfig({
+          isOpen: true,
+          paymentData: res.payment,
+        });
+      } else if (res.status === 'upgraded' || res.status === 'downgraded_immediately') {
         setAlertConfig({
           isOpen: true,
           title: 'Thành công!',
@@ -144,6 +160,19 @@ export default function SubscriptionHistoryTab() {
         type: 'error'
       });
     }
+  };
+
+  const handlePaymentSuccess = () => {
+    setPaymentModalConfig({ isOpen: false, paymentData: null });
+    // Re-fetch subscription to update local state with the new tier
+    fetchSubscription(true);
+    refreshHistory();
+    setAlertConfig({
+      isOpen: true,
+      title: 'Thanh toán thành công!',
+      message: 'Gói đăng ký của bạn đã được nâng cấp thành công.',
+      type: 'success'
+    });
   };
 
   const handleCancelDowngrade = () => {
@@ -472,6 +501,13 @@ export default function SubscriptionHistoryTab() {
         cancelText="Hủy bỏ"
         onConfirm={confirmConfig.onConfirm}
         onCancel={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+      />
+
+      <PaymentQRModal
+        isOpen={paymentModalConfig.isOpen}
+        paymentData={paymentModalConfig.paymentData ?? null}
+        onClose={() => setPaymentModalConfig({ isOpen: false, paymentData: null })}
+        onPaymentSuccess={handlePaymentSuccess}
       />
 
       <AlertModal

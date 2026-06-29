@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { apiClient } from '@/lib/apiClient';
+import { useNotificationStore } from '@/store/useNotificationStore';
+import { useWebSocket } from '@/hooks/useWebSocket';
 
 interface PaymentData {
   qr_url: string;
@@ -23,7 +25,8 @@ interface PaymentQRModalProps {
   onPaymentSuccess: () => void;
 }
 
-const POLL_INTERVAL_MS = 5000; // Poll every 5 seconds
+const DEFAULT_POLL_INTERVAL_MS = 5000;
+const WS_POLL_INTERVAL_MS = 15000;
 
 export default function PaymentQRModal({
   isOpen,
@@ -37,6 +40,10 @@ export default function PaymentQRModal({
   const [isPaid, setIsPaid] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const lastMessage = useNotificationStore((state) => state.lastMessage);
+  const { isConnected } = useWebSocket();
+  const activePollInterval = isConnected ? WS_POLL_INTERVAL_MS : DEFAULT_POLL_INTERVAL_MS;
 
   useEffect(() => {
     setMounted(true);
@@ -74,6 +81,24 @@ export default function PaymentQRModal({
     };
   }, [isOpen, paymentData]);
 
+  // WebSocket message listener
+  useEffect(() => {
+    if (!isOpen || !paymentData || isPaid || !lastMessage) return;
+
+    if (
+      lastMessage.type === 'subscription_change' &&
+      lastMessage.payload?.order_id === paymentData.order_id &&
+      lastMessage.payload?.status === 'PAID'
+    ) {
+      setIsPaid(true);
+      if (pollRef.current) clearInterval(pollRef.current);
+      // Brief delay for user to see success state
+      setTimeout(() => {
+        onPaymentSuccess();
+      }, 1500);
+    }
+  }, [lastMessage, isOpen, paymentData, isPaid, onPaymentSuccess]);
+
   // Poll for payment status
   const pollPaymentStatus = useCallback(async () => {
     if (!paymentData || isExpired || isPaid) return;
@@ -101,12 +126,12 @@ export default function PaymentQRModal({
   useEffect(() => {
     if (!isOpen || !paymentData || isExpired || isPaid) return;
 
-    pollRef.current = setInterval(pollPaymentStatus, POLL_INTERVAL_MS);
+    pollRef.current = setInterval(pollPaymentStatus, activePollInterval);
 
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [isOpen, paymentData, isExpired, isPaid, pollPaymentStatus]);
+  }, [isOpen, paymentData, isExpired, isPaid, pollPaymentStatus, activePollInterval]);
 
   // Cleanup on close
   useEffect(() => {

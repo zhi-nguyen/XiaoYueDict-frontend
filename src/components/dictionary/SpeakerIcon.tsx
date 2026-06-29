@@ -1,6 +1,7 @@
 import React from 'react';
 import { Volume2 } from 'lucide-react';
 import { useAudioStore } from '@/store/useAudioStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 
 interface SpeakerIconProps {
   audioUrl?: string; // direct audio URL (e.g. from examples or DB)
@@ -30,6 +31,7 @@ export default function SpeakerIcon({
     e.stopPropagation();
     e.preventDefault();
     
+    const voice = useSettingsStore.getState().getVoiceName(lang);
     let url = '';
     if (audioUrl) {
       // If it starts with /api or http, use it. Otherwise append host if needed.
@@ -40,9 +42,12 @@ export default function SpeakerIcon({
       }
     } else {
       url = `/api/tts?text=${encodeURIComponent(text.trim())}&lang=${lang}`;
+      if (voice && voice !== 'browser_base') {
+        url += `&voice=${encodeURIComponent(voice)}`;
+      }
     }
 
-    play(key, url, text, lang);
+    play(key, url, text, lang, voice);
   };
 
   if (isLoading) {

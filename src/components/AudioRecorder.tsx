@@ -1,61 +1,9 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-
-// Helper to convert AudioBuffer to WAV Blob
-function audioBufferToWav(buffer: AudioBuffer): Blob {
-  const numChannels = buffer.numberOfChannels;
-  const sampleRate = buffer.sampleRate;
-  const format = 1; // PCM
-  const bitDepth = 16;
-  
-  let result: Float32Array;
-  if (numChannels === 2) {
-    const left = buffer.getChannelData(0);
-    const right = buffer.getChannelData(1);
-    result = new Float32Array(left.length * 2);
-    for (let i = 0; i < left.length; i++) {
-      result[i * 2] = left[i];
-      result[i * 2 + 1] = right[i];
-    }
-  } else {
-    result = buffer.getChannelData(0);
-  }
-
-  const dataLength = result.length * (bitDepth / 8);
-  const bufferLength = 44 + dataLength;
-  const arrayBuffer = new ArrayBuffer(bufferLength);
-  const view = new DataView(arrayBuffer);
-
-  const writeString = (view: DataView, offset: number, string: string) => {
-    for (let i = 0; i < string.length; i++) {
-      view.setUint8(offset + i, string.charCodeAt(i));
-    }
-  };
-
-  writeString(view, 0, 'RIFF');
-  view.setUint32(4, 36 + dataLength, true);
-  writeString(view, 8, 'WAVE');
-  writeString(view, 12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, format, true);
-  view.setUint16(22, numChannels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * numChannels * (bitDepth / 8), true);
-  view.setUint16(32, numChannels * (bitDepth / 8), true);
-  view.setUint16(34, bitDepth, true);
-  writeString(view, 36, 'data');
-  view.setUint32(40, dataLength, true);
-
-  // Write audio data
-  let offset = 44;
-  for (let i = 0; i < result.length; i++, offset += 2) {
-    const s = Math.max(-1, Math.min(1, result[i]));
-    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-  }
-
-  return new Blob([view], { type: 'audio/wav' });
-}
+import React, { useState, useEffect, useRef } from 'react';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import { useAudioRecording } from '@/hooks/useAudioRecording';
+import { getAudioDurationLimit, getAudioSizeLimitBytes } from '@/lib/subscriptionUtils';
 
 type Status = 'idle' | 'recording' | 'processing' | 'completed' | 'error';
 
@@ -65,9 +13,54 @@ export default function AudioRecorder() {
   const [taskId, setTaskId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<BlobPart[]>([]);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { tier } = useSubscriptionStore();
+  const durationLimit = getAudioDurationLimit(tier);
+  const sizeLimit = getAudioSizeLimitBytes(tier);
+
+  const {
+    isRecording,
+    timeLeft,
+    audioBlob,
+    fileInputRef,
+    startRecording: hookStartRecording,
+    stopRecording: hookStopRecording,
+    handleFileUpload: hookHandleFileUpload,
+    handleResetAudio,
+    recordingError
+  } = useAudioRecording(
+    (err) => {
+      setStatus('error');
+      setErrorMessage(err);
+    },
+    () => {
+      setErrorMessage('');
+      setScore(null);
+    },
+    durationLimit
+  );
+
+  // Sync state when recording status changes
+  useEffect(() => {
+    if (isRecording) {
+      setStatus('recording');
+    } else if (status === 'recording') {
+      setStatus('processing');
+    }
+  }, [isRecording, status]);
+
+  // Submit audio when it's converted by the hook
+  useEffect(() => {
+    if (audioBlob) {
+      if (audioBlob.size > sizeLimit) {
+        setStatus('error');
+        const limitDisplay = sizeLimit >= 1024 * 1024 ? `${sizeLimit / (1024 * 1024)}MB` : `${sizeLimit / 1024}KB`;
+        setErrorMessage(`Dung lượng tệp ghi âm vượt quá giới hạn tối đa cho phép cho gói của bạn (${limitDisplay}).`);
+        return;
+      }
+      setStatus('processing');
+      submitAudio(audioBlob);
+    }
+  }, [audioBlob, sizeLimit]);
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -84,14 +77,13 @@ export default function AudioRecorder() {
         
         if (data.status === 'COMPLETED') {
           setStatus('completed');
-          setScore(data.score); // Assuming the response contains a 'score' field
+          setScore(data.score);
           clearInterval(pollingInterval);
         } else if (data.status === 'FAILED') {
           setStatus('error');
-          setErrorMessage('Processing failed on the server.');
+          setErrorMessage(data.error_message || 'Processing failed on the server.');
           clearInterval(pollingInterval);
         }
-        // If status is still PENDING or PROCESSING, we keep polling
       } catch (error) {
         console.error('Polling error:', error);
       }
@@ -106,75 +98,26 @@ export default function AudioRecorder() {
     };
   }, [status, taskId]);
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      if (file.size > sizeLimit) {
+        setStatus('error');
+        const limitDisplay = sizeLimit >= 1024 * 1024 ? `${sizeLimit / (1024 * 1024)}MB` : `${sizeLimit / 1024}KB`;
+        setErrorMessage(`Dung lượng tệp vượt quá giới hạn tối đa cho phép cho gói của bạn (${limitDisplay}).`);
+        return;
+      }
       setErrorMessage('');
       setScore(null);
       setStatus('processing');
-      await submitAudio(file);
-      
-      // Reset input value so the same file can be uploaded again if needed
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      hookHandleFileUpload(event);
     }
   };
 
-  const startRecording = async () => {
-    try {
-      setErrorMessage('');
-      setScore(null);
-      
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        try {
-          // Convert the WebM/mp4 recording to WAV
-          const arrayBuffer = await audioBlob.arrayBuffer();
-          const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-          const wavBlob = audioBufferToWav(audioBuffer);
-          
-          await submitAudio(wavBlob);
-        } catch (err) {
-          console.error('Error converting audio to WAV:', err);
-          setStatus('error');
-          setErrorMessage('Failed to process recorded audio into WAV format.');
-        }
-      };
-
-      mediaRecorder.start();
-      setStatus('recording');
-    } catch (error) {
-      console.error('Error accessing microphone:', error);
-      setStatus('error');
-      setErrorMessage('Could not access microphone. Please check permissions.');
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
-      setStatus('processing'); // Set to processing while waiting for upload and celery task
-    }
-  };
-
-  const submitAudio = async (audioBlob: Blob) => {
+  const submitAudio = async (blob: Blob) => {
     try {
       const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.wav');
+      formData.append('audio', blob, 'recording.wav');
 
       const response = await fetch('/api/assessments/submit/', {
         method: 'POST',
@@ -182,7 +125,8 @@ export default function AudioRecorder() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to submit audio');
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to submit audio');
       }
 
       const data = await response.json();
@@ -191,11 +135,16 @@ export default function AudioRecorder() {
       } else {
         throw new Error('No task ID returned from server');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Submission error:', error);
       setStatus('error');
-      setErrorMessage('Failed to submit audio for assessment.');
+      setErrorMessage(error.message || 'Failed to submit audio for assessment.');
     }
+  };
+
+  const handleStart = () => {
+    setTaskId(null);
+    hookStartRecording();
   };
 
   return (
@@ -207,8 +156,8 @@ export default function AudioRecorder() {
         <div className="flex justify-center">
           {status === 'idle' || status === 'completed' || status === 'error' ? (
             <button
-               type="button"
-              onClick={startRecording}
+              type="button"
+              onClick={handleStart}
               className="w-24 h-24 rounded-full bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all flex items-center justify-center shadow-lg"
               aria-label="Start recording"
             >
@@ -219,7 +168,7 @@ export default function AudioRecorder() {
           ) : status === 'recording' ? (
             <button
               type="button"
-              onClick={stopRecording}
+              onClick={hookStopRecording}
               className="w-24 h-24 rounded-full bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-4 focus:ring-red-300 transition-all flex items-center justify-center shadow-lg animate-pulse"
               aria-label="Stop recording"
             >
@@ -263,7 +212,9 @@ export default function AudioRecorder() {
           <p className="text-gray-500 text-lg">Tap the microphone to start</p>
         )}
         {status === 'recording' && (
-          <p className="text-red-500 font-medium text-lg animate-pulse">Recording... Tap to stop</p>
+          <p className="text-red-500 font-medium text-lg animate-pulse">
+            Recording... ({timeLeft}s left)
+          </p>
         )}
         {status === 'processing' && (
           <p className="text-blue-600 font-medium text-lg">Analyzing pronunciation...</p>
@@ -273,7 +224,10 @@ export default function AudioRecorder() {
             <p className="font-semibold mb-1">An error occurred</p>
             <p className="text-sm">{errorMessage}</p>
             <button 
-              onClick={() => setStatus('idle')} 
+              onClick={() => {
+                setStatus('idle');
+                handleResetAudio();
+              }} 
               className="mt-2 text-xs font-medium underline text-red-700 hover:text-red-800"
             >
               Try again
@@ -288,7 +242,10 @@ export default function AudioRecorder() {
             </div>
             <button 
               className="mt-6 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium rounded-full transition-colors text-sm" 
-              onClick={() => setStatus('idle')}
+              onClick={() => {
+                setStatus('idle');
+                handleResetAudio();
+              }}
             >
               Try another recording
             </button>

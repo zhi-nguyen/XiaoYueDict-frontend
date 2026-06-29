@@ -12,6 +12,10 @@ import AudioWaveform from '@/components/AudioWaveform';
 import { getScoreLevel, isReadAloudAny, isChineseReadAloudResponse } from '@/types/scoring';
 import { ZhWord } from '@/types/dictionary';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import { useGamificationStore } from '@/store/useGamificationStore';
+import { useAudioRecording } from '@/hooks/useAudioRecording';
+import { getAudioDurationLimit, getAudioSizeLimitBytes } from '@/lib/subscriptionUtils';
+import UploadLimitBar from '@/components/speaking/UploadLimitBar';
 
 /** Maps score levels to Tailwind-compatible color strings */
 const SCORE_COLORS = {
@@ -56,6 +60,15 @@ export default function PracticeHub({ word, language, hideHeader }: PracticeHubP
   const lang = language || (((params?.lang as string) || 'zh') as 'en' | 'zh');
 
   const { usageData, fetchUsage } = useSubscriptionStore();
+  const { logActivity } = useGamificationStore();
+
+  /**
+   * Prevents double-logging when both queue.phase and queue.score
+   * update independently via WebSocket (async arrival order is not guaranteed).
+   * Reset to false whenever the session moves away from 'completed'
+   * so the next pronunciation session starts fresh.
+   */
+  const hasLoggedActivity = useRef(false);
 
   const [alertConfig, setAlertConfig] = useState<{
     isOpen: boolean;
@@ -81,14 +94,35 @@ export default function PracticeHub({ word, language, hideHeader }: PracticeHubP
     onConfirm: () => { }
   });
 
-  const [isRecording, setIsRecording] = useState(false);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [isPlayingPlayback, setIsPlayingPlayback] = useState(false);
-  const [activeStream, setActiveStream] = useState<MediaStream | null>(null);
+  const { tier } = useSubscriptionStore();
+  const durationLimit = getAudioDurationLimit(tier);
+  const sizeLimit = getAudioSizeLimitBytes(tier);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<BlobPart[]>([]);
-  const playbackAudioRef = useRef<HTMLAudioElement | null>(null);
+  const {
+    isRecording,
+    timeLeft,
+    audioBlob,
+    activeStream,
+    isPlayingPlayback,
+    startRecording: hookStartRecording,
+    stopRecording: hookStopRecording,
+    handleTogglePlayback,
+    handleResetAudio,
+    recordingError
+  } = useAudioRecording(
+    (err) => {
+      setAlertConfig({
+        isOpen: true,
+        title: 'Lỗi ghi âm',
+        message: err,
+        type: 'error'
+      });
+    },
+    () => {
+      queue.reset();
+    },
+    durationLimit
+  );
 
   useEffect(() => {
     fetchUsage();
@@ -100,71 +134,35 @@ export default function PracticeHub({ word, language, hideHeader }: PracticeHubP
     }
   }, [queue.phase, fetchUsage]);
 
-  const handleResetAudio = useCallback(() => {
-    setAudioBlob(null);
-    if (playbackAudioRef.current) {
-      playbackAudioRef.current.pause();
-      playbackAudioRef.current.currentTime = 0;
-      playbackAudioRef.current = null;
-    }
-    setIsPlayingPlayback(false);
-  }, []);
-
+  /**
+   * Log pronunciation activity to gamification backend.
+   */
   useEffect(() => {
-    handleResetAudio();
-  }, [word, handleResetAudio]);
+    if (queue.phase !== 'completed') {
+      hasLoggedActivity.current = false;
+      return;
+    }
 
-  // Error is handled inline in SmartQueueStatus component now
+    if (queue.score !== null && !hasLoggedActivity.current) {
+      hasLoggedActivity.current = true;
 
-  const startRecording = async () => {
-    try {
-      queue.reset();
-      handleResetAudio();
-      chunksRef.current = [];
-
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      setActiveStream(stream);
-
-      const recorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-
-      recorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop());
-        setActiveStream(null);
-        const webmBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
-
-        try {
-          const ab = await webmBlob.arrayBuffer();
-          const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-          const decoded = await ctx.decodeAudioData(ab);
-          const wavBlob = audioBufferToWav(decoded);
-          setAudioBlob(wavBlob);
-        } catch {
-          setAudioBlob(webmBlob);
-        }
-      };
-
-      recorder.start();
-      setIsRecording(true);
-    } catch {
-      setAlertConfig({
-        isOpen: true,
-        title: 'Lỗi thiết bị',
-        message: 'Không thể truy cập microphone. Vui lòng kiểm tra quyền thiết bị.',
-        type: 'error'
+      logActivity({
+        pronunciation_accuracy: queue.score / 100,
+        study_duration_seconds: queue.elapsedSeconds,
+        vocabulary_learned: 0,
+      }).catch((err) => {
+        console.error('Failed to log pronunciation activity', err);
+        hasLoggedActivity.current = false;
       });
     }
+  }, [queue.phase, queue.score, logActivity]);
+
+  const startRecording = async () => {
+    hookStartRecording();
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-    }
-    setIsRecording(false);
+    hookStopRecording();
   };
   const isServiceUnavailable = usageData?.service_available === false;
   const isBusy = queue.phase !== 'idle' && queue.phase !== 'completed' && queue.phase !== 'error';
@@ -192,30 +190,19 @@ export default function PracticeHub({ word, language, hideHeader }: PracticeHubP
     if (isRecording) stopRecording();
   };
 
-  const handleTogglePlayback = () => {
-    if (!audioBlob) return;
-
-    if (!playbackAudioRef.current) {
-      const url = URL.createObjectURL(audioBlob);
-      const audio = new Audio(url);
-      playbackAudioRef.current = audio;
-      audio.onended = () => {
-        setIsPlayingPlayback(false);
-      };
-    }
-
-    if (isPlayingPlayback) {
-      playbackAudioRef.current.pause();
-      setIsPlayingPlayback(false);
-    } else {
-      playbackAudioRef.current.currentTime = 0;
-      playbackAudioRef.current.play();
-      setIsPlayingPlayback(true);
-    }
-  };
-
   const handleSubmitAudio = () => {
     if (!audioBlob || !word?.word || isServiceUnavailable) return;
+
+    if (audioBlob.size > sizeLimit) {
+      const limitDisplay = sizeLimit >= 1024 * 1024 ? `${sizeLimit / (1024 * 1024)}MB` : `${sizeLimit / 1024}KB`;
+      setAlertConfig({
+        isOpen: true,
+        title: 'Tệp quá lớn',
+        message: `Dung lượng ghi âm vượt quá giới hạn tối đa cho phép cho gói của bạn (${limitDisplay}).`,
+        type: 'error'
+      });
+      return;
+    }
 
     setConfirmConfig({
       isOpen: true,
@@ -271,50 +258,8 @@ export default function PracticeHub({ word, language, hideHeader }: PracticeHubP
         )}
 
         {usageData && (
-          <div className="relative rounded-2xl border border-outline bg-hover-bg/30 backdrop-blur-md p-5 shadow-sm transition-all hover:bg-hover-bg/50 mb-8 font-sans">
-            {/* Dynamic Tier Tag positioned at the top-middle of the border */}
-            <span className={`absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 inline-flex items-center px-3 py-0.5 rounded-full text-[10px] font-extrabold uppercase border shadow-sm ${
-              usageData.tier === 'PRO' ? 'bg-surface text-amber-600 border-amber-500/35' :
-              usageData.tier === 'PREMIUM' ? 'bg-surface text-purple-600 border-purple-500/35' :
-              usageData.tier === 'PLUS' ? 'bg-surface text-cyan-600 border-cyan-500/35' :
-              'bg-surface text-gray-500 border-gray-500/35'
-            }`}>
-              {usageData.tier}
-            </span>
-
-            <div className="absolute -right-10 -top-10 h-24 w-24 rounded-full bg-indigo-500/10 blur-xl pointer-events-none" />
-            <div className="absolute -left-10 -bottom-10 h-24 w-24 rounded-full bg-violet-500/10 blur-xl pointer-events-none" />
-
-            <div className="relative z-10 flex flex-col gap-4">
-              {/* Left: Info */}
-              <div className="flex flex-col items-center text-center w-full">
-                <span className="text-xs font-semibold text-primary uppercase tracking-wider">Hạn Mức Tải Lên</span>
-                <p className="text-[11px] text-secondary mt-0.5">Dung lượng ghi âm đã dùng trong 1 giờ qua</p>
-              </div>
-
-              <div className="w-full">
-                <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
-                  <span className="text-primary font-bold">
-                    {(usageData.used_hr / (1024 * 1024)).toFixed(2)} MB <span className="text-secondary/60 font-normal">/ {(usageData.limit_hr / (1024 * 1024)).toFixed(2)} MB</span>
-                  </span>
-                  <span className="text-secondary">
-                    {((usageData.used_hr / usageData.limit_hr) * 100).toFixed(1)}%
-                  </span>
-                </div>
-
-                <div className="h-2 w-full rounded-full bg-outline/40 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-1000 ease-out"
-                    style={{ width: `${Math.min(100, (usageData.used_hr / usageData.limit_hr) * 100)}%` }}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between text-[10px] text-secondary mt-1.5 font-semibold">
-                  <span>Theo phút: {(usageData.used_min / (1024 * 1024)).toFixed(2)} / {(usageData.limit_min / (1024 * 1024)).toFixed(2)} MB</span>
-                  <span>Theo ngày: {(usageData.used_day / (1024 * 1024)).toFixed(2)} / {(usageData.limit_day / (1024 * 1024)).toFixed(2)} MB</span>
-                </div>
-              </div>
-            </div>
+          <div className="mb-8">
+            <UploadLimitBar usageData={usageData} />
           </div>
         )}
 
@@ -396,8 +341,8 @@ export default function PracticeHub({ word, language, hideHeader }: PracticeHubP
                       {queue.isAuthLoading ? 'sync' : 'mic'}
                     </span>
                   </button>
-                  <p className="text-xs text-secondary font-medium select-none">
-                    {queue.isAuthLoading ? 'Đang xác thực...' : isRecording ? 'Thả tay để hoàn tất' : 'Nhấn giữ để nói'}
+                  <p className="text-xs text-secondary font-medium select-none text-center">
+                    {queue.isAuthLoading ? 'Đang xác thực...' : isRecording ? `Thả tay để hoàn tất (${timeLeft}s còn lại)` : 'Nhấn giữ để nói'}
                   </p>
                 </div>
               ) : (

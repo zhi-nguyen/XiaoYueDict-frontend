@@ -33,7 +33,7 @@ export async function fetchWords(notebookId: string, search?: string): Promise<W
     path += `?search=${encodeURIComponent(search)}`;
   }
   const res = await djangoClient.get(path);
-  return res.data;
+  return Array.isArray(res.data) ? res.data : (res.data.results || []);
 }
 
 export async function createWord(

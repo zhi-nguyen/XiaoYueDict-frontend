@@ -1,9 +1,12 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { usePronunciationScorer } from '@/hooks/usePronunciationScorer';
 import { isReadAloudResponse } from '@/types/scoring';
 import AlertModal from '@/components/AlertModal';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import { useAudioRecording } from '@/hooks/useAudioRecording';
+import { getAudioDurationLimit, getAudioSizeLimitBytes } from '@/lib/subscriptionUtils';
 
 /**
  * Helper: Convert an AudioBuffer to a 16-bit PCM WAV Blob.
@@ -50,8 +53,35 @@ export default function ScoringTest() {
   const { scoreAudio, result, isLoading, error, reset } = usePronunciationScorer();
 
   const [targetText, setTargetText] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const { tier } = useSubscriptionStore();
+  const durationLimit = getAudioDurationLimit(tier);
+  const sizeLimit = getAudioSizeLimitBytes(tier);
+
+  const {
+    isRecording,
+    timeLeft,
+    audioBlob,
+    fileInputRef,
+    startRecording: hookStartRecording,
+    stopRecording: hookStopRecording,
+    handleFileUpload: hookHandleFileUpload,
+    handleResetAudio,
+    recordingError
+  } = useAudioRecording(
+    (err) => {
+      setAlertConfig({
+        isOpen: true,
+        title: 'Lỗi ghi âm',
+        message: err,
+        type: 'error'
+      });
+    },
+    () => {
+      reset();
+    },
+    durationLimit
+  );
+
   const [alertConfig, setAlertConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -64,11 +94,7 @@ export default function ScoringTest() {
     type: 'error'
   });
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<BlobPart[]>([]);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  React.useEffect(() => {
+  useEffect(() => {
     if (error) {
       setAlertConfig({
         isOpen: true,
@@ -79,61 +105,29 @@ export default function ScoringTest() {
     }
   }, [error]);
 
-  // ── Microphone Recording ──────────────────────────────────────────────────
-
   const startRecording = async () => {
-    try {
-      reset();
-      setAudioBlob(null);
-      chunksRef.current = [];
-
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-
-      recorder.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        const webmBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
-
-        try {
-          const arrayBuffer = await webmBlob.arrayBuffer();
-          const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-          const decoded = await ctx.decodeAudioData(arrayBuffer);
-          const wavBlob = audioBufferToWav(decoded);
-          setAudioBlob(wavBlob);
-        } catch {
-          setAudioBlob(webmBlob); // fallback — let the server handle it
-        }
-      };
-
-      recorder.start();
-      setIsRecording(true);
-    } catch {
-      setAlertConfig({
-        isOpen: true,
-        title: 'Lỗi thiết bị',
-        message: 'Không thể truy cập microphone. Vui lòng kiểm tra quyền thiết bị.',
-        type: 'error'
-      });
-    }
+    hookStartRecording();
   };
 
   const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
-    setIsRecording(false);
+    hookStopRecording();
   };
-
-  // ── File Upload ───────────────────────────────────────────────────────────
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > sizeLimit) {
+        const limitDisplay = sizeLimit >= 1024 * 1024 ? `${sizeLimit / (1024 * 1024)}MB` : `${sizeLimit / 1024}KB`;
+        setAlertConfig({
+          isOpen: true,
+          title: 'Tệp quá lớn',
+          message: `Dung lượng tệp vượt quá giới hạn tối đa cho phép cho gói của bạn (${limitDisplay}).`,
+          type: 'error'
+        });
+        return;
+      }
       reset();
-      setAudioBlob(file);
+      hookHandleFileUpload(e);
     }
   };
 
@@ -198,7 +192,7 @@ export default function ScoringTest() {
             {isRecording ? (
               <>
                 <span className="w-3 h-3 bg-white rounded-sm" />
-                Stop Recording
+                Stop Recording ({timeLeft}s left)
               </>
             ) : (
               <>

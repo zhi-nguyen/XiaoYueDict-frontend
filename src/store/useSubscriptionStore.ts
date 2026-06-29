@@ -1,5 +1,13 @@
 import { create } from 'zustand';
-import { getMySubscription, SubscriptionInfo } from '@/lib/api/subscriptions';
+import { 
+  getMySubscription, 
+  getSubscriptionPlans, 
+  registerSubscription, 
+  cancelDowngrade, 
+  SubscriptionInfo, 
+  SubscriptionPlan,
+  RegisterResponse
+} from '@/lib/api/subscriptions';
 import { djangoClient } from '@/lib/apiClient';
 import { getGuestId } from '@/lib/guest';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -16,14 +24,20 @@ export interface VolumeUsageInfo {
 }
 
 interface SubscriptionState {
-  tier: 'Free' | 'Plus' | 'Premium' | 'Pro' | null;
+  tier: 'Free' | 'Plus' | 'Pro' | 'Premium' | null;
   isActive: boolean;
   isLoading: boolean;
   isInitialized: boolean;
   usageData: VolumeUsageInfo | null;
+  plans: SubscriptionPlan[];
+  pendingDowngradeTier: 'Free' | 'Plus' | 'Pro' | 'Premium' | null;
+  endDate: string | null;
   
-  fetchSubscription: () => Promise<void>;
+  fetchSubscription: (force?: boolean) => Promise<void>;
   fetchUsage: () => Promise<void>;
+  fetchPlans: () => Promise<void>;
+  registerPlan: (tier: string) => Promise<RegisterResponse>;
+  cancelPendingDowngrade: () => Promise<void>;
   resetStore: () => void;
 }
 
@@ -33,9 +47,12 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
   isLoading: false,
   isInitialized: false,
   usageData: null,
+  plans: [],
+  pendingDowngradeTier: null,
+  endDate: null,
 
-  fetchSubscription: async () => {
-    if (get().isInitialized) return;
+  fetchSubscription: async (force?: boolean) => {
+    if (!force && get().isInitialized) return;
     
     // Return early if not authenticated yet to avoid failed requests
     if (!useAuthStore.getState().isAuthenticated) return;
@@ -46,6 +63,8 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
       set({ 
         tier: data.tier, 
         isActive: data.is_active,
+        pendingDowngradeTier: data.pending_downgrade_tier || null,
+        endDate: data.end_date,
         isInitialized: true 
       });
     } catch (error) {
@@ -83,13 +102,72 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     }
   },
 
+  fetchPlans: async () => {
+    if (get().plans.length > 0) return;
+    try {
+      const plans = await getSubscriptionPlans();
+      set({ plans });
+    } catch (error) {
+      console.error("Failed to fetch subscription plans:", error);
+    }
+  },
+
+  registerPlan: async (tier: string) => {
+    set({ isLoading: true });
+    try {
+      const res = await registerSubscription(tier);
+      if (res.status === 'payment_pending') {
+        // Return without updating local subscription state since payment is pending
+        return res;
+      }
+      if (res.subscription) {
+        set({
+          tier: res.subscription.tier,
+          isActive: res.subscription.is_active,
+          pendingDowngradeTier: res.subscription.pending_downgrade_tier || null,
+          endDate: res.subscription.end_date,
+        });
+      }
+      get().fetchUsage();
+      return res;
+    } catch (error) {
+      console.error(`Failed to register plan ${tier}:`, error);
+      throw error;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  cancelPendingDowngrade: async () => {
+    set({ isLoading: true });
+    try {
+      const res = await cancelDowngrade();
+      if (res.subscription) {
+        set({
+          tier: res.subscription.tier,
+          isActive: res.subscription.is_active,
+          pendingDowngradeTier: res.subscription.pending_downgrade_tier || null,
+          endDate: res.subscription.end_date,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to cancel pending downgrade:", error);
+      throw error;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
   resetStore: () => {
     set({
       tier: null,
       isActive: false,
       isInitialized: false,
       isLoading: false,
-      usageData: null
+      usageData: null,
+      plans: [],
+      pendingDowngradeTier: null,
+      endDate: null
     });
   }
 }));

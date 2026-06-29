@@ -54,32 +54,35 @@ export default function ProfilePage() {
 
   return (
     <>
-      <div className="w-full p-4 md:p-8 pb-16">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row gap-8">
-
-          {/* Sidebar */}
-          <div className="w-full md:w-64 shrink-0">
-            <h1 className="text-2xl font-lexend font-bold text-primary tracking-tight mb-6">Hồ sơ cá nhân</h1>
-            <nav className="flex flex-col gap-1">
-              {TABS.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
-                    activeTab === tab.id
-                      ? 'bg-primary text-white shadow-sm'
-                      : 'text-secondary hover:bg-hover-bg hover:text-primary'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[20px]">{tab.icon}</span>
-                  {tab.label}
-                </button>
-              ))}
+      <div className="w-full p-4 md:p-8 pb-16 font-lexend">
+        <div className="max-w-5xl mx-auto flex flex-col gap-6">
+          
+          {/* Header & Horizontal Navigation */}
+          <div className="flex flex-col gap-4 border-b border-outline pb-5">
+            <h1 className="text-3xl font-bold text-primary tracking-tight">Hồ sơ cá nhân</h1>
+            <nav className="flex flex-wrap gap-2">
+              {TABS.map(tab => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 ${
+                      isActive
+                        ? 'bg-primary text-white shadow-md shadow-primary/10 scale-[1.01]'
+                        : 'text-secondary hover:bg-hover-bg hover:text-primary'
+                    }`}
+                  >
+                    <span className={`material-symbols-outlined text-[20px] ${isActive ? 'filled' : ''}`}>{tab.icon}</span>
+                    {tab.label}
+                  </button>
+                );
+              })}
             </nav>
           </div>
 
           {/* Main Content */}
-          <div className="flex-1 bg-white border border-outline rounded-2xl p-6 md:p-8 shadow-sm">
+          <div className="bg-white border border-outline rounded-3xl p-6 md:p-8 shadow-sm">
             {activeTab === 'info' && (
               <ProfileInfoTab user={user} tier={tier} onUpdateProfile={handleUpdateProfile} />
             )}

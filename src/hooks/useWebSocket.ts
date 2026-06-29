@@ -182,11 +182,25 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
 
         try {
           const message: WsMessage = JSON.parse(event.data);
-          console.log('[useWebSocket] Received message:', message);
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('[useWebSocket] Received message:', message);
+          }
           setLastMessage(message);
           optionsRef.current.onMessage?.(message);
+
+          // Dispatch global custom event for static JS helper scripts
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('ws_message_received', { detail: message }));
+            if (message.type === 'tts_complete') {
+              window.dispatchEvent(new CustomEvent('tts_task_completed', { detail: message.payload }));
+            } else if (message.type === 'tts_failed') {
+              window.dispatchEvent(new CustomEvent('tts_task_failed', { detail: message.payload }));
+            }
+          }
         } catch (err) {
-          console.warn('[useWebSocket] Error parsing message:', err);
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn('[useWebSocket] Error parsing message:', err);
+          }
         }
       };
 
@@ -200,7 +214,9 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
 
         // Schedule reconnection with exponential backoff
         const delay = reconnectDelayRef.current;
-        console.log(`[WS] Disconnected. Reconnecting in ${delay / 1000}s...`);
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`[WS] Disconnected. Reconnecting in ${delay / 1000}s...`);
+        }
 
         clearReconnectTimeout();
         reconnectTimeoutRef.current = setTimeout(() => {

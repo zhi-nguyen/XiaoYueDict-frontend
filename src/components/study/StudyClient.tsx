@@ -184,7 +184,7 @@ export default function StudyClient() {
   };
 
   const matchingExamples = getMatchingExamples();
-  const hanziChars = Array.from(search.selectedWord?.word || search.searchQuery).filter(isChineseChar);
+  const hanziChars = Array.from(search.searchQuery).filter(isChineseChar);
 
   // ── Determine the current word/sentence to be practiced in PracticeHub ──
   const activePracticeWord = useMemo<ZhWord | null>(() => {

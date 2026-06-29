@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useParams } from 'next/navigation';
 import { useUIStore } from '@/store/useUIStore';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import SettingsPanel from '@/components/SettingsPanel';
 
 const navItems = [
   { href: '/dashboard', icon: 'dashboard', label: 'Tổng quan' },
@@ -14,6 +15,7 @@ const navItems = [
   { href: '/writing', icon: 'edit', label: 'Luyện Viết' },
   { href: '/exam', icon: 'emoji_events', label: 'Luyện Thi' },
   { href: '/notes', icon: 'menu_book', label: 'Sổ Tay' },
+  { href: '/support', icon: 'contact_support', label: 'Hỗ trợ & Góp ý' },
 ];
 
 export default function Sidebar() {
@@ -26,7 +28,7 @@ export default function Sidebar() {
   }, []);
 
   const language = isMounted ? ((params?.lang as string) || 'zh') : 'zh';
-  const { isSidebarOpen, setSidebarOpen, isDesktopSidebarCollapsed, toggleDesktopSidebar } = useUIStore();
+  const { isSidebarOpen, setSidebarOpen, isDesktopSidebarCollapsed, toggleDesktopSidebar, setSettingsOpen } = useUIStore();
   const { tier: subscriptionTier } = useSubscriptionStore();
   const sidebarRef = React.useRef<HTMLElement>(null);
 
@@ -78,7 +80,7 @@ export default function Sidebar() {
             <span className="material-symbols-outlined">{isDesktopSidebarCollapsed ? 'menu' : 'menu_open'}</span>
           </button>
         <div className={`ml-3 font-lexend font-bold text-xl text-primary tracking-tight transition-all duration-300 whitespace-nowrap ${isDesktopSidebarCollapsed ? 'md:opacity-0 md:w-0 overflow-hidden' : 'md:opacity-100 md:w-auto'}`}>
-          XiaoYueDict
+          CnenDict
         </div>
       </div>
 
@@ -124,32 +126,19 @@ export default function Sidebar() {
 
       {/* Bottom Actions */}
       <div className="p-4 shrink-0 border-t border-outline flex flex-col gap-2">
-        {isMounted && subscriptionTier === 'Free' && !isDesktopSidebarCollapsed && (
-          <div className="bg-gradient-to-r from-orange/10 to-orange/5 border border-orange/20 rounded-xl p-3 mb-2 flex flex-col items-center justify-center relative overflow-hidden">
-            <div className="absolute top-0 right-0 -mt-2 -mr-2 w-12 h-12 bg-orange/20 rounded-full blur-xl"></div>
-            <span className="material-symbols-outlined text-orange text-3xl mb-1">workspace_premium</span>
-            <span className="font-bold text-sm text-primary mb-1 text-center">Nâng cấp Premium</span>
-            <span className="text-[11px] text-secondary text-center mb-2 leading-tight">Mở khóa tính năng AI & Dịch thông minh không giới hạn</span>
-            <button className="w-full py-1.5 bg-gradient-to-r from-orange to-red-500 hover:from-orange/90 hover:to-red-500/90 text-white rounded-lg font-semibold text-xs shadow-sm transition-all hover:shadow">
-              Nâng cấp ngay
-            </button>
-          </div>
-        )}
-        
-        {isMounted && subscriptionTier === 'Free' && isDesktopSidebarCollapsed && (
-           <div className="hidden md:flex justify-center mb-2">
-             <button className="w-10 h-10 rounded-full bg-gradient-to-r from-orange to-red-500 text-white flex items-center justify-center shadow-sm hover:shadow transition-all" title="Nâng cấp Premium">
-               <span className="material-symbols-outlined text-[20px]">workspace_premium</span>
-             </button>
-           </div>
-        )}
-
-        <Link href="#" className={`flex items-center h-12 rounded-full text-secondary hover:bg-hover-bg hover:text-primary transition-all ${isDesktopSidebarCollapsed ? 'md:justify-center px-3 md:px-0' : 'px-3 justify-start'}`}>
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className={`flex items-center h-12 rounded-full text-secondary hover:bg-hover-bg hover:text-primary transition-all ${isDesktopSidebarCollapsed ? 'md:justify-center px-3 md:px-0' : 'px-3 justify-start'}`}
+        >
           <span className="material-symbols-outlined w-6 flex justify-center shrink-0">settings</span>
           <span className={`font-medium text-[15px] whitespace-nowrap transition-all duration-300 ml-3 ${isDesktopSidebarCollapsed ? 'md:opacity-0 md:w-0 md:ml-0 overflow-hidden' : 'md:opacity-100 md:w-auto'}`}>Cài đặt</span>
-        </Link>
+        </button>
       </div>
     </aside>
+
+    {/* Settings Panel (slide-over) */}
+    <SettingsPanel />
     </>
   );
 }
+

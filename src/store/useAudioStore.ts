@@ -5,7 +5,7 @@ export type AudioStatus = 'idle' | 'loading' | 'playing';
 interface AudioState {
   activeKey: string | null;
   status: AudioStatus;
-  play: (key: string, url: string, fallbackText?: string, fallbackLang?: 'zh' | 'en') => Promise<void>;
+  play: (key: string, url: string, fallbackText?: string, fallbackLang?: 'zh' | 'en', voice?: string) => Promise<void>;
   stop: () => void;
 }
 
@@ -16,7 +16,7 @@ export const useAudioStore = create<AudioState>((set, get) => ({
   activeKey: null,
   status: 'idle',
 
-  play: async (key: string, url: string, fallbackText?: string, fallbackLang?: 'zh' | 'en') => {
+  play: async (key: string, url: string, fallbackText?: string, fallbackLang?: 'zh' | 'en', voice?: string) => {
     // If the clicked key is already active, stop playing
     if (globalActiveKey === key) {
       get().stop();
@@ -28,6 +28,44 @@ export const useAudioStore = create<AudioState>((set, get) => ({
 
     set({ activeKey: key, status: 'loading' });
     globalActiveKey = key;
+
+    const isBrowserBase = voice === 'browser_base' || url.includes('voice=browser_base');
+
+    if (isBrowserBase) {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        try {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(fallbackText || '');
+          utterance.lang = fallbackLang === 'zh' ? 'zh-CN' : 'en-US';
+          utterance.onstart = () => {
+            if (globalActiveKey === key) {
+              set({ status: 'playing' });
+            }
+          };
+          utterance.onend = () => {
+            if (globalActiveKey === key) {
+              set({ activeKey: null, status: 'idle' });
+              globalActiveKey = null;
+            }
+          };
+          utterance.onerror = () => {
+            if (globalActiveKey === key) {
+              set({ activeKey: null, status: 'idle' });
+              globalActiveKey = null;
+            }
+          };
+          window.speechSynthesis.speak(utterance);
+        } catch (err) {
+          console.warn('Browser SpeechSynthesis failed:', err);
+          set({ activeKey: null, status: 'idle' });
+          globalActiveKey = null;
+        }
+      } else {
+        set({ activeKey: null, status: 'idle' });
+        globalActiveKey = null;
+      }
+      return;
+    }
 
     try {
       let finalUrl = url;
@@ -112,6 +150,13 @@ export const useAudioStore = create<AudioState>((set, get) => ({
       try {
         globalAudio.pause();
         globalAudio.currentTime = 0;
+      } catch (e) {
+        // Ignored
+      }
+    }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
       } catch (e) {
         // Ignored
       }

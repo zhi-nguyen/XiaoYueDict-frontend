@@ -1,5 +1,5 @@
 /**
- * Type definitions for the XiaoYueDict Pronunciation Scoring System.
+ * Type definitions for the CnenDict Pronunciation Scoring System.
  *
  * Covers both English (Wav2Vec2 GOP) and Chinese (Sherpa-ONNX) scoring,
  * as well as the Django gateway task management types.

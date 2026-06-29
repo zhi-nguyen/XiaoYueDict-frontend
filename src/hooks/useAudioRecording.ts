@@ -5,6 +5,7 @@ import { audioBufferToWav } from '@/lib/audioUtils';
 
 interface UseAudioRecordingReturn {
   isRecording: boolean;
+  timeLeft: number;
   audioBlob: Blob | null;
   activeStream: MediaStream | null;
   isPlayingPlayback: boolean;
@@ -14,19 +15,21 @@ interface UseAudioRecordingReturn {
   handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleTogglePlayback: () => void;
   handleResetAudio: () => void;
-  /** Error message from recording attempt (e.g. mic permission denied). */
   recordingError: string | null;
 }
 
 /**
  * Encapsulates microphone recording, file upload, and audio playback logic.
  * Converts WebM recordings to WAV for backend compatibility.
+ * Tracks remaining recording duration (timeLeft) and auto-stops when time is up.
  */
 export function useAudioRecording(
   onRecordingError?: (message: string) => void,
-  onBeforeRecord?: () => void
+  onBeforeRecord?: () => void,
+  durationLimitSeconds: number = 120
 ): UseAudioRecordingReturn {
   const [isRecording, setIsRecording] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(durationLimitSeconds);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [activeStream, setActiveStream] = useState<MediaStream | null>(null);
   const [isPlayingPlayback, setIsPlayingPlayback] = useState(false);
@@ -37,16 +40,15 @@ export function useAudioRecording(
   const fileInputRef = useRef<HTMLInputElement>(null);
   const playbackAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Cleanup playback on unmount
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sync timeLeft when duration limit changes
   useEffect(() => {
-    return () => {
-      if (playbackAudioRef.current) {
-        playbackAudioRef.current.pause();
-        playbackAudioRef.current.currentTime = 0;
-        playbackAudioRef.current = null;
-      }
-    };
-  }, []);
+    if (!isRecording) {
+      setTimeLeft(durationLimitSeconds);
+    }
+  }, [durationLimitSeconds, isRecording]);
 
   const handleResetAudio = useCallback(() => {
     setAudioBlob(null);
@@ -59,6 +61,16 @@ export function useAudioRecording(
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  }, []);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (intervalRef.current) clearInterval(intervalRef.current);
   }, []);
 
   const startRecording = useCallback(async () => {
@@ -97,19 +109,35 @@ export function useAudioRecording(
 
       recorder.start();
       setIsRecording(true);
-    } catch {
+      setTimeLeft(durationLimitSeconds);
+
+      // Clean up any existing timers
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+
+      // Auto-stop recording after limit expires
+      timeoutRef.current = setTimeout(() => {
+        stopRecording();
+      }, durationLimitSeconds * 1000);
+
+      // Update remaining time every second
+      intervalRef.current = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            if (intervalRef.current) clearInterval(intervalRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+    } catch (err) {
+      console.error('Error starting audio recording:', err);
       const errMsg = 'Không thể truy cập microphone. Vui lòng kiểm tra quyền truy cập.';
       setRecordingError(errMsg);
       onRecordingError?.(errMsg);
     }
-  }, [handleResetAudio, onBeforeRecord, onRecordingError]);
-
-  const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-    }
-    setIsRecording(false);
-  }, []);
+  }, [durationLimitSeconds, handleResetAudio, onBeforeRecord, onRecordingError, stopRecording]);
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -147,8 +175,22 @@ export function useAudioRecording(
     }
   }, [audioBlob, isPlayingPlayback]);
 
+  // Clean up timers and audio playback on unmount
+  useEffect(() => {
+    return () => {
+      if (playbackAudioRef.current) {
+        playbackAudioRef.current.pause();
+        playbackAudioRef.current.currentTime = 0;
+        playbackAudioRef.current = null;
+      }
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
   return {
     isRecording,
+    timeLeft,
     audioBlob,
     activeStream,
     isPlayingPlayback,

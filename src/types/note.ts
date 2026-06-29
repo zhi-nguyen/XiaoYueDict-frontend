@@ -2,6 +2,7 @@ export interface Notebook {
   id: string;
   name: string;
   description: string;
+  lang?: string;
   created_at: string;
   updated_at: string;
   word_count_annotated?: number;

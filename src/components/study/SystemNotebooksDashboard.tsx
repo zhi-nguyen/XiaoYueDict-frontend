@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Loader2, ArrowLeft, Lock, AlertCircle } from 'lucide-react';
 import SpeakerIcon from '@/components/dictionary/SpeakerIcon';
 import { djangoClient } from '@/lib/apiClient';
@@ -34,27 +35,18 @@ interface SystemNotebooksDashboardProps {
 
 export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooksDashboardProps) {
   const { tier, isActive, fetchSubscription } = useSubscriptionStore();
-  const [notebooks, setNotebooks] = useState<{
-    hsk: SystemNotebook[];
-    pos: SystemNotebook[];
-    tag: SystemNotebook[];
-  } | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Detail view state
   const [selectedNotebook, setSelectedNotebook] = useState<SystemNotebook | null>(null);
-  const [words, setWords] = useState<any[]>([]);
-  const [isLoadingWords, setIsLoadingWords] = useState(false);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalWordsCount, setTotalWordsCount] = useState(0);
-
-  // Premium modal state
   const [showPremiumModal, setShowPremiumModal] = useState(false);
-
-  // Toast state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<'hsk' | 'pos' | 'tag'>('hsk');
+
+  const isPremiumUser = isActive && (tier === 'Premium' || tier === 'Pro');
+
+  // Trigger subscription fetch on mount
+  useEffect(() => {
+    fetchSubscription();
+  }, [fetchSubscription]);
 
   // Auto-dismiss toast after 3 seconds
   useEffect(() => {
@@ -63,11 +55,6 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
     return () => clearTimeout(timer);
   }, [toastMessage]);
 
-  // Active Category Tab
-  const [activeCategory, setActiveCategory] = useState<'hsk' | 'pos' | 'tag'>('hsk');
-
-  const isPremiumUser = isActive && (tier === 'Premium' || tier === 'Pro');
-
   // Auto-reset active category if lang changes to en and we are on tag
   useEffect(() => {
     if (lang === 'en' && activeCategory === 'tag') {
@@ -75,50 +62,53 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
     }
   }, [lang, activeCategory]);
 
-  // Fetch metadata when lang or subscription state changes
+  // Fetch metadata using TanStack Query
+  const { data: notebooks, isLoading: isLoadingMetadata, error: metadataError, refetch: refetchMetadata } = useQuery({
+    queryKey: ['systemNotebooks', lang],
+    queryFn: async () => {
+      const res = await djangoClient.get(`/notes/system-notebooks/?lang=${lang}`);
+      return res.data as {
+        hsk: SystemNotebook[];
+        pos: SystemNotebook[];
+        tag: SystemNotebook[];
+      };
+    },
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours caching
+  });
+
+  // Fetch words using TanStack Query
+  const { data: wordsData, isLoading: isLoadingWords, error: wordsError } = useQuery({
+    queryKey: ['systemNotebookWords', selectedNotebook?.id, page, lang],
+    queryFn: async () => {
+      if (!selectedNotebook?.id) return { results: [], count: 0 };
+      const res = await djangoClient.get(`/notes/system-notebooks/${selectedNotebook.id}/words/?page=${page}&lang=${lang}`);
+      return res.data;
+    },
+    enabled: !!selectedNotebook?.id,
+    staleTime: 1000 * 60 * 60, // 1 hour caching
+  });
+
+  // Redirect to premium if words fetch returns 403 Forbidden
   useEffect(() => {
-    fetchSubscription();
-    const fetchMetadata = async () => {
-      try {
-        setIsLoading(true);
-        const res = await djangoClient.get(`/notes/system-notebooks/?lang=${lang}`);
-        setNotebooks(res.data);
-      } catch (err) {
-        console.error('Failed to load system notebooks metadata:', err);
-        setError('Không thể tải danh sách sổ tay hệ thống. Vui lòng thử lại sau.');
-      } finally {
-        setIsLoading(false);
+    if (wordsError) {
+      const axiosError = wordsError as any;
+      if (axiosError.response?.status === 403) {
+        setShowPremiumModal(true);
+        setSelectedNotebook(null);
       }
-    };
-    fetchMetadata();
-  }, [fetchSubscription, lang]);
+    }
+  }, [wordsError]);
 
-  // Fetch words when notebook changes or page changes
-  useEffect(() => {
-    if (!selectedNotebook) return;
+  const words = wordsData?.results || [];
+  const totalWordsCount = wordsData?.count || 0;
+  const totalPages = Math.ceil(totalWordsCount / 20);
 
-    const fetchWords = async () => {
-      setIsLoadingWords(true);
-      try {
-        const res = await djangoClient.get(`/notes/system-notebooks/${selectedNotebook.id}/words/?page=${page}&lang=${lang}`);
-        setWords(res.data.results || []);
-        setTotalWordsCount(res.data.count || 0);
-        setTotalPages(Math.ceil((res.data.count || 0) / 20));
-      } catch (err: any) {
-        console.error('Failed to load notebook words:', err);
-        if (err.response?.status === 403) {
-          setShowPremiumModal(true);
-          setSelectedNotebook(null);
-        } else {
-          setError('Không thể tải từ vựng của sổ tay. Vui lòng thử lại.');
-        }
-      } finally {
-        setIsLoadingWords(false);
-      }
-    };
-
-    fetchWords();
-  }, [selectedNotebook, page, lang]);
+  const isLoading = isLoadingMetadata;
+  const error = metadataError 
+    ? 'Không thể tải danh sách sổ tay hệ thống. Vui lòng thử lại sau.' 
+    : wordsError 
+      ? 'Không thể tải từ vựng của sổ tay. Vui lòng thử lại.' 
+      : null;
 
   const handleNotebookClick = (notebook: SystemNotebook) => {
     if (notebook.is_premium && !isPremiumUser) {
@@ -136,7 +126,6 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
 
   const handleBack = () => {
     setSelectedNotebook(null);
-    setWords([]);
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.delete('nb');
@@ -184,12 +173,7 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
         <p className="text-red-500 font-bold mb-4">{error}</p>
         <button
           onClick={() => {
-            setIsLoading(true);
-            setError(null);
-            djangoClient.get(`/notes/system-notebooks/?lang=${lang}`)
-              .then(res => setNotebooks(res.data))
-              .catch(() => setError('Không thể tải danh sách sổ tay hệ thống.'))
-              .finally(() => setIsLoading(false));
+            refetchMetadata();
           }}
           className="px-6 py-2.5 bg-primary text-white rounded-full font-bold text-sm shadow-md"
         >
@@ -239,7 +223,7 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
         ) : (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {words.map((w) => (
+              {words.map((w: any) => (
                 <div
                   key={w.id}
                   className="p-4 bg-surface-alt border border-outline rounded-2xl flex items-start justify-between hover:border-primary/45 transition-all group hover:shadow-sm"

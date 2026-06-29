@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const supportedLanguages = ['zh', 'en'];
-const dynamicRoutes = ['/dashboard', '/study', '/speaking', '/writing', '/translate', '/notes', '/exam'];
+const dynamicRoutes = ['/dashboard', '/study', '/speaking', '/writing', '/translate', '/notes', '/exam', '/support', '/pricing'];
 
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;

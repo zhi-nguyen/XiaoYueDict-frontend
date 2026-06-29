@@ -15,6 +15,7 @@ import TargetTextInput from '@/components/speaking/TargetTextInput';
 import RecordingControls from '@/components/speaking/RecordingControls';
 import { useParams } from 'next/navigation';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import { getAudioDurationLimit } from '@/lib/subscriptionUtils';
 
 /**
  * Speaking page orchestrator.
@@ -28,7 +29,8 @@ export default function SpeakingClient() {
   const spellCheck = useSpellCheck();
 
   // ── Subscription Usage & Rate Limiting ──
-  const { usageData, fetchUsage } = useSubscriptionStore();
+  const { usageData, fetchUsage, tier } = useSubscriptionStore();
+  const durationLimit = getAudioDurationLimit(tier);
 
   useEffect(() => {
     fetchUsage();
@@ -94,7 +96,8 @@ export default function SpeakingClient() {
       message: msg,
       type: 'error'
     }),
-    () => queue.reset()
+    () => queue.reset(),
+    durationLimit
   );
 
   // ── Gesture Event Handlers ──

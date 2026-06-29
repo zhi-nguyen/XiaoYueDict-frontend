@@ -8,6 +8,10 @@ interface UIState {
   isDesktopSidebarCollapsed: boolean;
   setDesktopSidebarCollapsed: (isCollapsed: boolean) => void;
   toggleDesktopSidebar: () => void;
+
+  isSettingsOpen: boolean;
+  setSettingsOpen: (isOpen: boolean) => void;
+  toggleSettings: () => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -18,4 +22,8 @@ export const useUIStore = create<UIState>((set) => ({
   isDesktopSidebarCollapsed: false,
   setDesktopSidebarCollapsed: (isCollapsed) => set({ isDesktopSidebarCollapsed: isCollapsed }),
   toggleDesktopSidebar: () => set((state) => ({ isDesktopSidebarCollapsed: !state.isDesktopSidebarCollapsed })),
+
+  isSettingsOpen: false,
+  setSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
+  toggleSettings: () => set((state) => ({ isSettingsOpen: !state.isSettingsOpen })),
 }));

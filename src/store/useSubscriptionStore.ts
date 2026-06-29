@@ -116,12 +116,18 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     set({ isLoading: true });
     try {
       const res = await registerSubscription(tier);
-      set({
-        tier: res.subscription.tier,
-        isActive: res.subscription.is_active,
-        pendingDowngradeTier: res.subscription.pending_downgrade_tier || null,
-        endDate: res.subscription.end_date,
-      });
+      if (res.status === 'payment_pending') {
+        // Return without updating local subscription state since payment is pending
+        return res;
+      }
+      if (res.subscription) {
+        set({
+          tier: res.subscription.tier,
+          isActive: res.subscription.is_active,
+          pendingDowngradeTier: res.subscription.pending_downgrade_tier || null,
+          endDate: res.subscription.end_date,
+        });
+      }
       get().fetchUsage();
       return res;
     } catch (error) {

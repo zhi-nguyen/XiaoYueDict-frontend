@@ -29,9 +29,20 @@ export interface SubscriptionHistoryItem {
 }
 
 export interface RegisterResponse {
-  status: 'upgraded' | 'downgraded_immediately' | 'downgrade_scheduled';
+  status: 'upgraded' | 'downgraded_immediately' | 'downgrade_scheduled' | 'payment_pending';
   message: string;
-  subscription: SubscriptionInfo;
+  subscription?: SubscriptionInfo;
+  payment?: {
+    qr_url: string;
+    bank_code: string;
+    account_number: string;
+    account_name: string;
+    amount: number;
+    transfer_content: string;
+    order_code: string;
+    order_id: string;
+    expires_at: string;
+  };
 }
 
 export const getMySubscription = async (): Promise<SubscriptionInfo> => {

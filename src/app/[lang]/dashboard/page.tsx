@@ -59,7 +59,7 @@ export default function Dashboard() {
               Tổng quan học tập
             </h1>
             <p className="text-secondary mt-2">
-              Theo dõi tiến độ và thành tựu của bạn, {user?.username}!
+              Theo dõi tiến độ và thành tựu của bạn, {user ? (user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user.username) : ''}!
             </p>
           </div>
 

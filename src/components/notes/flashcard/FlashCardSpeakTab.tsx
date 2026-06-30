@@ -6,6 +6,7 @@ import { getAudioDurationLimit } from '@/lib/subscriptionUtils';
 import SmartQueueStatus from '@/components/SmartQueueStatus';
 import { QUEUE_STRATEGIES } from '@/constants/queueStrategies';
 import { getScoreLevel, isReadAloudAny, isChineseReadAloudResponse } from '@/types/scoring';
+import { playTTSWithClientCache } from '@/lib/zhUtils';
 
 interface FlashCardSpeakTabProps {
   vocabulary: string;
@@ -30,6 +31,10 @@ export default function FlashCardSpeakTab({
   const { tier, fetchUsage } = useSubscriptionStore();
   const durationLimit = getAudioDurationLimit(tier);
   const queue = useSmartQueue();
+
+  const handlePlayTTS = () => {
+    playTTSWithClientCache(vocabulary, lang === 'en' ? 'en' : 'zh');
+  };
 
   const {
     isRecording,
@@ -104,12 +109,23 @@ export default function FlashCardSpeakTab({
         </button>
       </div>
       
-      <div className="mb-8">
-        <h2 className="text-4xl sm:text-5xl font-bold text-primary mb-1 select-all">
-          {vocabulary}
-        </h2>
+      <div className="mb-8 flex flex-col items-center justify-center">
+        <div className="flex items-center justify-center gap-3 mb-1">
+          <h2 className="text-4xl sm:text-5xl font-bold text-primary select-all">
+            {vocabulary}
+          </h2>
+          <button
+            onClick={handlePlayTTS}
+            className="p-2 rounded-full bg-hover-bg text-secondary hover:text-primary hover:bg-secondary-container transition-colors shadow-sm flex items-center justify-center border border-outline"
+            title="Nghe phát âm từ mẫu"
+          >
+            <span className="material-symbols-outlined font-bold text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+              volume_up
+            </span>
+          </button>
+        </div>
         {pinyin && (
-          <p className="text-base font-semibold text-emerald-600 bg-emerald-50 px-3 py-1 rounded w-fit mx-auto border border-emerald-100/50">
+          <p className="text-base font-semibold text-emerald-600 bg-emerald-50 px-3 py-1 rounded w-fit border border-emerald-100/50 mt-1">
             {pinyin}
           </p>
         )}

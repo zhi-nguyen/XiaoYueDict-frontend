@@ -60,6 +60,16 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   toasts: [],
 
   addNotification: (notification) => {
+    // Chặn hoàn toàn việc đưa các thông báo sinh ảnh và âm thanh vào UI notifications panel
+    if (
+      notification.notification_type === 'image_complete' ||
+      notification.notification_type === 'image_failed' ||
+      notification.notification_type === 'tts_complete' ||
+      notification.notification_type === 'tts_failed'
+    ) {
+      return;
+    }
+
     // Generate a temporary UUID string if not provided
     const id = notification.id ?? (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2));
     const newItem: NotificationItem = {
@@ -96,8 +106,17 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       // PageNumberPagination returns results inside "results"
       const items: NotificationItem[] = data.results || data;
 
+      // Lọc bỏ các thông báo sinh ảnh và âm thanh cũ có thể tồn tại trong DB
+      const filteredItems = items.filter(
+        (item) =>
+          item.notification_type !== 'image_complete' &&
+          item.notification_type !== 'image_failed' &&
+          item.notification_type !== 'tts_complete' &&
+          item.notification_type !== 'tts_failed'
+      );
+
       set({
-        notifications: items,
+        notifications: filteredItems,
         isInitialized: true,
       });
     } catch (error) {

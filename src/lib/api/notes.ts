@@ -27,13 +27,35 @@ export async function deleteNotebook(id: string): Promise<void> {
   await djangoClient.delete(`/notes/notebooks/${id}`);
 }
 
-export async function fetchWords(notebookId: string, search?: string): Promise<Word[]> {
-  let path = `/notes/notebooks/${notebookId}/words/`;
+export async function fetchWords(notebookId: string, search?: string, mastered?: boolean | null): Promise<Word[]> {
+  const params = new URLSearchParams();
   if (search) {
-    path += `?search=${encodeURIComponent(search)}`;
+    params.set('search', search);
   }
+  if (mastered === true) {
+    params.set('mastered', 'true');
+  } else if (mastered === false) {
+    params.set('mastered', 'false');
+  }
+  const query = params.toString();
+  const path = `/notes/notebooks/${notebookId}/words/${query ? '?' + query : ''}`;
   const res = await djangoClient.get(path);
   return Array.isArray(res.data) ? res.data : (res.data.results || []);
+}
+
+export async function cloneSystemNotebook(systemNotebookKey: string, lang: string): Promise<Notebook> {
+  const res = await djangoClient.post('/notes/clone-system-notebook/', {
+    system_notebook_key: systemNotebookKey,
+    lang,
+  });
+  return res.data;
+}
+
+export async function toggleWordMastered(notebookId: string, wordId: string, isMastered: boolean): Promise<Word> {
+  const res = await djangoClient.patch(`/notes/notebooks/${notebookId}/words/${wordId}/`, {
+    is_mastered: isMastered,
+  });
+  return res.data;
 }
 
 export async function createWord(

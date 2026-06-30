@@ -8,6 +8,7 @@ import { djangoClient } from '@/lib/apiClient';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import { ZhWord } from '@/types/dictionary';
 import { speakBrowserFallback, playTTSWithClientCache } from '@/lib/zhUtils';
+import { cloneSystemNotebook } from '@/lib/api/notes';
 
 const playAudio = (word: string, lang: string) => {
   const langCode = lang === 'en' ? 'en' : 'zh';
@@ -40,6 +41,21 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<'hsk' | 'pos' | 'tag'>('hsk');
+  const [isCloning, setIsCloning] = useState(false);
+
+  const handleClone = async () => {
+    if (!selectedNotebook) return;
+    setIsCloning(true);
+    try {
+      await cloneSystemNotebook(selectedNotebook.id, lang);
+      setToastMessage(`Đã lưu "${selectedNotebook.name}" thành sổ tay cá nhân của bạn!`);
+    } catch (err) {
+      console.error("Failed to clone notebook:", err);
+      setToastMessage("Có lỗi xảy ra khi lưu sổ tay.");
+    } finally {
+      setIsCloning(false);
+    }
+  };
 
   const isPremiumUser = isActive && (tier === 'Premium' || tier === 'Pro');
 
@@ -208,6 +224,18 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
               <p className="text-xs text-secondary mt-1">{selectedNotebook.description} • {totalWordsCount} từ vựng</p>
             </div>
           </div>
+          <button
+            onClick={handleClone}
+            disabled={isCloning}
+            className="px-4 py-2 bg-sage text-white rounded-xl font-bold text-xs hover:bg-emerald-700 transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+          >
+            {isCloning ? (
+              <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+            ) : (
+              <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>bookmark_add</span>
+            )}
+            Lưu làm sổ cá nhân
+          </button>
         </div>
 
         {isLoadingWords ? (

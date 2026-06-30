@@ -9,12 +9,14 @@ import { QUEUE_STRATEGIES } from '@/constants/queueStrategies';
 import { useAuthStore } from '@/store/useAuthStore';
 import AuthModal from '@/components/auth/AuthModal';
 
+import { Word } from '@/types/note';
+
 interface ExportPDFModalProps {
   isOpen: boolean;
   onClose: () => void;
   notebookId: string;
   notebookName: string;
-  totalWords: number;
+  words: Word[];
   selectedWordIds: string[];
   onSelectAllWords?: () => void;
 }
@@ -24,7 +26,7 @@ export default function ExportPDFModal({
   onClose,
   notebookId,
   notebookName,
-  totalWords,
+  words,
   selectedWordIds,
 }: ExportPDFModalProps) {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
@@ -37,7 +39,7 @@ export default function ExportPDFModal({
   const [showNotes, setShowNotes] = useState(true);
   const [showCover, setShowCover] = useState(true);
   const [brandingName, setBrandingName] = useState('CnenDict');
-  const [exportScope, setExportScope] = useState<'all' | 'selected'>('all');
+  const [exportScope, setExportScope] = useState<'all' | 'selected' | 'mastered' | 'not_mastered'>('all');
 
   // Advanced customization state
   const [extraRows, setExtraRows] = useState(0);
@@ -240,7 +242,18 @@ export default function ExportPDFModal({
   }
 
   const isFreeTier = !limitInfo || limitInfo.tier === 'Free';
-  const currentWordCount = exportScope === 'all' ? totalWords : selectedWordIds.length;
+
+  const masteredWords = words.filter(w => w.is_mastered);
+  const notMasteredWords = words.filter(w => !w.is_mastered);
+
+  let currentWordCount = words.length;
+  if (exportScope === 'selected') {
+    currentWordCount = selectedWordIds.length;
+  } else if (exportScope === 'mastered') {
+    currentWordCount = masteredWords.length;
+  } else if (exportScope === 'not_mastered') {
+    currentWordCount = notMasteredWords.length;
+  }
 
   const handleExport = async () => {
     if (isAuthLoading) return;
@@ -279,6 +292,22 @@ export default function ExportPDFModal({
           return;
         }
         params.word_ids = selectedWordIds.join(',');
+      } else if (exportScope === 'mastered') {
+        if (masteredWords.length === 0) {
+          setErrorMessage('Không có từ vựng nào đã thuộc để xuất.');
+          setPhase('error');
+          setExporting(false);
+          return;
+        }
+        params.word_ids = masteredWords.map(w => w.id).join(',');
+      } else if (exportScope === 'not_mastered') {
+        if (notMasteredWords.length === 0) {
+          setErrorMessage('Không có từ vựng nào chưa thuộc để xuất.');
+          setPhase('error');
+          setExporting(false);
+          return;
+        }
+        params.word_ids = notMasteredWords.map(w => w.id).join(',');
       }
 
       // POST to API Gateway to create the PDF background task
@@ -395,7 +424,7 @@ export default function ExportPDFModal({
                   }`}
               >
                 <span>Tất cả từ vựng</span>
-                <span className="text-xs opacity-70">({totalWords} từ)</span>
+                <span className="text-xs opacity-70">({words.length} từ)</span>
               </button>
               <button
                 type="button"
@@ -407,6 +436,28 @@ export default function ExportPDFModal({
               >
                 <span>Từ đã chọn</span>
                 <span className="text-xs opacity-70">({selectedWordIds.length} từ)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setExportScope('not_mastered')}
+                className={`py-3 px-4 rounded-xl border text-sm font-medium flex flex-col items-center justify-center gap-1 transition-all ${exportScope === 'not_mastered'
+                  ? 'border-primary bg-primary/5 text-primary font-bold'
+                  : 'border-outline hover:bg-hover-bg text-secondary'
+                  }`}
+              >
+                <span>Từ chưa thuộc</span>
+                <span className="text-xs opacity-70">({notMasteredWords.length} từ)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setExportScope('mastered')}
+                className={`py-3 px-4 rounded-xl border text-sm font-medium flex flex-col items-center justify-center gap-1 transition-all ${exportScope === 'mastered'
+                  ? 'border-primary bg-primary/5 text-primary font-bold'
+                  : 'border-outline hover:bg-hover-bg text-secondary'
+                  }`}
+              >
+                <span>Từ đã thuộc</span>
+                <span className="text-xs opacity-70">({masteredWords.length} từ)</span>
               </button>
             </div>
             {exportScope === 'selected' && selectedWordIds.length === 0 && (

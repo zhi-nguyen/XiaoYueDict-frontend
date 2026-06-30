@@ -50,7 +50,7 @@ export default function WeeklyChart({ data, isLoading = false }: WeeklyChartProp
       <h2 className="font-lexend font-semibold text-primary mb-6">
         Thống kê từ vựng (Tuần này)
       </h2>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
         <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
           <XAxis

@@ -157,12 +157,20 @@ export const renderClickableHanzi = (
 
 // ── TTS Browser Fallback ──────────────────────────────────────────────────────
 
-export const speakBrowserFallback = (text: string, lang: 'zh' | 'en'): void => {
+export const speakBrowserFallback = (text: string, lang: 'zh' | 'en', onEnded?: () => void): void => {
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = lang === 'zh' ? 'zh-CN' : 'en-US';
+    if (onEnded) {
+      utterance.onend = onEnded;
+      utterance.onerror = onEnded;
+    }
     window.speechSynthesis.speak(utterance);
+  } else {
+    if (onEnded) {
+      setTimeout(onEnded, 1000);
+    }
   }
 };
 export const speakChinese = (text: string): void => {
@@ -233,7 +241,12 @@ const waitForTTS = (taskId: string): Promise<string> => {
   });
 };
 
-export const playTTSWithClientCache = async (text: string, lang: 'zh' | 'en', voice?: string): Promise<void> => {
+export const playTTSWithClientCache = async (
+  text: string, 
+  lang: 'zh' | 'en', 
+  voice?: string,
+  onEnded?: () => void
+): Promise<void> => {
   if (!text) return;
   const langCode = lang === 'en' ? 'en' : 'zh';
 
@@ -249,7 +262,7 @@ export const playTTSWithClientCache = async (text: string, lang: 'zh' | 'en', vo
   }
 
   if (resolvedVoice === 'browser_base') {
-    speakBrowserFallback(text, langCode);
+    speakBrowserFallback(text, langCode, onEnded);
     return;
   }
 
@@ -268,6 +281,9 @@ export const playTTSWithClientCache = async (text: string, lang: 'zh' | 'en', vo
         const blob = await cachedResponse.blob();
         const blobUrl = URL.createObjectURL(blob);
         const audio = new Audio(blobUrl);
+        if (onEnded) {
+          audio.onended = onEnded;
+        }
         await audio.play();
         return;
       }
@@ -302,6 +318,9 @@ export const playTTSWithClientCache = async (text: string, lang: 'zh' | 'en', vo
       const blob = await audioResponse.blob();
       const blobUrl = URL.createObjectURL(blob);
       const audio = new Audio(blobUrl);
+      if (onEnded) {
+        audio.onended = onEnded;
+      }
       await audio.play();
     } else {
       // Fallback for environment without Caches API support
@@ -320,11 +339,14 @@ export const playTTSWithClientCache = async (text: string, lang: 'zh' | 'en', vo
       }
 
       const audio = new Audio(audioUrl);
+      if (onEnded) {
+        audio.onended = onEnded;
+      }
       await audio.play();
     }
   } catch (err) {
     console.warn('TTS async orchestration failed, falling back to browser SpeechSynthesis:', err);
-    speakBrowserFallback(text, langCode);
+    speakBrowserFallback(text, langCode, onEnded);
   }
 };
 

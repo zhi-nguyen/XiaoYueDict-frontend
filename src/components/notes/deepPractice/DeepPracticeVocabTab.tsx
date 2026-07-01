@@ -1,7 +1,7 @@
 import React from 'react';
 import { playTTSWithClientCache } from '@/lib/zhUtils';
 
-interface FlashCardVocabTabProps {
+interface DeepPracticeVocabTabProps {
   vocabulary: string;
   pinyin: string;
   meaning: string;
@@ -17,14 +17,14 @@ const capitalizeFirstLetter = (str: string): string => {
   return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
 };
 
-export default function FlashCardVocabTab({
+export default function DeepPracticeVocabTab({
   vocabulary,
   pinyin,
   meaning,
   note,
   lang,
   onMarkMastered,
-}: FlashCardVocabTabProps) {
+}: DeepPracticeVocabTabProps) {
   const handlePlayTTS = () => {
     playTTSWithClientCache(vocabulary, lang === 'en' ? 'en' : 'zh');
   };
@@ -75,6 +75,10 @@ export default function FlashCardVocabTab({
           </p>
         </div>
       )}
+
+      <p className="text-xs text-secondary/50 mt-6 max-w-md text-center leading-relaxed">
+        Bạn có thể quay lại đây bằng cách click vào từ <span className="font-semibold text-emerald-600">"{vocabulary}"</span> ở danh sách từ vựng.
+      </p>
     </div>
   );
 }

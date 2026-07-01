@@ -8,7 +8,7 @@ import { QUEUE_STRATEGIES } from '@/constants/queueStrategies';
 import { getScoreLevel, isReadAloudAny, isChineseReadAloudResponse } from '@/types/scoring';
 import { playTTSWithClientCache } from '@/lib/zhUtils';
 
-interface FlashCardSpeakTabProps {
+interface DeepPracticeSpeakTabProps {
   vocabulary: string;
   pinyin?: string;
   lang: string;
@@ -22,12 +22,12 @@ const SCORE_COLORS = {
   poor: { text: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' },
 };
 
-export default function FlashCardSpeakTab({
+export default function DeepPracticeSpeakTab({
   vocabulary,
   pinyin,
   lang,
   onAnswered,
-}: FlashCardSpeakTabProps) {
+}: DeepPracticeSpeakTabProps) {
   const { tier, fetchUsage } = useSubscriptionStore();
   const durationLimit = getAudioDurationLimit(tier);
   const queue = useSmartQueue();

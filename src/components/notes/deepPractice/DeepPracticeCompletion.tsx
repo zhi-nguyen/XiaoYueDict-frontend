@@ -1,18 +1,18 @@
 import React from 'react';
 
-interface FlashCardCompletionProps {
+interface DeepPracticeCompletionProps {
   word: string;
   onReset: () => void;
   onMastered: () => void;
   isSaving: boolean;
 }
 
-export default function FlashCardCompletion({
+export default function DeepPracticeCompletion({
   word,
   onReset,
   onMastered,
   isSaving,
-}: FlashCardCompletionProps) {
+}: DeepPracticeCompletionProps) {
   return (
     <div className="absolute inset-0 z-50 bg-white/95 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in duration-300">
       <div className="w-24 h-24 rounded-full bg-emerald-100 flex items-center justify-center mb-6">

@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { checkWritingExercise } from '@/lib/api/flashcard';
+import { checkDeepPracticeWritingExercise } from '@/lib/api/deepPractice';
 import { Loader2 } from 'lucide-react';
 
-interface FlashCardWriteTabProps {
+interface DeepPracticeWriteTabProps {
   vocabulary: string;
   lang: string;
   onAnswered: (isCorrect: boolean, score: number) => void;
 }
 
-export default function FlashCardWriteTab({
+export default function DeepPracticeWriteTab({
   vocabulary,
   lang,
   onAnswered,
-}: FlashCardWriteTabProps) {
+}: DeepPracticeWriteTabProps) {
   const [text, setText] = useState('');
   const [isChecking, setIsChecking] = useState(false);
   const [result, setResult] = useState<any | null>(null);
@@ -36,7 +36,7 @@ export default function FlashCardWriteTab({
     }
 
     try {
-      const response = await checkWritingExercise(text.trim(), vocabulary, targetLang);
+      const response = await checkDeepPracticeWritingExercise(text.trim(), vocabulary, targetLang);
       if (response.status === 'SUCCESS') {
         setResult(response.result);
         onAnswered(response.result.is_correct, response.result.score);

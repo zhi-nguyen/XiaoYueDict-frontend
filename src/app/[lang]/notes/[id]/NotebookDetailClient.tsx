@@ -11,7 +11,8 @@ import { Notebook, Word } from '@/types/note';
 import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
 import ExportPDFModal from '@/components/notes/ExportPDFModal';
-import FlashCardModal from '@/components/notes/FlashCardModal';
+import DeepPracticeModal from '@/components/notes/DeepPracticeModal';
+import FlashcardPlayModal from '@/components/notes/flashcard/FlashcardPlayModal';
 
 
 interface NotebookDetailClientProps {
@@ -77,7 +78,8 @@ export default function NotebookDetailClient({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'mastered' | 'not_mastered'>('all');
   const [selectedWord, setSelectedWord] = useState<Word | null>(null);
-  const [showFlashCard, setShowFlashCard] = useState(false);
+  const [showDeepPractice, setShowDeepPractice] = useState(false);
+  const [showFlashcardPlay, setShowFlashcardPlay] = useState(false);
 
 
   // Auto-fill Dictionary search inside modal
@@ -264,7 +266,7 @@ export default function NotebookDetailClient({
   return (
     <div className="flex flex-col bg-surface animate-in fade-in duration-200 w-full">
       {/* Header */}
-      <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-outline flex flex-col sm:flex-row sm:items-center justify-between shrink-0 bg-white sticky top-0 z-10 gap-3">
+      <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-outline flex flex-col sm:flex-row sm:items-center justify-between shrink-0 bg-white sticky top-0 z-30 gap-3">
         <div className="flex items-center min-w-0">
           <Link href={`/${language}/notes`} className="mr-3 sm:mr-4 p-2 hover:bg-hover-bg rounded-full text-secondary transition-colors shrink-0">
             <span className="material-symbols-outlined">arrow_back</span>
@@ -285,6 +287,14 @@ export default function NotebookDetailClient({
               <span className="hidden sm:inline">Xuất PDF</span>
             </button>
           )}
+          <button
+            onClick={() => setShowFlashcardPlay(true)}
+            className="p-2.5 text-secondary border border-outline rounded-xl hover:bg-hover-bg transition-colors flex items-center justify-center gap-1.5 sm:px-4 font-semibold text-sm hover:border-primary/50"
+            title="Mở FlashCard học tập"
+          >
+            <span className="material-symbols-outlined text-orange-500">style</span>
+            <span className="hidden sm:inline">Mở FlashCard</span>
+          </button>
           <button
             onClick={() => setShowSettingsModal(true)}
             className="p-2.5 text-secondary border border-outline rounded-xl hover:bg-hover-bg transition-colors flex items-center justify-center"
@@ -383,7 +393,7 @@ export default function NotebookDetailClient({
                   key={word.id}
                   onClick={() => {
                     setSelectedWord(word);
-                    setShowFlashCard(true);
+                    setShowDeepPractice(true);
                   }}
                   className="bg-white border border-outline rounded-2xl p-5 hover:border-primary/50 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md flex flex-col gap-4 relative group overflow-hidden"
                 >
@@ -714,11 +724,11 @@ export default function NotebookDetailClient({
         onClose={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))}
       />
 
-      {showFlashCard && selectedWord && (
-        <FlashCardModal
-          isOpen={showFlashCard}
+      {showDeepPractice && selectedWord && (
+        <DeepPracticeModal
+          isOpen={showDeepPractice}
           onClose={() => {
-            setShowFlashCard(false);
+            setShowDeepPractice(false);
             setSelectedWord(null);
           }}
           word={selectedWord}
@@ -727,6 +737,24 @@ export default function NotebookDetailClient({
           onMasteredChange={(wordId, isMastered) => {
             setAllWords(prev => prev.map(w => w.id === wordId ? { ...w, is_mastered: isMastered } : w));
           }}
+        />
+      )}
+
+      {showFlashcardPlay && (
+        <FlashcardPlayModal
+          isOpen={showFlashcardPlay}
+          onClose={(masteredIds) => {
+            setShowFlashcardPlay(false);
+            if (masteredIds && masteredIds.size > 0) {
+              setAllWords(prev => prev.map(w => 
+                masteredIds.has(w.id) ? { ...w, is_mastered: true } : w
+              ));
+            }
+          }}
+          words={allWords}
+          notebookId={notebookId}
+          lang={language}
+          onMasteredChange={() => {}}
         />
       )}
     </div>

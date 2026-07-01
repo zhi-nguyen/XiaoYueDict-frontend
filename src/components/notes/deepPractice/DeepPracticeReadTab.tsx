@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { ReadingExercise } from '@/types/note';
 
-interface FlashCardReadTabProps {
+interface DeepPracticeReadTabProps {
   exercise: ReadingExercise;
   onAnswered: (isCorrect: boolean) => void;
   onSkip?: () => void;
@@ -16,11 +16,11 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-export default function FlashCardReadTab({
+export default function DeepPracticeReadTab({
   exercise,
   onAnswered,
   onSkip,
-}: FlashCardReadTabProps) {
+}: DeepPracticeReadTabProps) {
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
   const shuffledChoices = useMemo(() => {

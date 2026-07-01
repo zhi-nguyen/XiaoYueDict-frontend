@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { ListeningExercise } from '@/types/note';
 import { playTTSWithClientCache } from '@/lib/zhUtils';
 
-interface FlashCardListenTabProps {
+interface DeepPracticeListenTabProps {
   exercise: ListeningExercise;
   audioUrl?: string;
   lang: string;
@@ -19,12 +19,12 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-export default function FlashCardListenTab({
+export default function DeepPracticeListenTab({
   exercise,
   lang,
   onAnswered,
   onSkip,
-}: FlashCardListenTabProps) {
+}: DeepPracticeListenTabProps) {
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 

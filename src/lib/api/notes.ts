@@ -29,6 +29,7 @@ export async function deleteNotebook(id: string): Promise<void> {
 
 export async function fetchWords(notebookId: string, search?: string, mastered?: boolean | null): Promise<Word[]> {
   const params = new URLSearchParams();
+  params.set('paginate', 'false');
   if (search) {
     params.set('search', search);
   }

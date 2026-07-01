@@ -2,18 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Loader2 } from 'lucide-react';
 import { Word, FlashcardExercises } from '@/types/note';
-import { fetchFlashcardExercises, completeFlashcardExercise } from '@/lib/api/flashcard';
+import { fetchDeepPracticeExercises, completeDeepPracticeExercise } from '@/lib/api/deepPractice';
 import { toggleWordMastered } from '@/lib/api/notes';
 import { useGamificationStore } from '@/store/useGamificationStore';
 
-import FlashCardVocabTab from './flashcard/FlashCardVocabTab';
-import FlashCardReadTab from './flashcard/FlashCardReadTab';
-import FlashCardListenTab from './flashcard/FlashCardListenTab';
-import FlashCardSpeakTab from './flashcard/FlashCardSpeakTab';
-import FlashCardWriteTab from './flashcard/FlashCardWriteTab';
-import FlashCardCompletion from './flashcard/FlashCardCompletion';
+import DeepPracticeVocabTab from './deepPractice/DeepPracticeVocabTab';
+import DeepPracticeReadTab from './deepPractice/DeepPracticeReadTab';
+import DeepPracticeListenTab from './deepPractice/DeepPracticeListenTab';
+import DeepPracticeSpeakTab from './deepPractice/DeepPracticeSpeakTab';
+import DeepPracticeWriteTab from './deepPractice/DeepPracticeWriteTab';
+import DeepPracticeCompletion from './deepPractice/DeepPracticeCompletion';
 
-interface FlashCardModalProps {
+interface DeepPracticeModalProps {
   isOpen: boolean;
   onClose: () => void;
   word: Word;
@@ -22,14 +22,14 @@ interface FlashCardModalProps {
   onMasteredChange?: (wordId: string, isMastered: boolean) => void;
 }
 
-export default function FlashCardModal({
+export default function DeepPracticeModal({
   isOpen,
   onClose,
   word,
   notebookId,
   lang,
   onMasteredChange,
-}: FlashCardModalProps) {
+}: DeepPracticeModalProps) {
   const [activeTab, setActiveTab] = useState(0);
   const [exercises, setExercises] = useState<FlashcardExercises | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,7 +47,7 @@ export default function FlashCardModal({
       setIsLoading(true);
       setErrorMsg('');
       try {
-        const response = await fetchFlashcardExercises(word.vocabulary, lang);
+        const response = await fetchDeepPracticeExercises(word.vocabulary, lang);
         if (response.status === 'SUCCESS') {
           setExercises(response.exercises);
           setIsLoading(false);
@@ -97,9 +97,9 @@ export default function FlashCardModal({
       setErrorMsg('');
 
       // Mark current exercise as complete/skipped so we get a different one
-      await completeFlashcardExercise(exerciseId);
+      await completeDeepPracticeExercise(exerciseId);
 
-      const response = await fetchFlashcardExercises(word.vocabulary, lang);
+      const response = await fetchDeepPracticeExercises(word.vocabulary, lang);
       if (response.status === 'SUCCESS') {
         setExercises(response.exercises);
         setIsLoading(false);
@@ -113,7 +113,7 @@ export default function FlashCardModal({
   const handleReadAnswered = (isCorrect: boolean) => {
     setTabCompleted(1, isCorrect);
     if (isCorrect && exercises?.reading?.id) {
-      completeFlashcardExercise(exercises.reading.id).catch((err) =>
+      completeDeepPracticeExercise(exercises.reading.id).catch((err) =>
         console.error("Failed to complete reading exercise:", err)
       );
     }
@@ -122,7 +122,7 @@ export default function FlashCardModal({
   const handleListenAnswered = (isCorrect: boolean) => {
     setTabCompleted(2, isCorrect);
     if (isCorrect && exercises?.listening?.id) {
-      completeFlashcardExercise(exercises.listening.id).catch((err) =>
+      completeDeepPracticeExercise(exercises.listening.id).catch((err) =>
         console.error("Failed to complete listening exercise:", err)
       );
     }
@@ -235,7 +235,7 @@ export default function FlashCardModal({
           <button
             onClick={onClose}
             className="p-1 rounded-full text-secondary hover:text-primary hover:bg-hover-bg transition-colors flex items-center justify-center mb-3 ml-1 sm:ml-2 shrink-0 self-center border border-transparent hover:border-outline"
-            title="Đóng FlashCard"
+            title="Đóng Luyện tập sâu"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -244,7 +244,7 @@ export default function FlashCardModal({
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-6 sm:p-8 min-h-[350px] bg-white">
           {activeTab === 0 && (
-            <FlashCardVocabTab
+            <DeepPracticeVocabTab
               vocabulary={word.vocabulary}
               pinyin={word.pinyin}
               meaning={word.meaning}
@@ -273,7 +273,7 @@ export default function FlashCardModal({
             </div>
           )}
           {activeTab === 1 && !isLoading && exercises?.reading && (
-            <FlashCardReadTab
+            <DeepPracticeReadTab
               key={exercises.reading.id}
               exercise={exercises.reading.content}
               onAnswered={handleReadAnswered}
@@ -281,7 +281,7 @@ export default function FlashCardModal({
             />
           )}
           {activeTab === 2 && !isLoading && exercises?.listening && (
-            <FlashCardListenTab
+            <DeepPracticeListenTab
               key={exercises.listening.id}
               exercise={exercises.listening.content}
               audioUrl={exercises.listening.audio_url}
@@ -291,7 +291,7 @@ export default function FlashCardModal({
             />
           )}
           {activeTab === 3 && !isLoading && (
-            <FlashCardSpeakTab
+            <DeepPracticeSpeakTab
               vocabulary={word.vocabulary}
               pinyin={word.pinyin}
               lang={lang}
@@ -299,7 +299,7 @@ export default function FlashCardModal({
             />
           )}
           {activeTab === 4 && !isLoading && (
-            <FlashCardWriteTab
+            <DeepPracticeWriteTab
               vocabulary={word.vocabulary}
               lang={lang}
               onAnswered={(isCorrect) => setTabCompleted(4, isCorrect)}
@@ -335,7 +335,7 @@ export default function FlashCardModal({
 
         {/* Completion Overlay */}
         {showCompletion && (
-          <FlashCardCompletion
+          <DeepPracticeCompletion
             word={word.vocabulary}
             onReset={handleReset}
             onMastered={handleMarkMastered}

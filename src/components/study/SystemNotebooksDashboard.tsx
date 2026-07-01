@@ -509,14 +509,6 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
           <span className="text-sm">{toastMessage}</span>
         </div>
       )}
-
-      <ConfirmModal
-        isOpen={showConfirmModal}
-        title="Xác nhận lưu lại"
-        message={`Bạn đã lưu sổ tay "${selectedNotebook?.name}" làm sổ cá nhân trước đây. Bạn có muốn tiếp tục lưu thêm một bản sao khác không?`}
-        onConfirm={executeClone}
-        onCancel={() => setShowConfirmModal(false)}
-      />
     </div>
   );
 }

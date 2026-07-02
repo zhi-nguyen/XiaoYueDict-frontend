@@ -63,16 +63,16 @@ export default function ProfileInfoTab({ user, tier, onUpdateProfile }: ProfileI
     <>
       <div className="animate-in fade-in slide-in-from-bottom-2">
         <div className="flex items-center gap-4 mb-8">
-          <div className="relative group">
+          <div className="relative group flex-shrink-0">
             <label htmlFor="avatar-upload" className="cursor-pointer relative w-24 h-24 rounded-full bg-primary flex items-center justify-center text-white text-4xl font-bold overflow-hidden shadow-sm hover:ring-2 hover:ring-primary/50 transition-all">
               {previewAvatar ? (
-                <Image 
-                  src={previewAvatar} 
-                  alt="Avatar" 
-                  width={96} 
-                  height={96} 
+                <Image
+                  src={previewAvatar}
+                  alt="Avatar"
+                  width={96}
+                  height={96}
                   unoptimized
-                  className="w-full h-full object-cover" 
+                  className="w-full h-full object-cover"
                 />
               ) : (
                 user.first_name && user.last_name
@@ -85,6 +85,11 @@ export default function ProfileInfoTab({ user, tier, onUpdateProfile }: ProfileI
                 </div>
               )}
             </label>
+            {isEditingInfo && (
+              <label htmlFor="avatar-upload" className="absolute bottom-0 right-0 cursor-pointer w-8 h-8 rounded-full bg-primary border-2 border-white flex items-center justify-center text-white shadow-md hover:scale-105 transition-transform">
+                <span className="material-symbols-outlined text-[16px]">photo_camera</span>
+              </label>
+            )}
             <input
               id="avatar-upload"
               type="file"
@@ -94,13 +99,13 @@ export default function ProfileInfoTab({ user, tier, onUpdateProfile }: ProfileI
               disabled={!isEditingInfo}
             />
           </div>
-          <div>
-            <h2 className="text-2xl font-bold text-primary">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-2xl font-bold text-primary truncate" title={user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user.username}>
               {user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user.username}
             </h2>
-            <p className="text-secondary">{user.email}</p>
+            <p className="text-secondary truncate" title={user.email}>{user.email}</p>
             <div className="mt-2 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-surface border border-outline text-xs font-bold text-primary">
-              Gói hiện tại: <span className="text-yellow-600 uppercase tracking-wider">{tier || 'Free'}</span>
+              <span className="text-yellow-600 uppercase tracking-wider">{tier || 'Free'}</span>
             </div>
           </div>
         </div>

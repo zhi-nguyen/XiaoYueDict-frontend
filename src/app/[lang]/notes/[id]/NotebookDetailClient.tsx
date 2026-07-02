@@ -9,6 +9,7 @@ import { fetchWords, createWord, deleteWord, updateNotebook, deleteNotebook } fr
 import { djangoClient } from '@/lib/apiClient';
 import { Notebook, Word } from '@/types/note';
 import AlertModal from '@/components/AlertModal';
+import { getErrorMessage } from '@/lib/errorHelper';
 import ConfirmModal from '@/components/ConfirmModal';
 import ExportPDFModal from '@/components/notes/ExportPDFModal';
 import DeepPracticeModal from '@/components/notes/DeepPracticeModal';
@@ -187,7 +188,7 @@ export default function NotebookDetailClient({
       setAlertConfig({
         isOpen: true,
         title: 'Lỗi',
-        message: 'Lỗi khi thêm từ vựng',
+        message: getErrorMessage(err),
         type: 'error'
       });
     } finally {
@@ -213,7 +214,7 @@ export default function NotebookDetailClient({
           setAlertConfig({
             isOpen: true,
             title: 'Lỗi',
-            message: 'Lỗi khi xóa từ vựng',
+            message: getErrorMessage(err),
             type: 'error'
           });
         }
@@ -234,7 +235,7 @@ export default function NotebookDetailClient({
       setAlertConfig({
         isOpen: true,
         title: 'Lỗi',
-        message: 'Lỗi khi cập nhật sổ tay',
+        message: getErrorMessage(err),
         type: 'error'
       });
     }
@@ -255,7 +256,7 @@ export default function NotebookDetailClient({
           setAlertConfig({
             isOpen: true,
             title: 'Lỗi',
-            message: 'Lỗi khi xóa sổ tay',
+            message: getErrorMessage(err),
             type: 'error'
           });
         }

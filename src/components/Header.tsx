@@ -21,10 +21,11 @@ export default function Header() {
   const pathname = usePathname();
 
   const switchLanguage = (newLang: string) => {
-    if (params?.lang) {
-      router.push(pathname.replace(`/${params.lang}`, `/${newLang}`));
-    } else {
-      router.push(`/${newLang}${pathname === '/' ? '' : pathname}`);
+    if (typeof window !== 'undefined') {
+      // Force a full page reload and kick back to Dashboard (or Homepage if guest)
+      // to avoid displaying mismatched target language data.
+      const targetUrl = isAuthenticated ? `/${newLang}/dashboard` : `/${newLang}`;
+      window.location.href = targetUrl;
     }
   };
   const toggleSidebar = useUIStore((state) => state.toggleSidebar);

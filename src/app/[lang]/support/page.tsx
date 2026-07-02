@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { getGuestId } from '@/lib/guest';
+import { getErrorMessage } from '@/lib/errorHelper';
 import {
   createFeatureReport,
   createSupportRequest,
@@ -194,8 +195,7 @@ function FeatureReportForm({ isAuthenticated }: { isAuthenticated: boolean }) {
       setDescription('');
       setFeatureArea('other');
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      setErrorMsg(error.response?.data?.detail || 'Có lỗi xảy ra. Vui lòng thử lại sau.');
+      setErrorMsg(getErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -337,16 +337,7 @@ function SupportRequestForm({ isAuthenticated }: { isAuthenticated: boolean }) {
       setGuestName('');
       setGuestEmail('');
     } catch (err: unknown) {
-      const error = err as { response?: { data?: Record<string, string | string[]> } };
-      const data = error.response?.data;
-      if (data?.guest_email) {
-        const emailErr = Array.isArray(data.guest_email) ? data.guest_email[0] : data.guest_email;
-        setErrorMsg(String(emailErr));
-      } else if (data?.detail) {
-        setErrorMsg(String(data.detail));
-      } else {
-        setErrorMsg('Có lỗi xảy ra. Vui lòng thử lại sau.');
-      }
+      setErrorMsg(getErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }

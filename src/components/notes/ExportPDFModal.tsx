@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
 import { djangoClient } from '@/lib/apiClient';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { getErrorMessage } from '@/lib/errorHelper';
 import SmartQueueStatus from '@/components/SmartQueueStatus';
 import { QUEUE_STRATEGIES } from '@/constants/queueStrategies';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -134,7 +135,7 @@ export default function ExportPDFModal({
     } catch (err: any) {
       console.error('Lỗi khi tải file PDF:', err);
       setPhase('error');
-      setErrorMessage('Không thể tải tệp PDF về máy.');
+      setErrorMessage(getErrorMessage(err));
     }
   };
 
@@ -326,11 +327,7 @@ export default function ExportPDFModal({
     } catch (err: any) {
       console.error('Lỗi khi xuất PDF:', err);
       setPhase('error');
-      let errMsg = 'Không thể xuất file PDF. Vui lòng kiểm tra lại dịch vụ hoặc thử lại sau.';
-      if (err.response?.data?.detail) {
-        errMsg = err.response.data.detail;
-      }
-      setErrorMessage(errMsg);
+      setErrorMessage(getErrorMessage(err));
     }
   };
 

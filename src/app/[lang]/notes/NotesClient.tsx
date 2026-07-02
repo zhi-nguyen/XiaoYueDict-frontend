@@ -10,6 +10,7 @@ import { Notebook } from '@/types/note';
 import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
 import AuthModal from '@/components/auth/AuthModal';
+import { getErrorMessage } from '@/lib/errorHelper';
 import { useAuthStore } from '@/store/useAuthStore';
 
 interface NotesClientProps {
@@ -94,7 +95,7 @@ export default function NotesClient({ initialNotebooks }: NotesClientProps) {
       setAlertConfig({
         isOpen: true,
         title: 'Lỗi',
-        message: 'Lỗi khi tạo sổ tay',
+        message: getErrorMessage(err),
         type: 'error'
       });
     } finally {
@@ -118,7 +119,7 @@ export default function NotesClient({ initialNotebooks }: NotesClientProps) {
           setAlertConfig({
             isOpen: true,
             title: 'Lỗi',
-            message: 'Lỗi khi xóa sổ tay',
+            message: getErrorMessage(err),
             type: 'error'
           });
         }

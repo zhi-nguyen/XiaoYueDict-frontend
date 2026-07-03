@@ -11,6 +11,7 @@ const config: Config = {
       fontFamily: {
         sans: ['Lexend', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         lexend: ['Lexend', 'sans-serif'],
+        inter: ['Inter', 'sans-serif'],
       },
       fontSize: {
         // System-wide typography scale adjustment

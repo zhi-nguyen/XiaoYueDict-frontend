@@ -45,6 +45,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+.exam-font-override {
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif !important;
+}
+
 /* ── Typography Scale (Mobile-first) ──
    - Primary info:   16px (text-sm / text-base) on all screens
    - Secondary info:  14px (text-xs) on desktop (md+)

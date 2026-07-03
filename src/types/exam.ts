@@ -10,7 +10,7 @@ export interface Option {
 export interface Question {
   id: number;
   question_id: string;
-  question_type: 'true_false' | 'multiple_choice' | 'fill_blank' | 'matching' | 'ordering';
+  question_type: 'true_false' | 'multiple_choice' | 'fill_blank' | 'matching' | 'ordering' | 'essay';
   difficulty: 'easy' | 'medium' | 'hard';
   points: number;
   tags: string[];

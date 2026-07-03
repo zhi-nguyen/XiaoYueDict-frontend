@@ -1,7 +1,16 @@
 import React from 'react';
 import { Exam } from '@/types/exam';
-import ExamClient from './ExamClient';
+import nextDynamic from 'next/dynamic';
 import { getServerAuthToken } from '@/lib/serverAuth';
+
+const ExamClient = nextDynamic(() => import('./ExamClient'), {
+  ssr: true,
+  loading: () => (
+    <div className="flex justify-center items-center py-20">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+    </div>
+  )
+});
 
 export const dynamic = 'force-dynamic';
 

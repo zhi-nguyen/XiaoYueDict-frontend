@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { Flag, X, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { createReport, CreateReportPayload } from '@/lib/api/reports';
 import { getGuestId } from '@/lib/guest';
+import AlertModal from '@/components/AlertModal';
 
 interface ReportModalProps {
   isOpen: boolean;
@@ -48,6 +49,7 @@ export default function ReportModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -63,8 +65,14 @@ export default function ReportModal({
       setSuggestedCorrection('');
       setErrorMsg(null);
       setSuccessMsg(null);
+      setIsAlertOpen(false);
     }
   }, [isOpen, defaultReportType]);
+
+  const handleAlertClose = () => {
+    setIsAlertOpen(false);
+    onClose();
+  };
 
   if (!isOpen || !mounted) return null;
 
@@ -113,9 +121,7 @@ export default function ReportModal({
       });
 
       setSuccessMsg('Cảm ơn bạn! Báo cáo lỗi của bạn đã được gửi thành công.');
-      setTimeout(() => {
-        onClose();
-      }, 2000);
+      setIsAlertOpen(true);
     } catch (err: any) {
       if (err.response?.status === 409) {
         setErrorMsg('Bạn đã gửi báo cáo cho nội dung này trước đó rồi.');
@@ -130,7 +136,8 @@ export default function ReportModal({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-md transition-opacity duration-300 font-sans">
+    <>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-md transition-opacity duration-300 font-sans">
       <div className="bg-surface rounded-3xl w-full max-w-lg border border-outline shadow-2xl overflow-hidden transform transition-all scale-100 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
 
         {/* Header (Static) */}
@@ -256,7 +263,17 @@ export default function ReportModal({
         </form>
 
       </div>
-    </div>,
+      </div>
+
+      <AlertModal
+        isOpen={isAlertOpen}
+        type="success"
+        title="Báo cáo thành công"
+        message="Cảm ơn bạn đã báo cáo lỗi. Chúng tôi sẽ sớm kiểm tra!"
+        onClose={handleAlertClose}
+        closeText="Đóng"
+      />
+    </>,
     document.body
   );
 }

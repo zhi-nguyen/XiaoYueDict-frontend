@@ -4,9 +4,11 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { fetchExamDetails } from '@/lib/api/exams';
 import { Exam } from '@/types/exam';
-import ConfirmModal from '@/components/ConfirmModal';
+import dynamic from 'next/dynamic';
+const ConfirmModal = dynamic(() => import('@/components/ConfirmModal'), { ssr: false });
+const ReportModal = dynamic(() => import('@/components/ReportModal'), { ssr: false });
 import { saveExamState, loadExamState, clearExamState, ExamState } from '@/lib/examState';
-import { createReport } from '@/lib/api/reports';
+import { Flag } from 'lucide-react';
 import { getGuestId } from '@/lib/guest';
 import { useGamificationStore } from '@/store/useGamificationStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -70,6 +72,9 @@ export default function ExamTakePage() {
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
   const [mainAudioCurrentTime, setMainAudioCurrentTime] = useState(0);
 
+  const [isQuestionListOpen, setIsQuestionListOpen] = useState(false);
+  const [isGlobalReportModalOpen, setIsGlobalReportModalOpen] = useState(false);
+  const [reportQuestionDbId, setReportQuestionDbId] = useState<string | null>(null);
   const [modalConfig, setModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -92,11 +97,16 @@ export default function ExamTakePage() {
 
         // Load saved state
         const savedState = loadExamState(examId);
-        if (savedState && !savedState.isSubmitted) {
+        if (savedState) {
           setAnswers(savedState.answers);
-          setTimeRemaining(savedState.timeRemaining);
-          if (audioRef.current && savedState.audioTime) {
-            audioRef.current.currentTime = savedState.audioTime;
+          if (savedState.isSubmitted) {
+            setIsSubmitted(true);
+            setScore(savedState.score !== undefined ? savedState.score : 0);
+          } else {
+            setTimeRemaining(savedState.timeRemaining);
+            if (audioRef.current && savedState.audioTime) {
+              audioRef.current.currentTime = savedState.audioTime;
+            }
           }
         } else {
           setTimeRemaining(data.total_time_minutes * 60);
@@ -156,6 +166,38 @@ export default function ExamTakePage() {
   const handleOptionSelect = (questionId: string, optionId: string) => {
     if (isSubmitted) return;
     setAnswers(prev => ({ ...prev, [questionId]: optionId }));
+
+    // Tự động chuyển sang câu tiếp theo
+    if (exam && exam.sections) {
+      const allQuestions = exam.sections.flatMap(s => s.questions) || [];
+      const currentIndex = allQuestions.findIndex(q => q.question_id === questionId);
+      if (currentIndex !== -1 && currentIndex + 1 < allQuestions.length) {
+        const nextQuestion = allQuestions[currentIndex + 1];
+        
+        // Tắt audio toàn bài thi ngay lập tức
+        if (audioRef.current) {
+          audioRef.current.pause();
+        }
+
+        setTimeout(() => {
+          const element = document.getElementById(`question-${nextQuestion.question_id}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+
+          // Bật audio của câu hỏi tiếp theo dựa trên timeline (nếu có)
+          if (nextQuestion.audio_start_time && nextQuestion.audio_end_time) {
+            playSegmentAudio(nextQuestion.question_id, nextQuestion.audio_start_time, nextQuestion.audio_end_time);
+          } else {
+            // Dừng phát segment audio nếu câu tiếp theo không có timeline
+            if (segmentAudioRef.current) {
+              segmentAudioRef.current.pause();
+              setActiveSegmentId(null);
+            }
+          }
+        }, 350);
+      }
+    }
   };
 
   /**
@@ -177,8 +219,17 @@ export default function ExamTakePage() {
     let correctCount = 0;
     exam.sections.forEach(sec => {
       sec.questions.forEach(q => {
-        if (answers[q.question_id] === q.correct_answer) {
-          correctCount += q.points;
+        const userAns = (answers[q.question_id] || '').trim().toLowerCase();
+        const correctAns = (q.correct_answer || '').trim().toLowerCase();
+        if (q.question_type === 'fill_blank') {
+          const possibleAnswers = correctAns.split('/').map(ans => ans.trim());
+          if (possibleAnswers.includes(userAns)) {
+            correctCount += q.points;
+          }
+        } else {
+          if (answers[q.question_id] === q.correct_answer) {
+            correctCount += q.points;
+          }
         }
       });
     });
@@ -194,7 +245,8 @@ export default function ExamTakePage() {
       audioTime: audioRef.current?.currentTime || 0,
       timeRemaining: timeRemaining || 0,
       isSubmitted: true,
-      lastSaved: Date.now()
+      lastSaved: Date.now(),
+      score: correctCount
     });
 
     // ── Step 3: Gamification logging — sequenced AFTER successful submit ─
@@ -226,36 +278,9 @@ export default function ExamTakePage() {
     });
   };
 
-  const handleReportQuestion = (dbId: number | string, questionCode: string) => {
-    setModalConfig({
-      isOpen: true,
-      title: 'Báo cáo câu hỏi sai',
-      message: `Bạn có chắc chắn muốn báo cáo câu hỏi (${questionCode}) này bị sai thông tin/nội dung?`,
-      confirmText: 'Báo cáo',
-      onConfirm: async () => {
-        setModalConfig(prev => ({ ...prev, isOpen: false }));
-        try {
-          await createReport({
-            report_type: 'exam_question',
-            content_type: 'exam_question',
-            object_id: String(dbId),
-            reason: `Báo cáo câu hỏi ${questionCode} bị sai thông tin trong lúc thi.`,
-            guest_id: getGuestId() || undefined,
-          });
-          setTimeout(() => {
-            alert('Cảm ơn bạn đã báo cáo lỗi. Chúng tôi sẽ sớm kiểm tra!');
-          }, 300);
-        } catch (err: any) {
-          setTimeout(() => {
-            if (err.response?.status === 409) {
-              alert('Bạn đã báo cáo câu hỏi này trước đó rồi.');
-            } else {
-              alert('Có lỗi xảy ra khi gửi báo cáo. Vui lòng thử lại sau.');
-            }
-          }, 300);
-        }
-      }
-    });
+  const handleReportQuestion = (dbId: number | string) => {
+    setReportQuestionDbId(String(dbId));
+    setIsGlobalReportModalOpen(true);
   };
 
   const handleLeave = () => {
@@ -481,15 +506,13 @@ export default function ExamTakePage() {
                                 </button>
                               )}
 
-                              {/* Báo cáo câu hỏi sai (Dấu chấm than / Warning icon) */}
+                              {/* Báo cáo câu hỏi sai (Flag icon) */}
                               <button
-                                onClick={() => handleReportQuestion(question.id, question.question_id)}
-                                className="w-8 h-8 flex items-center justify-center text-secondary hover:text-red-500 hover:bg-red-50 rounded-lg transition-all border border-outline hover:border-red-200"
+                                onClick={() => handleReportQuestion(question.id)}
+                                className="w-8 h-8 flex items-center justify-center text-secondary hover:text-red-600 hover:bg-red-50 rounded-lg transition-all border border-outline hover:border-red-200 focus:outline-none"
                                 title="Báo cáo câu hỏi sai"
                               >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
+                                <Flag className="w-4 h-4" />
                               </button>
                             </div>
                           </div>
@@ -508,7 +531,8 @@ export default function ExamTakePage() {
                                   <img
                                     src={getMediaUrl(question.image_url)}
                                     alt="Question Image"
-                                    className="w-full max-w-md h-auto aspect-[4/3] object-cover rounded-2xl shadow-sm border border-outline-variant"
+                                    loading="lazy"
+                                    className="w-full max-w-[320px] aspect-square object-cover rounded-2xl shadow-sm border border-outline-variant"
                                   />
                                 </div>
                               )}
@@ -521,29 +545,8 @@ export default function ExamTakePage() {
                             </div>
                           )}
 
-                          {/* Hàng 2.5: Nghe lại câu này (chỉ hiển thị khi đã nộp bài) */}
-                          {isSubmitted && (question.audio_url || (mainAudioUrl && question.audio_start_time)) && (
-                            <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                              <p className="text-sm font-bold text-gray-600 mb-2">Nghe lại câu này:</p>
-                              {(() => {
-                                let targetAudioUrl = question.audio_url ? getMediaUrl(question.audio_url) : getMediaUrl(mainAudioUrl!);
-                                if (!question.audio_url && mainAudioUrl && question.audio_start_time) {
-                                  const start = timeToSeconds(question.audio_start_time);
-                                  const end = timeToSeconds(question.audio_end_time);
-                                  if (start !== null) {
-                                    targetAudioUrl += `#t=${start}${end !== null ? ',' + end : ''}`;
-                                  }
-                                }
-                                return (
-                                  <audio controls className="h-10 w-full outline-none">
-                                    <source src={targetAudioUrl} type="audio/mpeg" />
-                                  </audio>
-                                );
-                              })()}
-                            </div>
-                          )}
 
-                          {/* Hàng 3: Các lựa chọn câu trả lời (Options / True-False) */}
+                          {/* Hàng 3: Các lựa chọn câu trả lời (Options / True-False / Fill Blank / Essay) */}
                           {question.question_type === 'true_false' ? (
                             <div className="grid grid-cols-2 gap-4 w-full mt-4">
                               {question.options.map(opt => {
@@ -575,6 +578,41 @@ export default function ExamTakePage() {
                                 );
                               })}
                             </div>
+                          ) : question.question_type === 'fill_blank' ? (
+                            <div className="mt-4 w-full">
+                              <input
+                                type="text"
+                                className={`w-full p-4 rounded-xl border-2 transition-all text-lg focus:outline-none ${
+                                  isSubmitted
+                                    ? ((question.correct_answer || '').trim().toLowerCase().split('/').map(ans => ans.trim()).includes(answers[question.question_id]?.trim().toLowerCase() || '')
+                                      ? "bg-green-50 border-green-500 text-green-900 shadow-sm"
+                                      : "bg-red-50 border-red-400 text-red-900")
+                                    : "border-outline-variant bg-surface focus:border-primary"
+                                }`}
+                                placeholder="Nhập câu trả lời của bạn..."
+                                value={answers[question.question_id] || ''}
+                                onChange={(e) => {
+                                  if (!isSubmitted) {
+                                    setAnswers(prev => ({ ...prev, [question.question_id]: e.target.value }));
+                                  }
+                                }}
+                                disabled={isSubmitted}
+                              />
+                            </div>
+                          ) : question.question_type === 'essay' ? (
+                            <div className="mt-4 w-full">
+                              <textarea
+                                className="w-full p-4 rounded-xl border-2 border-outline-variant bg-surface focus:border-primary text-lg focus:outline-none min-h-[200px] resize-y"
+                                placeholder="Viết bài luận của bạn tại đây (đáp ứng độ dài yêu cầu)..."
+                                value={answers[question.question_id] || ''}
+                                onChange={(e) => {
+                                  if (!isSubmitted) {
+                                    setAnswers(prev => ({ ...prev, [question.question_id]: e.target.value }));
+                                  }
+                                }}
+                                disabled={isSubmitted}
+                              />
+                            </div>
                           ) : (
                             <div className={`mt-6 ${question.options.every(opt => !opt.text) ? 'grid grid-cols-1 md:grid-cols-3 gap-6' : 'space-y-3'}`}>
                               {question.options.map((opt, optIndex) => {
@@ -605,9 +643,9 @@ export default function ExamTakePage() {
                                         <div className="w-8 h-8 flex-shrink-0 bg-secondary/10 text-secondary font-bold rounded-full flex items-center justify-center">
                                           {letter}
                                         </div>
-                                        <div className="flex-1 aspect-[4/3] rounded-xl overflow-hidden bg-gray-50 flex items-center justify-center relative">
+                                        <div className="flex-1 aspect-square rounded-xl overflow-hidden bg-gray-50 flex items-center justify-center relative">
                                           {opt.image_url ? (
-                                            <img src={getMediaUrl(opt.image_url)} alt="Option" className="w-full h-full object-cover" />
+                                            <img src={getMediaUrl(opt.image_url)} alt="Option" loading="lazy" className="w-full h-full object-cover" />
                                           ) : opt.image_description ? (
                                             <span className="italic text-gray-500 text-xs p-4 text-center">[{opt.image_description}]</span>
                                           ) : null}
@@ -625,7 +663,7 @@ export default function ExamTakePage() {
                                           {opt.text}
                                           {opt.image_url && (
                                             <div className="mt-3 flex justify-center md:justify-start">
-                                              <img src={getMediaUrl(opt.image_url)} alt="Option" className="max-w-[200px] max-h-[150px] object-cover rounded-xl border border-gray-200 shadow-sm" />
+                                              <img src={getMediaUrl(opt.image_url)} alt="Option" loading="lazy" className="w-32 h-32 aspect-square object-cover rounded-xl border border-gray-200 shadow-sm" />
                                             </div>
                                           )}
                                         </div>
@@ -641,6 +679,9 @@ export default function ExamTakePage() {
                           {isSubmitted && exam.show_explanation_after === 'exam_submitted' && (
                             <div className="mt-6 p-4 bg-blue-50 text-blue-900 rounded-xl border border-blue-200 text-sm">
                               <p className="font-bold mb-1">Giải thích:</p>
+                              {question.question_type === 'fill_blank' && (
+                                <p className="mb-2"><strong>Đáp án đúng:</strong> <span className="text-green-700 font-semibold">{question.correct_answer}</span></p>
+                              )}
                               {question.audio_script && <p className="mb-2"><strong>Audio script:</strong> {question.audio_script}</p>}
                               <p>{question.explanation || 'Không có giải thích chi tiết.'}</p>
                             </div>
@@ -723,6 +764,111 @@ export default function ExamTakePage() {
           </div>
         </div>
       </div>
+
+      {/* Drawer for Question List on Mobile/Tablet */}
+      {isQuestionListOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end xl:hidden">
+          {/* Backdrop */}
+          <div className="fixed inset-0 bg-black/40" onClick={() => setIsQuestionListOpen(false)} />
+          {/* Content */}
+          <div className="relative w-80 max-w-[90vw] h-full bg-surface border-l border-outline p-6 flex flex-col shadow-2xl animate-in slide-in-from-right duration-300">
+            <button
+              onClick={() => setIsQuestionListOpen(false)}
+              className="absolute top-4 right-4 text-secondary hover:text-primary"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            <h2 className="text-xl font-bold text-primary mb-4 pr-8 flex items-center justify-between">
+              <span>Danh sách câu hỏi</span>
+              <span className="text-sm font-normal text-secondary bg-gray-100 px-3 py-1 rounded-full">
+                {Object.keys(answers).length} / {exam.total_questions}
+              </span>
+            </h2>
+
+            <div className="flex-1 overflow-y-auto pr-2 pb-2">
+              <div className="flex flex-wrap gap-2">
+                {allQuestions.map((q, idx) => {
+                  const isAnswered = !!answers[q.question_id];
+                  const isCorrect = answers[q.question_id] === q.correct_answer;
+
+                  let btnClass = "w-10 h-10 rounded-xl font-bold text-sm flex items-center justify-center border-2 transition-all duration-200 ";
+
+                  if (isSubmitted) {
+                    if (isCorrect) btnClass += " bg-green-100 text-green-700 border-green-400";
+                    else btnClass += " bg-red-100 text-red-700 border-red-400";
+                  } else {
+                    if (isAnswered) btnClass += " bg-primary text-white border-primary shadow-sm";
+                    else btnClass += " bg-white text-secondary border-outline-variant hover:border-primary";
+                  }
+
+                  return (
+                    <button
+                      key={`nav-drawer-q-${q.question_id}`}
+                      onClick={() => {
+                        document.getElementById(`question-${q.question_id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        setIsQuestionListOpen(false);
+                      }}
+                      className={btnClass}
+                    >
+                      {idx + 1}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {!isSubmitted ? (
+                <div className="mt-8 pt-6 border-t border-outline">
+                  <button
+                    onClick={() => {
+                      setIsQuestionListOpen(false);
+                      handleSubmit();
+                    }}
+                    className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-4 rounded-xl shadow-md"
+                  >
+                    Nộp Bài
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-8 pt-6 border-t border-outline">
+                  <div className={`p-4 rounded-xl shadow-inner border ${score >= exam.passing_score ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                    <h2 className="text-xl font-bold mb-2">Kết quả bài thi</h2>
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <span className="text-3xl font-black">{score}</span>
+                      <span className="text-base opacity-70">/ {exam.total_score} điểm</span>
+                    </div>
+                    <p className="text-sm font-medium leading-snug">{score >= exam.passing_score ? '🎉 Chúc mừng! Bạn đã đạt yêu cầu.' : 'Rất tiếc! Bạn chưa đạt điểm yêu cầu.'}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating 9-squares button on Mobile/Tablet */}
+      <button
+        onClick={() => setIsQuestionListOpen(true)}
+        className="xl:hidden fixed right-0 top-1/2 -translate-y-1/2 z-40 p-3 bg-primary text-white border border-r-0 border-primary/20 rounded-l-2xl shadow-xl hover:bg-primary-hover active:scale-95 transition-all flex items-center justify-center"
+        title="Danh sách câu hỏi"
+      >
+        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M4 4h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 10h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 16h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4z" />
+        </svg>
+      </button>
+
+      {isGlobalReportModalOpen && reportQuestionDbId && (
+        <ReportModal
+          isOpen={isGlobalReportModalOpen}
+          onClose={() => setIsGlobalReportModalOpen(false)}
+          contentType="exam_question"
+          objectId={reportQuestionDbId}
+          defaultReportType="exam_question"
+          title="Báo cáo lỗi câu hỏi thi"
+        />
+      )}
 
       <ConfirmModal
         isOpen={modalConfig.isOpen}

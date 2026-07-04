@@ -89,6 +89,43 @@ export default function ExamTakePage() {
     onConfirm: () => { },
   });
 
+  // New state variables for Reading sidebar and Image Lightbox
+  const [showReadingSidebarButton, setShowReadingSidebarButton] = useState(false);
+  const [isReadingDrawerOpen, setIsReadingDrawerOpen] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [lightboxZoom, setLightboxZoom] = useState<number>(1);
+
+  useEffect(() => {
+    if (!exam || loading) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const sectionName = entry.target.getAttribute('data-section-name');
+            const nameLower = sectionName?.toLowerCase() || '';
+            if (nameLower.includes('reading') || nameLower.includes('read') || nameLower.includes('đọc') || nameLower.includes('阅读')) {
+              setShowReadingSidebarButton(true);
+            } else {
+              setShowReadingSidebarButton(false);
+            }
+          }
+        });
+      },
+      { threshold: 0.05, rootMargin: '-10% 0px -10% 0px' }
+    );
+
+    const timer = setTimeout(() => {
+      const targets = document.querySelectorAll('.section-container');
+      targets.forEach((target) => observer.observe(target));
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, [exam, loading]);
+
   useEffect(() => {
     async function loadExam() {
       try {
@@ -173,7 +210,7 @@ export default function ExamTakePage() {
       const currentIndex = allQuestions.findIndex(q => q.question_id === questionId);
       if (currentIndex !== -1 && currentIndex + 1 < allQuestions.length) {
         const nextQuestion = allQuestions[currentIndex + 1];
-        
+
         // Tắt audio toàn bài thi ngay lập tức
         if (audioRef.current) {
           audioRef.current.pause();
@@ -465,9 +502,19 @@ export default function ExamTakePage() {
 
           <div className="space-y-12">
             {exam.sections?.map(section => (
-              <div key={section.id} className="section-container">
+              <div key={section.id} id={`section-${section.id}`} className="section-container" data-section-name={section.section_name}>
                 <h2 className="text-xl font-bold text-primary mb-2">{section.section_name} - Part {section.part_number}</h2>
-                {section.instruction && <p className="text-secondary mb-6 italic">{section.instruction}</p>}
+                {section.instruction && (
+                  <div
+                    className={`text-secondary mb-6 whitespace-pre-line leading-relaxed text-base ${section.section_name === 'Reading' || section.section_name?.toLowerCase().includes('reading')
+                        ? 'not-italic font-normal text-primary'
+                        : 'italic'
+                      }`}
+                    style={{ textAlign: 'justify' }}
+                  >
+                    {section.instruction}
+                  </div>
+                )}
 
                 <div className="space-y-8">
                   {section.questions.map((question, index) => {
@@ -479,8 +526,21 @@ export default function ExamTakePage() {
                         <div className="space-y-4">
                           {/* Hàng 1: 3 cột: số câu hỏi, nút nghe câu này và dấu chấm than báo cáo */}
                           <div className="flex items-center justify-between w-full">
-                            <div className="w-8 h-8 flex-shrink-0 bg-primary/10 text-primary font-bold rounded-full flex items-center justify-center">
-                              {allQuestions.findIndex(q => q.question_id === question.question_id) + 1}
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 flex-shrink-0 bg-primary/10 text-primary font-bold rounded-full flex items-center justify-center">
+                                {allQuestions.findIndex(q => q.question_id === question.question_id) + 1}
+                              </div>
+
+                              {(section.section_name === 'Reading' || section.section_name?.toLowerCase().includes('reading')) && (
+                                <button
+                                  onClick={() => {
+                                    document.getElementById(`section-${section.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                  }}
+                                  className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold border border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 transition-colors focus:outline-none"
+                                >
+                                  Về đoạn văn
+                                </button>
+                              )}
                             </div>
 
                             <div className="flex items-center gap-3">
@@ -532,7 +592,11 @@ export default function ExamTakePage() {
                                     src={getMediaUrl(question.image_url)}
                                     alt="Question Image"
                                     loading="lazy"
-                                    className="w-full max-w-[320px] aspect-square object-cover rounded-2xl shadow-sm border border-outline-variant"
+                                    className="w-full max-w-[480px] h-auto object-contain rounded-2xl shadow-sm border border-outline-variant cursor-zoom-in hover:opacity-90 transition-opacity"
+                                    onClick={() => {
+                                      setLightboxImage(getMediaUrl(question.image_url));
+                                      setLightboxZoom(1);
+                                    }}
                                   />
                                 </div>
                               )}
@@ -548,12 +612,13 @@ export default function ExamTakePage() {
 
                           {/* Hàng 3: Các lựa chọn câu trả lời (Options / True-False / Fill Blank / Essay) */}
                           {question.question_type === 'true_false' ? (
-                            <div className="grid grid-cols-2 gap-4 w-full mt-4">
+                            <div className={`grid ${question.options.length === 3 ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-2'} gap-4 w-full mt-4`}>
                               {question.options.map(opt => {
                                 const selected = answers[question.question_id] === opt.option_id;
-                                const isTrue = opt.option_id === 'opt_True';
+                                const hasText = !!opt.text;
+                                const isTrue = opt.option_id === 'opt_True' || opt.text?.toUpperCase() === 'TRUE' || opt.text?.toUpperCase() === 'YES';
 
-                                let btnClass = "flex items-center justify-center p-4 rounded-xl border-2 transition-all cursor-pointer ";
+                                let btnClass = "flex items-center justify-center p-4 rounded-xl border-2 transition-all cursor-pointer text-lg font-bold ";
                                 if (isSubmitted) {
                                   if (opt.option_id === question.correct_answer) {
                                     btnClass += "bg-green-100 border-green-500 text-green-700 shadow-sm";
@@ -569,7 +634,9 @@ export default function ExamTakePage() {
 
                                 return (
                                   <div key={opt.option_id || opt.id} className={btnClass} onClick={() => handleOptionSelect(question.question_id, opt.option_id)}>
-                                    {isTrue ? (
+                                    {hasText ? (
+                                      <span>{opt.text}</span>
+                                    ) : isTrue ? (
                                       <svg className="w-8 h-8 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg>
                                     ) : (
                                       <svg className="w-8 h-8 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -582,13 +649,12 @@ export default function ExamTakePage() {
                             <div className="mt-4 w-full">
                               <input
                                 type="text"
-                                className={`w-full p-4 rounded-xl border-2 transition-all text-lg focus:outline-none ${
-                                  isSubmitted
+                                className={`w-full p-4 rounded-xl border-2 transition-all text-lg focus:outline-none ${isSubmitted
                                     ? ((question.correct_answer || '').trim().toLowerCase().split('/').map(ans => ans.trim()).includes(answers[question.question_id]?.trim().toLowerCase() || '')
                                       ? "bg-green-50 border-green-500 text-green-900 shadow-sm"
                                       : "bg-red-50 border-red-400 text-red-900")
                                     : "border-outline-variant bg-surface focus:border-primary"
-                                }`}
+                                  }`}
                                 placeholder="Nhập câu trả lời của bạn..."
                                 value={answers[question.question_id] || ''}
                                 onChange={(e) => {
@@ -645,7 +711,17 @@ export default function ExamTakePage() {
                                         </div>
                                         <div className="flex-1 aspect-square rounded-xl overflow-hidden bg-gray-50 flex items-center justify-center relative">
                                           {opt.image_url ? (
-                                            <img src={getMediaUrl(opt.image_url)} alt="Option" loading="lazy" className="w-full h-full object-cover" />
+                                            <img
+                                              src={getMediaUrl(opt.image_url)}
+                                              alt="Option"
+                                              loading="lazy"
+                                              className="w-full h-full object-contain cursor-zoom-in hover:opacity-90 transition-opacity"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setLightboxImage(getMediaUrl(opt.image_url));
+                                                setLightboxZoom(1);
+                                              }}
+                                            />
                                           ) : opt.image_description ? (
                                             <span className="italic text-gray-500 text-xs p-4 text-center">[{opt.image_description}]</span>
                                           ) : null}
@@ -663,7 +739,17 @@ export default function ExamTakePage() {
                                           {opt.text}
                                           {opt.image_url && (
                                             <div className="mt-3 flex justify-center md:justify-start">
-                                              <img src={getMediaUrl(opt.image_url)} alt="Option" loading="lazy" className="w-32 h-32 aspect-square object-cover rounded-xl border border-gray-200 shadow-sm" />
+                                              <img
+                                                src={getMediaUrl(opt.image_url)}
+                                                alt="Option"
+                                                loading="lazy"
+                                                className="w-32 h-auto object-contain rounded-xl border border-gray-200 shadow-sm cursor-zoom-in hover:opacity-90 transition-opacity"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setLightboxImage(getMediaUrl(opt.image_url));
+                                                  setLightboxZoom(1);
+                                                }}
+                                              />
                                             </div>
                                           )}
                                         </div>
@@ -780,7 +866,7 @@ export default function ExamTakePage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            
+
             <h2 className="text-xl font-bold text-primary mb-4 pr-8 flex items-center justify-between">
               <span>Danh sách câu hỏi</span>
               <span className="text-sm font-normal text-secondary bg-gray-100 px-3 py-1 rounded-full">
@@ -879,6 +965,258 @@ export default function ExamTakePage() {
         onConfirm={modalConfig.onConfirm}
         onCancel={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
       />
+
+      {/* Floating Button for Reading Sidebar */}
+      {showReadingSidebarButton && (
+        <button
+          onClick={() => setIsReadingDrawerOpen(true)}
+          className="fixed right-0 top-[calc(50%+60px)] xl:top-1/2 -translate-y-1/2 z-40 p-3 bg-secondary text-white border border-r-0 border-secondary/20 rounded-l-2xl shadow-xl hover:bg-secondary-hover active:scale-95 transition-all flex items-center justify-center gap-1.5"
+          title="Danh sách câu hỏi phần Đọc"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+          </svg>
+          <span className="hidden xl:inline text-[10px] font-bold [writing-mode:vertical-rl] rotate-180 py-1">Đọc</span>
+        </button>
+      )}
+
+      {/* Reading Section Sidebar Drawer (Interactive Answer Sheet) */}
+      {isReadingDrawerOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end animate-in fade-in duration-300">
+          {/* Backdrop */}
+          <div className="fixed inset-0 bg-black/40" onClick={() => setIsReadingDrawerOpen(false)} />
+          {/* Drawer Content */}
+          <div className="relative w-96 max-w-[95vw] h-full bg-surface border-l border-outline p-6 flex flex-col shadow-2xl animate-in slide-in-from-right duration-300">
+            <button
+              onClick={() => setIsReadingDrawerOpen(false)}
+              className="absolute top-4 right-4 text-secondary hover:text-primary z-10"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <h2 className="text-xl font-bold text-primary mb-6 pr-8 flex items-center justify-between">
+              <span>Bảng Trả Lời (Đọc)</span>
+              <span className="text-sm font-normal text-secondary bg-gray-100 px-3 py-1 rounded-full">
+                {Object.keys(answers).filter(k => allQuestions.find(q => q.question_id === k)?.tags?.includes('reading')).length} / {allQuestions.filter(q => q.tags?.includes('reading')).length}
+              </span>
+            </h2>
+
+            <div className="flex-1 overflow-y-auto pr-2 pb-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full space-y-6">
+              {exam.sections?.filter(s => {
+                const name = s.section_name?.toLowerCase() || '';
+                return name.includes('reading') || name.includes('read') || name.includes('đọc') || name.includes('阅读');
+              }).map((sec) => (
+                <div key={`reading-draw-sec-${sec.id}`} className="mb-6 border-b pb-6 last:border-b-0">
+                  <h3 className="text-xs font-bold text-secondary mb-4 uppercase tracking-wider bg-gray-50 p-3 rounded-xl border">
+                    {sec.section_name} - Part {sec.part_number}
+                  </h3>
+                  <div className="space-y-6">
+                    {sec.questions.map((q) => {
+                      const isAnswered = !!answers[q.question_id];
+                      const isCorrect = answers[q.question_id] === q.correct_answer;
+                      const overallIndex = allQuestions.findIndex(allQ => allQ.question_id === q.question_id) + 1;
+
+                      return (
+                        <div key={`draw-q-card-${q.question_id}`} className="p-4 bg-gray-50/50 rounded-2xl border border-outline-variant space-y-3">
+                          {/* Question header with jump button */}
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-secondary text-sm">Câu {overallIndex}</span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => {
+                                  document.getElementById(`section-${sec.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                  if (window.innerWidth < 1280) {
+                                    setIsReadingDrawerOpen(false);
+                                  }
+                                }}
+                                className="text-xs text-primary hover:underline font-semibold flex items-center gap-0.5"
+                              >
+                                📖 Đoạn văn
+                              </button>
+                              <span className="text-gray-300 text-xs">|</span>
+                              <button
+                                onClick={() => {
+                                  document.getElementById(`question-${q.question_id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  if (window.innerWidth < 1280) {
+                                    setIsReadingDrawerOpen(false);
+                                  }
+                                }}
+                                className="text-xs text-primary hover:underline font-semibold flex items-center gap-0.5"
+                              >
+                                Câu hỏi &darr;
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Question text preview */}
+                          <p className="text-xs text-primary font-medium leading-relaxed whitespace-pre-line">
+                            {q.question_text}
+                          </p>
+
+                          {/* Answer Choice Panel inside Drawer */}
+                          {q.question_type === 'true_false' ? (
+                            <div className="flex flex-wrap gap-2 w-full mt-2">
+                              {q.options.map(opt => {
+                                const isOptSelected = answers[q.question_id] === opt.option_id;
+                                let btnClass = "flex-1 text-center py-2 px-3 rounded-lg border text-xs font-bold transition-all ";
+
+                                if (isSubmitted) {
+                                  if (opt.option_id === q.correct_answer) {
+                                    btnClass += "bg-green-100 border-green-500 text-green-700";
+                                  } else if (isOptSelected && opt.option_id !== q.correct_answer) {
+                                    btnClass += "bg-red-100 border-red-500 text-red-700";
+                                  } else {
+                                    btnClass += "border-gray-200 text-gray-400 opacity-60 bg-gray-50";
+                                  }
+                                } else {
+                                  btnClass += isOptSelected
+                                    ? "border-primary bg-primary text-white shadow-sm"
+                                    : "border-gray-300 bg-white hover:bg-gray-100 text-secondary";
+                                }
+
+                                return (
+                                  <button
+                                    key={`draw-opt-${opt.option_id}`}
+                                    onClick={() => handleOptionSelect(q.question_id, opt.option_id)}
+                                    className={btnClass}
+                                    disabled={isSubmitted}
+                                  >
+                                    {opt.text}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : q.question_type === 'multiple_choice' ? (
+                            <div className="grid grid-cols-2 gap-2 w-full mt-2">
+                              {q.options.map((opt, optIdx) => {
+                                const isOptSelected = answers[q.question_id] === opt.option_id;
+                                const letter = String.fromCharCode(65 + optIdx);
+                                let btnClass = "flex items-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold transition-all text-left ";
+
+                                if (isSubmitted) {
+                                  if (opt.option_id === q.correct_answer) {
+                                    btnClass += "bg-green-100 border-green-500 text-green-700 font-bold";
+                                  } else if (isOptSelected && opt.option_id !== q.correct_answer) {
+                                    btnClass += "bg-red-100 border-red-500 text-red-700 font-bold";
+                                  } else {
+                                    btnClass += "border-gray-200 text-gray-400 opacity-60 bg-gray-50";
+                                  }
+                                } else {
+                                  btnClass += isOptSelected
+                                    ? "border-primary bg-primary text-white shadow-sm"
+                                    : "border-gray-300 bg-white hover:bg-gray-100 text-secondary";
+                                }
+
+                                return (
+                                  <button
+                                    key={`draw-mc-opt-${opt.option_id}`}
+                                    onClick={() => handleOptionSelect(q.question_id, opt.option_id)}
+                                    className={btnClass}
+                                    disabled={isSubmitted}
+                                    title={opt.text}
+                                  >
+                                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isOptSelected && !isSubmitted ? 'bg-white/20 text-white' : 'bg-gray-100 text-secondary'}`}>
+                                      {letter}
+                                    </span>
+                                    <span className="truncate flex-1">{opt.text}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : q.question_type === 'fill_blank' ? (
+                            <div className="mt-2">
+                              <input
+                                type="text"
+                                className={`w-full p-2.5 rounded-xl border-2 transition-all text-xs focus:outline-none ${isSubmitted
+                                    ? ((q.correct_answer || '').trim().toLowerCase().split('/').map(ans => ans.trim()).includes(answers[q.question_id]?.trim().toLowerCase() || '')
+                                      ? "bg-green-50 border-green-500 text-green-900 shadow-sm"
+                                      : "bg-red-50 border-red-400 text-red-900")
+                                    : "border-outline-variant bg-surface focus:border-primary"
+                                  }`}
+                                placeholder="Nhập câu trả lời..."
+                                value={answers[q.question_id] || ''}
+                                onChange={(e) => {
+                                  if (!isSubmitted) {
+                                    setAnswers(prev => ({ ...prev, [q.question_id]: e.target.value }));
+                                  }
+                                }}
+                                disabled={isSubmitted}
+                              />
+                              {isSubmitted && (
+                                <div className="mt-1 text-[10px] font-semibold text-green-600">
+                                  Đáp án đúng: {q.correct_answer}
+                                </div>
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Lightbox Modal with Zoom */}
+      {lightboxImage && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
+          {/* Close button */}
+          <button
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-6 right-6 z-10 p-3 bg-white/10 text-white hover:bg-white/20 rounded-full transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          {/* Zoom controls */}
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex gap-4 bg-white/10 backdrop-blur px-4 py-2 rounded-full border border-white/20">
+            <button
+              onClick={() => setLightboxZoom(prev => Math.max(0.5, prev - 0.25))}
+              className="text-white hover:text-primary-light font-bold text-xl px-2 focus:outline-none"
+              title="Thu nhỏ"
+            >
+              ➖
+            </button>
+            <span className="text-white font-mono min-w-[60px] text-center flex items-center justify-center">
+              {Math.round(lightboxZoom * 100)}%
+            </span>
+            <button
+              onClick={() => setLightboxZoom(prev => Math.min(3, prev + 0.25))}
+              className="text-white hover:text-primary-light font-bold text-xl px-2 focus:outline-none"
+              title="Phóng to"
+            >
+              ➕
+            </button>
+            <button
+              onClick={() => setLightboxZoom(1)}
+              className="text-white hover:text-primary-light text-xs px-2 flex items-center focus:outline-none"
+              title="Đặt lại"
+            >
+              Reset
+            </button>
+          </div>
+
+          {/* Image container */}
+          <div className="w-full h-full overflow-auto flex items-center justify-center p-8">
+            <img
+              src={lightboxImage}
+              alt="Zoomed Chart"
+              className="max-w-full max-h-[85vh] rounded-lg shadow-2xl transition-transform duration-200"
+              style={{
+                transform: `scale(${lightboxZoom})`,
+                cursor: lightboxZoom > 1 ? 'grab' : 'zoom-in'
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

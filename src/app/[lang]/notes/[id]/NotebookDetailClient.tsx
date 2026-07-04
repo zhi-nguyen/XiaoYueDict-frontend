@@ -73,6 +73,7 @@ export default function NotebookDetailClient({
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedWordIds, setSelectedWordIds] = useState<string[]>([]);
+  const [invalidWordIds, setInvalidWordIds] = useState<string[]>([]);
   const [editName, setEditName] = useState(initialNotebook.name);
   const [editDesc, setEditDesc] = useState(initialNotebook.description || '');
 
@@ -442,7 +443,7 @@ export default function NotebookDetailClient({
 
                       <div className="flex-1 min-w-0 flex flex-col">
                         <div className="flex items-start justify-between gap-3">
-                          <div className={`text-xl sm:text-2xl font-bold text-primary break-words flex-1 min-w-0 ${language === 'zh' ? 'font-noto-sc' : ''}`}>
+                          <div className={`text-xl sm:text-2xl font-bold text-primary break-words flex-1 min-w-0 ${language === 'zh' ? 'font-noto-sc' : ''} ${invalidWordIds.includes(word.id) ? 'underline decoration-red-500 decoration-wavy decoration-2' : ''}`}>
                             {word.vocabulary}
                           </div>
                           
@@ -705,6 +706,7 @@ export default function NotebookDetailClient({
           notebookName={notebook.name}
           words={words}
           selectedWordIds={selectedWordIds}
+          onInvalidWordsFound={(ids) => setInvalidWordIds(ids)}
         />
       )}
 

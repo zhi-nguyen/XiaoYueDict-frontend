@@ -9,6 +9,7 @@ import SmartQueueStatus from '@/components/SmartQueueStatus';
 import { QUEUE_STRATEGIES } from '@/constants/queueStrategies';
 import { useAuthStore } from '@/store/useAuthStore';
 import AuthModal from '@/components/auth/AuthModal';
+import ConfirmModal from '@/components/ConfirmModal';
 
 import { Word } from '@/types/note';
 
@@ -20,6 +21,7 @@ interface ExportPDFModalProps {
   words: Word[];
   selectedWordIds: string[];
   onSelectAllWords?: () => void;
+  onInvalidWordsFound?: (wordIds: string[]) => void;
 }
 
 export default function ExportPDFModal({
@@ -29,6 +31,7 @@ export default function ExportPDFModal({
   notebookName,
   words,
   selectedWordIds,
+  onInvalidWordsFound,
 }: ExportPDFModalProps) {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
   const [mounted, setMounted] = useState(false);
@@ -36,6 +39,7 @@ export default function ExportPDFModal({
 
   const [gridColor, setGridColor] = useState('#D32F2F'); // Default: Red
   const [showPinyin, setShowPinyin] = useState(true);
+  const [strokeByStroke, setStrokeByStroke] = useState(false);
   const [showMeaning, setShowMeaning] = useState(true);
   const [showNotes, setShowNotes] = useState(true);
   const [showCover, setShowCover] = useState(true);
@@ -45,7 +49,7 @@ export default function ExportPDFModal({
   // Advanced customization state
   const [extraRows, setExtraRows] = useState(0);
   const [emptyPages, setEmptyPages] = useState(0);
-  const [emptyPageGridSize, setEmptyPageGridSize] = useState<'auto' | '2.0' | '1.0'>('auto');
+  const [emptyPageGridSize, setEmptyPageGridSize] = useState<'auto' | '2.0' | '1.0'>('1.0');
 
   const [exporting, setExporting] = useState(false);
   const [phase, setPhase] = useState<'idle' | 'uploading' | 'queued' | 'processing' | 'completed' | 'error'>('idle');
@@ -53,6 +57,15 @@ export default function ExportPDFModal({
   const [queuePosition, setQueuePosition] = useState<number>(0);
   const [estimatedWait, setEstimatedWait] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // ConfirmModal states for deconstruction stroke errors
+  const [confirmBlockOpen, setConfirmBlockOpen] = useState(false);
+  const [confirmBlockTitle, setConfirmBlockTitle] = useState('');
+  const [confirmBlockMessage, setConfirmBlockMessage] = useState('');
+  const [confirmBlockShowConfirm, setConfirmBlockShowConfirm] = useState(true);
+  const [confirmBlockConfirmText, setConfirmBlockConfirmText] = useState('Xác nhận');
+  const [confirmBlockCancelText, setConfirmBlockCancelText] = useState('Hủy');
+  const [onConfirmAction, setOnConfirmAction] = useState<() => void>(() => () => {});
+  const [onCancelAction, setOnCancelAction] = useState<() => void>(() => () => {});
 
   // Limits information from backend
   const [limitInfo, setLimitInfo] = useState<{
@@ -256,22 +269,7 @@ export default function ExportPDFModal({
     currentWordCount = notMasteredWords.length;
   }
 
-  const handleExport = async () => {
-    if (isAuthLoading) return;
-    if (limitInfo && currentWordCount > limitInfo.max_words) {
-      setErrorMessage(`Số lượng từ (${currentWordCount} từ) vượt quá giới hạn tối đa (${limitInfo.max_words} từ) của gói ${limitInfo.tier}.`);
-      return;
-    }
-    if (limitInfo && limitInfo.remaining_count <= 0) {
-      setErrorMessage('Bạn đã dùng hết lượt xuất PDF của ngày hôm nay.');
-      return;
-    }
-
-    setExporting(true);
-    setPhase('uploading');
-    setErrorMessage(null);
-    setTaskId(null);
-
+  const proceedWithExport = async (wordsToExportList: Word[]) => {
     try {
       const params: any = {
         grid_color: gridColor,
@@ -283,32 +281,18 @@ export default function ExportPDFModal({
         extra_rows: extraRows,
         empty_pages: emptyPages,
         empty_page_grid_size: emptyPageGridSize,
+        stroke_by_stroke: strokeByStroke,
       };
 
-      if (exportScope === 'selected') {
-        if (selectedWordIds.length === 0) {
+      // Always pass the explicit word IDs when filtered or when scope is selected/mastered/not_mastered
+      if (strokeByStroke || exportScope === 'selected' || exportScope === 'mastered' || exportScope === 'not_mastered') {
+        if (wordsToExportList.length === 0) {
           setErrorMessage('Vui lòng chọn ít nhất một từ vựng để xuất.');
           setPhase('error');
           setExporting(false);
           return;
         }
-        params.word_ids = selectedWordIds.join(',');
-      } else if (exportScope === 'mastered') {
-        if (masteredWords.length === 0) {
-          setErrorMessage('Không có từ vựng nào đã thuộc để xuất.');
-          setPhase('error');
-          setExporting(false);
-          return;
-        }
-        params.word_ids = masteredWords.map(w => w.id).join(',');
-      } else if (exportScope === 'not_mastered') {
-        if (notMasteredWords.length === 0) {
-          setErrorMessage('Không có từ vựng nào chưa thuộc để xuất.');
-          setPhase('error');
-          setExporting(false);
-          return;
-        }
-        params.word_ids = notMasteredWords.map(w => w.id).join(',');
+        params.word_ids = wordsToExportList.map(w => w.id).join(',');
       }
 
       // POST to API Gateway to create the PDF background task
@@ -329,6 +313,160 @@ export default function ExportPDFModal({
       setPhase('error');
       setErrorMessage(getErrorMessage(err));
     }
+  };
+
+  const handleExport = async () => {
+    if (isAuthLoading) return;
+    
+    // 1. Determine the list of words to be exported
+    let wordsToExport = words;
+    if (exportScope === 'selected') {
+      wordsToExport = words.filter(w => selectedWordIds.includes(w.id));
+    } else if (exportScope === 'mastered') {
+      wordsToExport = masteredWords;
+    } else if (exportScope === 'not_mastered') {
+      wordsToExport = notMasteredWords;
+    }
+
+    let finalWordCount = wordsToExport.length;
+    if (limitInfo && finalWordCount > limitInfo.max_words) {
+      setErrorMessage(`Số lượng từ (${finalWordCount} từ) vượt quá giới hạn tối đa (${limitInfo.max_words} từ) của gói ${limitInfo.tier}.`);
+      return;
+    }
+    if (limitInfo && limitInfo.remaining_count <= 0) {
+      setErrorMessage('Bạn đã dùng hết lượt xuất PDF của ngày hôm nay.');
+      return;
+    }
+
+    setExporting(true);
+    setPhase('uploading');
+    setErrorMessage(null);
+    setTaskId(null);
+
+    // 2. Perform client-side stroke and length checking if "Luyện từng nét" is enabled
+    if (strokeByStroke) {
+      try {
+        // Collect invalid words based on length > 14
+        const invalidByLengthWords = wordsToExport.filter(w => {
+          const hanziList = w.vocabulary.split('').filter(c => /^[\u4e00-\u9fa5]$/.test(c));
+          return hanziList.length > 14;
+        });
+
+        // Collect unique characters from words with length <= 14 for stroke count checking
+        const wordsToCheck = wordsToExport.filter(w => {
+          const hanziList = w.vocabulary.split('').filter(c => /^[\u4e00-\u9fa5]$/.test(c));
+          return hanziList.length <= 14;
+        });
+
+        const uniqueChars = Array.from(
+          new Set(
+            wordsToCheck.flatMap(w =>
+              w.vocabulary.split('').filter(c => /^[\u4e00-\u9fa5]$/.test(c))
+            )
+          )
+        );
+
+        const strokeCounts: { [char: string]: number } = {};
+        const isUnsupported: { [char: string]: boolean } = {};
+        const concurrencyLimit = 5;
+        for (let i = 0; i < uniqueChars.length; i += concurrencyLimit) {
+          const chunk = uniqueChars.slice(i, i + concurrencyLimit);
+          await Promise.all(
+            chunk.map(async (char) => {
+              try {
+                const res = await fetch(`https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0/${char}.json`);
+                if (res.ok) {
+                  const data = await res.json();
+                  const count = data.strokes?.length || 0;
+                  strokeCounts[char] = count;
+                  if (count > 27) {
+                    isUnsupported[char] = true;
+                  }
+                } else {
+                  strokeCounts[char] = 0;
+                  isUnsupported[char] = true;
+                }
+              } catch (err) {
+                console.error(`Failed to fetch stroke data for ${char}:`, err);
+                strokeCounts[char] = 0;
+                isUnsupported[char] = true;
+              }
+            })
+          );
+        }
+
+        const invalidByStrokesWords = wordsToCheck.filter(w =>
+          w.vocabulary.split('').some(c => isUnsupported[c])
+        );
+
+        // Combined invalid words
+        const allInvalidWords = Array.from(new Set([...invalidByLengthWords, ...invalidByStrokesWords]));
+        const invalidWordIds = allInvalidWords.map(w => w.id);
+
+        if (invalidWordIds.length > 0) {
+          // Build error message items
+          const errorTexts: string[] = [];
+          if (invalidByLengthWords.length > 0) {
+            errorTexts.push(`câu vượt quá 14 chữ Hán: "${invalidByLengthWords.map(w => w.vocabulary).join(', ')}"`);
+          }
+          if (invalidByStrokesWords.length > 0) {
+            const invalidChars = Array.from(
+              new Set(
+                invalidByStrokesWords.flatMap(w =>
+                  w.vocabulary.split('').filter(c => isUnsupported[c])
+                )
+              )
+            );
+            errorTexts.push(`từ không đúng định dạng hoặc có nét > 27: "${invalidChars.join(', ')}"`);
+          }
+
+          const combinedErrorMsg = errorTexts.join('; ');
+          const validWordsLeft = wordsToExport.filter(w => !invalidWordIds.includes(w.id));
+
+          if (validWordsLeft.length > 0) {
+            setConfirmBlockTitle('Phát hiện từ không hợp lệ');
+            setConfirmBlockMessage(
+              `Hệ thống phát hiện ${combinedErrorMsg}. Nếu xác nhận, hệ thống sẽ xuất file mà không có các từ lỗi này.`
+            );
+            setConfirmBlockShowConfirm(true);
+            setConfirmBlockConfirmText('Tiếp tục xuất');
+            setConfirmBlockCancelText('Hủy');
+            setOnConfirmAction(() => () => {
+              setConfirmBlockOpen(false);
+              proceedWithExport(validWordsLeft);
+            });
+            setOnCancelAction(() => () => {
+              setConfirmBlockOpen(false);
+              onInvalidWordsFound?.(invalidWordIds);
+              setExporting(false);
+              setPhase('idle');
+            });
+            setConfirmBlockOpen(true);
+            return;
+          } else {
+            setConfirmBlockTitle('Không thể xuất PDF');
+            setConfirmBlockMessage(
+              `Hệ thống phát hiện ${combinedErrorMsg}. Vui lòng loại bỏ hoặc chỉnh sửa các từ này trước khi xuất.`
+            );
+            setConfirmBlockShowConfirm(false);
+            setConfirmBlockCancelText('Đóng');
+            setOnCancelAction(() => () => {
+              setConfirmBlockOpen(false);
+              onInvalidWordsFound?.(invalidWordIds);
+              setExporting(false);
+              setPhase('idle');
+            });
+            setConfirmBlockOpen(true);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Error in frontend stroke and length check:', err);
+      }
+    }
+
+    // If no invalid words, proceed with exporting all
+    await proceedWithExport(wordsToExport);
   };
 
   const colorsList = [
@@ -530,12 +668,25 @@ export default function ExportPDFModal({
               <label className="flex items-center justify-between p-3 bg-surface border border-outline rounded-xl cursor-pointer hover:bg-hover-bg transition-colors">
                 <div className="flex flex-col">
                   <span className="text-sm font-semibold text-primary">Hiển thị bính âm (Pinyin)</span>
-                  <span className="text-xs text-secondary text-left">In chữ Pinyin màu xanh lá cây trên đầu ô đồ</span>
+                  <span className="text-xs text-secondary text-left">In bính âm ở tiêu đề của từ vựng</span>
                 </div>
                 <input
                   type="checkbox"
                   checked={showPinyin}
                   onChange={(e) => setShowPinyin(e.target.checked)}
+                  className="w-4 h-4 accent-primary"
+                />
+              </label>
+
+              <label className="flex items-center justify-between p-3 bg-surface border border-outline rounded-xl cursor-pointer hover:bg-hover-bg transition-colors">
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-primary">Luyện viết từng nét (Phân rã nét chữ)</span>
+                  <span className="text-xs text-secondary text-left">Tự động phân rã nét viết của chữ (mặc định 14 ô ngang, tối đa 27 nét)</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={strokeByStroke}
+                  onChange={(e) => setStrokeByStroke(e.target.checked)}
                   className="w-4 h-4 accent-primary"
                 />
               </label>
@@ -655,6 +806,17 @@ export default function ExportPDFModal({
         </div>
 
         <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+
+        <ConfirmModal
+          isOpen={confirmBlockOpen}
+          title={confirmBlockTitle}
+          message={confirmBlockMessage}
+          confirmText={confirmBlockConfirmText}
+          cancelText={confirmBlockCancelText}
+          showConfirmButton={confirmBlockShowConfirm}
+          onConfirm={onConfirmAction}
+          onCancel={onCancelAction}
+        />
       </div>
     </div>
   );

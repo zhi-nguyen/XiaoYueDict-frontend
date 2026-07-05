@@ -3,7 +3,7 @@ import { Exam } from '@/types/exam';
 import nextDynamic from 'next/dynamic';
 import { getServerAuthToken } from '@/lib/serverAuth';
 
-const ExamClient = nextDynamic(() => import('./ExamClient'), {
+const ExamListClient = nextDynamic(() => import('./ExamListClient'), {
   ssr: true,
   loading: () => (
     <div className="flex justify-center items-center py-20">
@@ -45,6 +45,6 @@ export default async function ExamPage({ params }: ExamPageProps) {
     console.error('[ExamPage Server] Failed to pre-fetch exams:', err);
   }
 
-  return <ExamClient initialExams={initialExams} />;
+  return <ExamListClient initialExams={initialExams} />;
 }
 

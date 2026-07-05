@@ -20,6 +20,10 @@ export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
 
+  if (pathname && pathname.includes('/exam/take/')) {
+    return null;
+  }
+
   const switchLanguage = (newLang: string) => {
     if (typeof window !== 'undefined') {
       // Force a full page reload and kick back to Dashboard (or Homepage if guest)

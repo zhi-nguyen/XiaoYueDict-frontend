@@ -1,9 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 :root {
   /* ── Core Palette ── */
@@ -32,6 +32,31 @@
   --accent-gradient-end: #8B5CF6;
   --glow-primary: rgba(99, 102, 241, 0.15);
   --glow-recording: rgba(239, 68, 68, 0.2);
+
+  /* ── Exam Extended Palette (Material Design 3 tokens) ── */
+  --color-primary-container: #334155;
+  --color-on-primary-container: #9eadc5;
+  --color-surface-container-low: #eff4ff;
+  --color-surface-container: #e5eeff;
+  --color-on-surface-variant: #44474c;
+  --color-secondary-container: #c1e8d6;
+  --color-on-secondary-container: #466a5b;
+}
+
+.exam-glass {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.exam-grid-canvas {
+  background-image: radial-gradient(var(--color-outline) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
+.highlight-yellow {
+  background-color: #fef08a !important;
+  color: #1e293b !important;
+  display: inline;
 }
 
 * {

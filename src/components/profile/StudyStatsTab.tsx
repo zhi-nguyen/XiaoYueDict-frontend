@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { getStudyHistory } from '@/lib/api/gamification';
 import CalendarHeatmap from 'react-calendar-heatmap';
 import 'react-calendar-heatmap/dist/styles.css';
@@ -16,6 +16,7 @@ const shiftDate = (date: Date, numDays: number) => {
  */
 export default function StudyStatsTab() {
   const [studyHistory, setStudyHistory] = useState<{ date: string; count: number }[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     getStudyHistory().then(data => {
@@ -27,13 +28,28 @@ export default function StudyStatsTab() {
     }).catch(console.error);
   }, []);
 
+  useEffect(() => {
+    if (containerRef.current) {
+      // Use requestAnimationFrame or timeout to ensure DOM has rendered
+      const container = containerRef.current;
+      const scrollToEnd = () => {
+        container.scrollLeft = container.scrollWidth;
+      };
+      
+      // Execute immediately and also on next frame for safety
+      scrollToEnd();
+      const rafId = requestAnimationFrame(scrollToEnd);
+      return () => cancelAnimationFrame(rafId);
+    }
+  }, [studyHistory]);
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2">
       <h3 className="text-xl font-bold text-primary mb-2">Lịch sử học tập (Heatmap)</h3>
       <p className="text-secondary text-sm mb-6">Theo dõi tần suất và mức độ chăm chỉ của bạn qua từng ngày.</p>
 
-      <div className="w-full max-w-3xl overflow-x-auto">
-        <div className="min-w-[700px]">
+      <div ref={containerRef} className="w-full max-w-3xl overflow-x-auto">
+        <div className="min-w-[450px] md:min-w-[700px]">
           <CalendarHeatmap
             startDate={shiftDate(new Date(), -150)}
             endDate={new Date()}

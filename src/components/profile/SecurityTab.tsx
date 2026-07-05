@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { updatePassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { getErrorMessage } from '@/lib/errorHelper';
 
 interface SecurityTabProps {
   onAlert: (config: { title: string; message: string; type: 'success' | 'error' | 'info' }) => void;
@@ -49,15 +50,9 @@ export default function SecurityTab({ onAlert }: SecurityTabProps) {
       }
     } catch (err: any) {
       console.error('Password change error', err);
-      let msg = 'Đổi mật khẩu thất bại!';
-      if (err.code === 'auth/requires-recent-login') {
-        msg = 'Hành động này yêu cầu bạn phải vừa mới đăng nhập gần đây. Vui lòng đăng xuất rồi đăng nhập lại để thực hiện đổi mật khẩu.';
-      } else if (err.message) {
-        msg = err.message;
-      }
       onAlert({
         title: 'Lỗi',
-        message: msg,
+        message: getErrorMessage(err),
         type: 'error'
       });
     } finally {

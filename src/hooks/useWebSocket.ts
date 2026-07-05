@@ -195,6 +195,14 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
               window.dispatchEvent(new CustomEvent('tts_task_completed', { detail: message.payload }));
             } else if (message.type === 'tts_failed') {
               window.dispatchEvent(new CustomEvent('tts_task_failed', { detail: message.payload }));
+            } else if (message.type === 'flashcard_exercises_ready') {
+              window.dispatchEvent(new CustomEvent('flashcard_exercises_ready', { detail: message.payload }));
+            } else if (message.type === 'flashcard_exercises_failed') {
+              window.dispatchEvent(new CustomEvent('flashcard_exercises_failed', { detail: message.payload }));
+            } else if (message.type === 'writing_check_complete') {
+              window.dispatchEvent(new CustomEvent('writing_check_complete', { detail: message.payload }));
+            } else if (message.type === 'writing_check_failed') {
+              window.dispatchEvent(new CustomEvent('writing_check_failed', { detail: message.payload }));
             }
           }
         } catch (err) {

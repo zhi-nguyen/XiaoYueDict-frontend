@@ -11,6 +11,7 @@ const config: Config = {
       fontFamily: {
         sans: ['Lexend', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         lexend: ['Lexend', 'sans-serif'],
+        inter: ['Inter', 'sans-serif'],
       },
       fontSize: {
         // System-wide typography scale adjustment
@@ -34,6 +35,17 @@ const config: Config = {
         outline: 'var(--color-outline)',
         'hover-bg': 'var(--color-hover-bg)',
         'content-bg': 'var(--color-content-bg)',
+        'primary-container': 'var(--color-primary-container)',
+        'on-primary-container': 'var(--color-on-primary-container)',
+        'surface-container-low': 'var(--color-surface-container-low)',
+        'surface-container': 'var(--color-surface-container)',
+        'on-surface-variant': 'var(--color-on-surface-variant)',
+        'secondary-container': 'var(--color-secondary-container)',
+        'on-secondary-container': 'var(--color-on-secondary-container)',
+        'score-excellent': 'var(--score-excellent)',
+        'score-good': 'var(--score-good)',
+        'score-moderate': 'var(--score-moderate)',
+        'score-poor': 'var(--score-poor)',
       }
     },
   },

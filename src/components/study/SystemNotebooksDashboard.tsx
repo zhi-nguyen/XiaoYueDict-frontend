@@ -8,6 +8,9 @@ import { djangoClient } from '@/lib/apiClient';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import { ZhWord } from '@/types/dictionary';
 import { speakBrowserFallback, playTTSWithClientCache } from '@/lib/zhUtils';
+import { cloneSystemNotebook, fetchNotebooks } from '@/lib/api/notes';
+import { useAuthStore } from '@/store/useAuthStore';
+import ConfirmModal from '@/components/ConfirmModal';
 
 const playAudio = (word: string, lang: string) => {
   const langCode = lang === 'en' ? 'en' : 'zh';
@@ -34,12 +37,50 @@ interface SystemNotebooksDashboardProps {
 }
 
 export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooksDashboardProps) {
+  const { isAuthenticated } = useAuthStore();
   const { tier, isActive, fetchSubscription } = useSubscriptionStore();
   const [selectedNotebook, setSelectedNotebook] = useState<SystemNotebook | null>(null);
   const [page, setPage] = useState(1);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<'hsk' | 'pos' | 'tag'>('hsk');
+  const [isCloning, setIsCloning] = useState(false);
+
+  const executeClone = async () => {
+    if (!selectedNotebook) return;
+    setIsCloning(true);
+    try {
+      await cloneSystemNotebook(selectedNotebook.id, lang);
+      setToastMessage(`Đã lưu "${selectedNotebook.name}" thành sổ tay cá nhân của bạn!`);
+    } catch (err) {
+      console.error("Failed to clone notebook:", err);
+      setToastMessage("Có lỗi xảy ra khi lưu sổ tay.");
+    } finally {
+      setIsCloning(false);
+      setShowConfirmModal(false);
+    }
+  };
+
+  const handleClone = async () => {
+    if (!selectedNotebook) return;
+    setIsCloning(true);
+    try {
+      const personalNotebooks = await fetchNotebooks(lang);
+      const expectedName = `${selectedNotebook.name} (Sổ cá nhân)`;
+      const alreadyExists = personalNotebooks.some((nb: any) => nb.name === expectedName);
+
+      if (alreadyExists) {
+        setShowConfirmModal(true);
+        setIsCloning(false);
+      } else {
+        await executeClone();
+      }
+    } catch (err) {
+      console.error("Failed to check existing notebooks:", err);
+      await executeClone();
+    }
+  };
 
   const isPremiumUser = isActive && (tier === 'Premium' || tier === 'Pro');
 
@@ -104,10 +145,10 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
   const totalPages = Math.ceil(totalWordsCount / 20);
 
   const isLoading = isLoadingMetadata;
-  const error = metadataError 
-    ? 'Không thể tải danh sách sổ tay hệ thống. Vui lòng thử lại sau.' 
-    : wordsError 
-      ? 'Không thể tải từ vựng của sổ tay. Vui lòng thử lại.' 
+  const error = metadataError
+    ? 'Không thể tải danh sách sổ tay hệ thống. Vui lòng thử lại sau.'
+    : wordsError
+      ? 'Không thể tải từ vựng của sổ tay. Vui lòng thử lại.'
       : null;
 
   const handleNotebookClick = (notebook: SystemNotebook) => {
@@ -186,118 +227,150 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
   // ─── 1. DETAIL VIEW ───
   if (selectedNotebook) {
     return (
-      <div className="bg-surface border border-outline rounded-[1.5rem] p-6 md:p-8 min-h-[500px] shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-outline pb-5 mb-6">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleBack}
-              className="p-2 rounded-full hover:bg-hover-bg text-secondary hover:text-primary transition-colors flex items-center justify-center border border-outline bg-surface"
-              title="Quay lại"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div>
-              <h2 className="text-2xl font-bold text-primary flex items-center gap-2">
-                {selectedNotebook.name}
-                {selectedNotebook.is_premium && !isPremiumUser && (
-                  <span className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider bg-orange/10 text-orange border border-orange/20 px-2 py-0.5 rounded-md">
-                    Premium
-                  </span>
-                )}
-              </h2>
-              <p className="text-xs text-secondary mt-1">{selectedNotebook.description} • {totalWordsCount} từ vựng</p>
-            </div>
-          </div>
-        </div>
-
-        {isLoadingWords ? (
-          <div className="flex flex-col items-center justify-center py-24">
-            <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-            <p className="text-secondary font-medium">Đang nạp từ vựng...</p>
-          </div>
-        ) : words.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-secondary">
-            <span className="material-symbols-outlined text-5xl opacity-40 mb-3">menu_book</span>
-            <p className="text-sm font-medium">Sổ tay hệ thống hiện chưa có từ vựng nào.</p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {words.map((w: any) => (
-                <div
-                  key={w.id}
-                  className="p-4 bg-surface-alt border border-outline rounded-2xl flex items-start justify-between hover:border-primary/45 transition-all group hover:shadow-sm"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-baseline gap-2">
-                      <span
-                        onClick={() => onSearchWord(w.word)}
-                        className="text-2xl font-bold text-primary cursor-pointer hover:underline hover:text-primary-hover"
-                      >
-                        {w.word}
-                      </span>
-                      {w.traditional && (
-                        <span className="text-sm text-secondary font-medium">({w.traditional})</span>
-                      )}
-                      {(w.pinyin || w.ipa) && (
-                        <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100/50">
-                          {w.pinyin || w.ipa}
-                        </span>
-                      )}
-                    </div>
-                    {w.han_viet && lang !== 'en' && (
-                      <p className="text-xs text-secondary/80 font-bold">Hán Việt: {w.han_viet.toUpperCase()}</p>
-                    )}
-                    <p className="text-sm text-secondary font-medium line-clamp-2 leading-relaxed mt-1">
-                      {capitalizeFirstLetter(w.translation_vi)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <SpeakerIcon
-                      text={w.word}
-                      lang={lang === 'en' ? 'en' : 'zh'}
-                      size={16}
-                      className="p-2 rounded-full hover:bg-primary/10 text-secondary hover:text-primary transition-colors flex items-center justify-center border border-transparent hover:border-primary/20 bg-surface"
-                    />
-                    <button
-                      onClick={() => {
-                        setToastMessage(`Đã ghi nhận báo cáo sai sót cho từ "${w.word}". Cảm ơn bạn!`);
-                      }}
-                      className="p-2 rounded-full hover:bg-red-50 text-secondary hover:text-red-600 transition-colors flex items-center justify-center border border-transparent hover:border-red-100 bg-surface"
-                      title="Báo cáo sai từ/nghĩa"
-                    >
-                      <AlertCircle className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-outline pt-6">
-                <button
-                  disabled={page <= 1}
-                  onClick={() => setPage(p => p - 1)}
-                  className="px-4 py-2 border border-outline rounded-xl text-sm font-semibold text-secondary hover:bg-hover-bg disabled:opacity-40 transition-colors"
-                >
-                  Trước
-                </button>
-                <span className="text-xs font-bold text-secondary">
-                  Trang {page} / {totalPages}
-                </span>
-                <button
-                  disabled={page >= totalPages}
-                  onClick={() => setPage(p => p + 1)}
-                  className="px-4 py-2 border border-outline rounded-xl text-sm font-semibold text-secondary hover:bg-hover-bg disabled:opacity-40 transition-colors"
-                >
-                  Sau
-                </button>
+      <>
+        <div className="bg-surface border border-outline rounded-[1.5rem] p-6 md:p-8 min-h-[500px] shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-outline pb-5 mb-6">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleBack}
+                className="p-2 rounded-full hover:bg-hover-bg text-secondary hover:text-primary transition-colors flex items-center justify-center border border-outline bg-surface"
+                title="Quay lại"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <div>
+                <h2 className="text-2xl font-bold text-primary flex items-center gap-2">
+                  {selectedNotebook.name}
+                  {selectedNotebook.is_premium && !isPremiumUser && (
+                    <span className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider bg-orange/10 text-orange border border-orange/20 px-2 py-0.5 rounded-md">
+                      Premium
+                    </span>
+                  )}
+                </h2>
+                <p className="text-xs text-secondary mt-1">{selectedNotebook.description} • {totalWordsCount} từ vựng</p>
               </div>
+            </div>
+            {isAuthenticated && (
+              <button
+                onClick={handleClone}
+                disabled={isCloning}
+                className="px-4 py-2 bg-sage text-white rounded-xl font-bold text-xs hover:bg-emerald-700 transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+              >
+                {isCloning ? (
+                  <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                ) : (
+                  <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>bookmark_add</span>
+                )}
+                Lưu làm sổ cá nhân
+              </button>
             )}
           </div>
+
+          {isLoadingWords ? (
+            <div className="flex flex-col items-center justify-center py-24">
+              <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+              <p className="text-secondary font-medium">Đang nạp từ vựng...</p>
+            </div>
+          ) : words.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-secondary">
+              <span className="material-symbols-outlined text-5xl opacity-40 mb-3">menu_book</span>
+              <p className="text-sm font-medium">Sổ tay hệ thống hiện chưa có từ vựng nào.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {words.map((w: any) => (
+                  <div
+                    key={w.id}
+                    className="p-4 bg-surface-alt border border-outline rounded-2xl flex items-start justify-between hover:border-primary/45 transition-all group hover:shadow-sm"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-baseline gap-2">
+                        <span
+                          onClick={() => onSearchWord(w.word)}
+                          className="text-2xl font-bold text-primary cursor-pointer hover:underline hover:text-primary-hover"
+                        >
+                          {w.word}
+                        </span>
+                        {w.traditional && (
+                          <span className="text-sm text-secondary font-medium">({w.traditional})</span>
+                        )}
+                        {(w.pinyin || w.ipa) && (
+                          <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100/50">
+                            {w.pinyin || w.ipa}
+                          </span>
+                        )}
+                      </div>
+                      {w.han_viet && lang !== 'en' && (
+                        <p className="text-xs text-secondary/80 font-bold">Hán Việt: {w.han_viet.toUpperCase()}</p>
+                      )}
+                      <p className="text-sm text-secondary font-medium line-clamp-2 leading-relaxed mt-1">
+                        {capitalizeFirstLetter(w.translation_vi)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <SpeakerIcon
+                        text={w.word}
+                        lang={lang === 'en' ? 'en' : 'zh'}
+                        size={16}
+                        className="p-2 rounded-full hover:bg-primary/10 text-secondary hover:text-primary transition-colors flex items-center justify-center border border-transparent hover:border-primary/20 bg-surface"
+                      />
+                      <button
+                        onClick={() => {
+                          setToastMessage(`Đã ghi nhận báo cáo sai sót cho từ "${w.word}". Cảm ơn bạn!`);
+                        }}
+                        className="p-2 rounded-full hover:bg-red-50 text-secondary hover:text-red-600 transition-colors flex items-center justify-center border border-transparent hover:border-red-100 bg-surface"
+                        title="Báo cáo sai từ/nghĩa"
+                      >
+                        <AlertCircle className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between border-t border-outline pt-6">
+                  <button
+                    disabled={page <= 1}
+                    onClick={() => setPage(p => p - 1)}
+                    className="px-4 py-2 border border-outline rounded-xl text-sm font-semibold text-secondary hover:bg-hover-bg disabled:opacity-40 transition-colors"
+                  >
+                    Trước
+                  </button>
+                  <span className="text-xs font-bold text-secondary">
+                    Trang {page} / {totalPages}
+                  </span>
+                  <button
+                    disabled={page >= totalPages}
+                    onClick={() => setPage(p => p + 1)}
+                    className="px-4 py-2 border border-outline rounded-xl text-sm font-semibold text-secondary hover:bg-hover-bg disabled:opacity-40 transition-colors"
+                  >
+                    Sau
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Toast Notification */}
+        {toastMessage && (
+          <div className="fixed bottom-6 right-6 bg-primary text-white font-semibold px-5 py-3 rounded-2xl shadow-2xl z-[1001] animate-in slide-in-from-bottom-5 duration-300 flex items-center gap-2">
+            <span className="material-symbols-outlined text-white text-lg">check_circle</span>
+            <span className="text-sm">{toastMessage}</span>
+          </div>
         )}
-      </div>
+
+        <ConfirmModal
+          isOpen={showConfirmModal}
+          title="Xác nhận lưu lại"
+          message={`Bạn đã lưu sổ tay "${selectedNotebook?.name}" làm sổ cá nhân trước đây. Bạn có muốn tiếp tục lưu thêm một bản sao khác không?`}
+          onConfirm={executeClone}
+          onCancel={() => setShowConfirmModal(false)}
+        />
+      </>
     );
   }
 
@@ -312,11 +385,10 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
           <button
             key={cat}
             onClick={() => setActiveCategory(cat as any)}
-            className={`px-5 py-2.5 rounded-full font-bold text-sm transition-all border ${
-              activeCategory === cat
+            className={`px-5 py-2.5 rounded-full font-bold text-sm transition-all border ${activeCategory === cat
                 ? 'bg-primary text-white border-primary shadow-sm'
                 : 'bg-surface text-secondary border-outline hover:border-primary/45'
-            }`}
+              }`}
           >
             {cat === 'hsk' && (lang === 'en' ? 'Cấp độ CEFR' : 'Từ vựng HSK')}
             {cat === 'pos' && (isPremiumUser ? 'Từ loại' : 'Từ loại (Premium)')}
@@ -331,9 +403,8 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
           <div
             key={nb.id}
             onClick={() => handleNotebookClick(nb)}
-            className={`p-5 bg-surface border border-outline rounded-[1.5rem] hover:border-primary/45 transition-all cursor-pointer group flex flex-col justify-between min-h-[160px] relative hover:shadow-md ${
-              nb.is_premium && !isPremiumUser ? 'hover:bg-hover-bg/30' : ''
-            }`}
+            className={`p-5 bg-surface border border-outline rounded-[1.5rem] hover:border-primary/45 transition-all cursor-pointer group flex flex-col justify-between min-h-[160px] relative hover:shadow-md ${nb.is_premium && !isPremiumUser ? 'hover:bg-hover-bg/30' : ''
+              }`}
           >
             <div>
               <div className="flex items-start justify-between mb-3">

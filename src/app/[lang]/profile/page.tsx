@@ -9,6 +9,7 @@ import SecurityTab from '@/components/profile/SecurityTab';
 import StudyStatsTab from '@/components/profile/StudyStatsTab';
 import SubscriptionHistoryTab from '@/components/profile/SubscriptionHistoryTab';
 import AlertModal from '@/components/AlertModal';
+import { getErrorMessage } from '@/lib/errorHelper';
 
 type ProfileTab = 'info' | 'security' | 'stats' | 'subs';
 
@@ -48,7 +49,7 @@ export default function ProfilePage() {
       handleAlert({ title: 'Thành công', message: 'Cập nhật thông tin thành công!', type: 'success' });
     } catch (err) {
       console.error(err);
-      handleAlert({ title: 'Lỗi', message: 'Có lỗi xảy ra khi cập nhật!', type: 'error' });
+      handleAlert({ title: 'Lỗi', message: getErrorMessage(err), type: 'error' });
     }
   };
 

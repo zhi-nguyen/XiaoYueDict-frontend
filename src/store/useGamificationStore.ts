@@ -7,6 +7,7 @@ import {
   StudyHistoryPayload,
   StudyHistoryResponse,
   GamificationTarget,
+  getGamificationDashboard,
 } from '@/lib/api/gamification';
 import { useAuthStore } from '@/store/useAuthStore';
 import { mapHistoryToWeeklyChart, WeeklyChartDataPoint } from '@/lib/dashboardUtils';
@@ -100,44 +101,23 @@ export const useGamificationStore = create<GamificationState>((set, get) => ({
 
     set({ isLoadingDashboard: true });
     try {
-      const [streakResult, targetResult, historyResult] = await Promise.allSettled([
-        getStreaks(),
-        getTargets(),
-        getStudyHistory(),
-      ]);
+      const data = await getGamificationDashboard();
 
-      const updates: Partial<GamificationState> = {
+      const todayStr = new Date().toLocaleDateString('sv-SE'); // "YYYY-MM-DD" in local time
+      const todayRecord = data.history.find((h) => h.study_date === todayStr);
+
+      set({
+        currentStreak: data.streak.current_streak,
+        maxStreak: data.streak.max_streak,
+        dailyTarget: data.target,
+        rawHistory: data.history,
+        weeklyHistory: mapHistoryToWeeklyChart(data.history),
+        todayWords: todayRecord?.vocabulary_learned ?? 0,
+        todayDuration: todayRecord ? Math.floor(todayRecord.study_duration_seconds / 60) : 0,
         isInitialized: true,
         isLoadingDashboard: false,
-      };
-
-      if (streakResult.status === 'fulfilled') {
-        updates.currentStreak = streakResult.value.current_streak;
-        updates.maxStreak = streakResult.value.max_streak;
-      }
-
-      if (targetResult.status === 'fulfilled') {
-        updates.dailyTarget = targetResult.value;
-      }
-
-      if (historyResult.status === 'fulfilled') {
-        const history = historyResult.value;
-        updates.rawHistory = history;
-        updates.weeklyHistory = mapHistoryToWeeklyChart(history);
-
-        // Derive today's progress from the history entry for today's date
-        const todayStr = new Date().toLocaleDateString('sv-SE'); // "YYYY-MM-DD" in local time
-        const todayRecord = history.find((h) => h.study_date === todayStr);
-        updates.todayWords = todayRecord?.vocabulary_learned ?? 0;
-        // Convert seconds → minutes, rounded down
-        updates.todayDuration = todayRecord
-          ? Math.floor(todayRecord.study_duration_seconds / 60)
-          : 0;
-      }
-
-      set(updates);
+      });
     } catch (error) {
-      // Unexpected error (e.g., network failure before allSettled)
       console.error('Failed to fetch dashboard data', error);
       set({ isLoadingDashboard: false });
     }

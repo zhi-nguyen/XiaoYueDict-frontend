@@ -5,6 +5,7 @@ export interface ExamState {
   timeRemaining: number;
   isSubmitted: boolean;
   lastSaved: number;
+  score?: number;
 }
 
 const getStorageKey = (examId: number | string) => `exam_state_${examId}`;

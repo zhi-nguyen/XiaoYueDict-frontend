@@ -9,8 +9,11 @@ import { fetchWords, createWord, deleteWord, updateNotebook, deleteNotebook } fr
 import { djangoClient } from '@/lib/apiClient';
 import { Notebook, Word } from '@/types/note';
 import AlertModal from '@/components/AlertModal';
+import { getErrorMessage } from '@/lib/errorHelper';
 import ConfirmModal from '@/components/ConfirmModal';
 import ExportPDFModal from '@/components/notes/ExportPDFModal';
+import DeepPracticeModal from '@/components/notes/DeepPracticeModal';
+import FlashcardPlayModal from '@/components/notes/flashcard/FlashcardPlayModal';
 
 
 interface NotebookDetailClientProps {
@@ -29,6 +32,7 @@ export default function NotebookDetailClient({
   const language = (params?.lang as string) || 'zh';
 
   const [notebook, setNotebook] = useState<Notebook>(initialNotebook);
+  const [allWords, setAllWords] = useState<Word[]>(initialWords);
   const [words, setWords] = useState<Word[]>(initialWords);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,10 +73,15 @@ export default function NotebookDetailClient({
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedWordIds, setSelectedWordIds] = useState<string[]>([]);
+  const [invalidWordIds, setInvalidWordIds] = useState<string[]>([]);
   const [editName, setEditName] = useState(initialNotebook.name);
   const [editDesc, setEditDesc] = useState(initialNotebook.description || '');
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'mastered' | 'not_mastered'>('all');
+  const [selectedWord, setSelectedWord] = useState<Word | null>(null);
+  const [showDeepPractice, setShowDeepPractice] = useState(false);
+  const [showFlashcardPlay, setShowFlashcardPlay] = useState(false);
 
 
   // Auto-fill Dictionary search inside modal
@@ -87,13 +96,25 @@ export default function NotebookDetailClient({
     return () => setMounted(false);
   }, []);
 
-  // Debounced word search within notebook list
+  // Client-side search and filtering on the preloaded/cached allWords list
   useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      loadWords(searchQuery);
-    }, 300);
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery]);
+    const q = searchQuery.toLowerCase().trim();
+    const filtered = allWords.filter(word => {
+      // Filter by activeFilter
+      if (activeFilter === 'mastered' && !word.is_mastered) return false;
+      if (activeFilter === 'not_mastered' && word.is_mastered) return false;
+
+      // Filter by searchQuery
+      if (q) {
+        const vocabMatch = word.vocabulary.toLowerCase().includes(q);
+        const pinyinMatch = word.pinyin ? word.pinyin.toLowerCase().includes(q) : false;
+        const meaningMatch = word.meaning ? word.meaning.toLowerCase().includes(q) : false;
+        return vocabMatch || pinyinMatch || meaningMatch;
+      }
+      return true;
+    });
+    setWords(filtered);
+  }, [allWords, activeFilter, searchQuery]);
 
   // Debounced dictionary lookup inside add word modal (700ms)
   useEffect(() => {
@@ -140,15 +161,6 @@ export default function NotebookDetailClient({
     return () => clearTimeout(timer);
   }, [lookupQuery, language]);
 
-  async function loadWords(search: string) {
-    try {
-      const wds = await fetchWords(notebookId, search);
-      setWords(wds);
-    } catch (err) {
-      console.error("Failed to load words:", err);
-    }
-  }
-
   async function handleAddWord(e: React.FormEvent) {
     e.preventDefault();
     if (!newVocab.trim() || !newMeaning.trim()) return;
@@ -160,7 +172,7 @@ export default function NotebookDetailClient({
         meaning: newMeaning.trim(),
         note: newNote.trim()
       });
-      setWords([newWord, ...words]);
+      setAllWords(prev => [newWord, ...prev]);
       setShowAddModal(false);
       setNewVocab('');
       setNewPinyin('');
@@ -177,7 +189,7 @@ export default function NotebookDetailClient({
       setAlertConfig({
         isOpen: true,
         title: 'Lỗi',
-        message: 'Lỗi khi thêm từ vựng',
+        message: getErrorMessage(err),
         type: 'error'
       });
     } finally {
@@ -194,7 +206,7 @@ export default function NotebookDetailClient({
         setConfirmConfig(prev => ({ ...prev, isOpen: false }));
         try {
           await deleteWord(notebookId, wordId);
-          setWords(prev => prev.filter(w => w.id !== wordId));
+          setAllWords(prev => prev.filter(w => w.id !== wordId));
           setNotebook(prev => ({
             ...prev,
             word_count_annotated: Math.max(0, (prev.word_count_annotated || 1) - 1)
@@ -203,7 +215,7 @@ export default function NotebookDetailClient({
           setAlertConfig({
             isOpen: true,
             title: 'Lỗi',
-            message: 'Lỗi khi xóa từ vựng',
+            message: getErrorMessage(err),
             type: 'error'
           });
         }
@@ -224,7 +236,7 @@ export default function NotebookDetailClient({
       setAlertConfig({
         isOpen: true,
         title: 'Lỗi',
-        message: 'Lỗi khi cập nhật sổ tay',
+        message: getErrorMessage(err),
         type: 'error'
       });
     }
@@ -245,7 +257,7 @@ export default function NotebookDetailClient({
           setAlertConfig({
             isOpen: true,
             title: 'Lỗi',
-            message: 'Lỗi khi xóa sổ tay',
+            message: getErrorMessage(err),
             type: 'error'
           });
         }
@@ -256,7 +268,7 @@ export default function NotebookDetailClient({
   return (
     <div className="flex flex-col bg-surface animate-in fade-in duration-200 w-full">
       {/* Header */}
-      <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-outline flex flex-col sm:flex-row sm:items-center justify-between shrink-0 bg-white sticky top-0 z-10 gap-3">
+      <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-outline flex flex-col sm:flex-row sm:items-center justify-between shrink-0 bg-white sticky top-0 z-30 gap-3">
         <div className="flex items-center min-w-0">
           <Link href={`/${language}/notes`} className="mr-3 sm:mr-4 p-2 hover:bg-hover-bg rounded-full text-secondary transition-colors shrink-0">
             <span className="material-symbols-outlined">arrow_back</span>
@@ -278,6 +290,14 @@ export default function NotebookDetailClient({
             </button>
           )}
           <button
+            onClick={() => setShowFlashcardPlay(true)}
+            className="p-2.5 text-secondary border border-outline rounded-xl hover:bg-hover-bg transition-colors flex items-center justify-center gap-1.5 sm:px-4 font-semibold text-sm hover:border-primary/50"
+            title="Mở FlashCard học tập"
+          >
+            <span className="material-symbols-outlined text-orange-500">style</span>
+            <span className="hidden sm:inline">Mở FlashCard</span>
+          </button>
+          <button
             onClick={() => setShowSettingsModal(true)}
             className="p-2.5 text-secondary border border-outline rounded-xl hover:bg-hover-bg transition-colors flex items-center justify-center"
             title="Cài đặt sổ tay"
@@ -296,6 +316,37 @@ export default function NotebookDetailClient({
 
       <div className="w-full p-4 sm:p-8 pb-16 overflow-x-hidden">
         <div className="max-w-[1000px] mx-auto">
+          {/* Tabs Lọc */}
+          <div className="flex gap-2 mb-6 border-b border-outline pb-4 overflow-x-auto hide-scrollbar">
+            <button
+              onClick={() => setActiveFilter('all')}
+              className={`px-4 py-2 rounded-full font-bold text-xs transition-all border shrink-0 ${activeFilter === 'all'
+                  ? 'bg-primary text-white border-primary shadow-sm'
+                  : 'bg-white text-secondary border-outline hover:border-primary/45'
+                }`}
+            >
+              Tất cả ({notebook.word_count_annotated || 0})
+            </button>
+            <button
+              onClick={() => setActiveFilter('mastered')}
+              className={`px-4 py-2 rounded-full font-bold text-xs transition-all border shrink-0 ${activeFilter === 'mastered'
+                  ? 'bg-primary text-white border-primary shadow-sm'
+                  : 'bg-white text-secondary border-outline hover:border-primary/45'
+                }`}
+            >
+              Đã thuộc
+            </button>
+            <button
+              onClick={() => setActiveFilter('not_mastered')}
+              className={`px-4 py-2 rounded-full font-bold text-xs transition-all border shrink-0 ${activeFilter === 'not_mastered'
+                  ? 'bg-primary text-white border-primary shadow-sm'
+                  : 'bg-white text-secondary border-outline hover:border-primary/45'
+                }`}
+            >
+              Chưa thuộc
+            </button>
+          </div>
+
           {/* Toolbar */}
           <div className="mb-6 flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center justify-between">
             <div className="relative flex-1 max-w-md">
@@ -340,45 +391,90 @@ export default function NotebookDetailClient({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {words.map(word => (
-                <div key={word.id} className="bg-white border border-outline rounded-2xl p-5 hover:border-primary/50 transition-colors group relative">
-                  <button
-                    onClick={() => handleDeleteWord(word.id)}
-                    className="absolute top-4 right-4 text-secondary hover:text-red-500 opacity-70 md:opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Xóa từ"
-                  >
-                    <span className="material-symbols-outlined text-xl">delete</span>
-                  </button>
-                  <div className="flex items-start gap-4">
-                    {isPdfExportAvailable && (
-                      <div className="flex items-center self-center shrink-0">
-                        <input
-                          type="checkbox"
-                          checked={selectedWordIds.includes(word.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedWordIds([...selectedWordIds, word.id]);
-                            } else {
-                              setSelectedWordIds(selectedWordIds.filter(id => id !== word.id));
-                            }
-                          }}
-                          className="w-4 h-4 rounded border-outline text-primary focus:ring-primary cursor-pointer accent-primary"
-                          title="Chọn để xuất PDF"
-                        />
+                <div
+                  key={word.id}
+                  onClick={() => {
+                    setSelectedWord(word);
+                    setShowDeepPractice(true);
+                  }}
+                  className="bg-white border border-outline rounded-2xl p-5 hover:border-primary/50 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md flex flex-col gap-4 relative group overflow-hidden"
+                >
+                  {/* Subtle watermark check icon in background for mastered words */}
+                  {word.is_mastered && (
+                    <span
+                      className="material-symbols-outlined absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-emerald-500 pointer-events-none select-none z-0"
+                      style={{
+                        fontVariationSettings: "'FILL' 1",
+                        opacity: 0.15,
+                        fontSize: '130px',
+                        width: 'auto',
+                        height: 'auto',
+                        lineHeight: '1'
+                      }}
+                    >
+                      check_circle
+                    </span>
+                  )}
+
+                  {/* Relative wrapper with z-20 ensures content stays above the watermark check */}
+                  <div className="relative z-20 flex flex-col gap-4 w-full h-full">
+                    {/* Row 1: Left column (Avatar/Checkbox) & Right column (Word info & Actions) */}
+                    <div className="flex items-start gap-4 justify-between">
+                      <div className="flex items-center gap-3 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        {isPdfExportAvailable && (
+                          <input
+                            type="checkbox"
+                            checked={selectedWordIds.includes(word.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedWordIds([...selectedWordIds, word.id]);
+                              } else {
+                                setSelectedWordIds(selectedWordIds.filter(id => id !== word.id));
+                              }
+                            }}
+                            className="w-4 h-4 rounded border-outline text-primary focus:ring-primary cursor-pointer accent-primary"
+                            title="Chọn để xuất PDF"
+                          />
+                        )}
+                        <div className={`w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-2xl font-bold shrink-0 ${language === 'zh' ? 'font-noto-sc' : ''}`}>
+                          {word.vocabulary.charAt(0)}
+                        </div>
+                      </div>
+
+                      <div className="flex-1 min-w-0 flex flex-col">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className={`text-xl sm:text-2xl font-bold text-primary break-words flex-1 min-w-0 ${language === 'zh' ? 'font-noto-sc' : ''} ${invalidWordIds.includes(word.id) ? 'underline decoration-red-500 decoration-wavy decoration-2' : ''}`}>
+                            {word.vocabulary}
+                          </div>
+                          
+                          <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => handleDeleteWord(word.id)}
+                              className="text-secondary hover:text-red-500 transition-colors p-1"
+                              title="Xóa từ"
+                            >
+                              <span className="material-symbols-outlined text-xl">delete</span>
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div className="text-sm font-semibold text-[#10b981] mt-1">
+                          {word.pinyin}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Row 2: Vietnamese Meaning (Full width) */}
+                    <div className="text-base text-gray-800 font-medium leading-relaxed border-t border-outline/30 pt-3 select-all">
+                      {word.meaning ? (word.meaning.trim().charAt(0).toUpperCase() + word.meaning.trim().slice(1)) : ''}
+                    </div>
+
+                    {/* Row 3: Note (Full width, optional) */}
+                    {word.note && (
+                      <div className="text-sm text-secondary bg-gray-50 p-2.5 rounded-lg border border-gray-100 select-all">
+                        {word.note}
                       </div>
                     )}
-                    <div className={`w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-2xl font-bold shrink-0 ${language === 'zh' ? 'font-noto-sc' : ''}`}>
-                      {word.vocabulary.charAt(0)}
-                    </div>
-                    <div>
-                      <div className={`text-2xl font-bold text-primary mb-1 ${language === 'zh' ? 'font-noto-sc' : ''}`}>{word.vocabulary}</div>
-                      <div className="text-sm font-medium text-[#10b981] mb-2">{word.pinyin}</div>
-                      <div className="text-base text-gray-800 font-medium">{word.meaning}</div>
-                      {word.note && (
-                        <div className="mt-3 text-sm text-secondary bg-gray-50 p-2.5 rounded-lg border border-gray-100">
-                          {word.note}
-                        </div>
-                      )}
-                    </div>
                   </div>
                 </div>
               ))}
@@ -608,8 +704,9 @@ export default function NotebookDetailClient({
           onClose={() => setShowExportModal(false)}
           notebookId={notebookId}
           notebookName={notebook.name}
-          totalWords={words.length}
+          words={words}
           selectedWordIds={selectedWordIds}
+          onInvalidWordsFound={(ids) => setInvalidWordIds(ids)}
         />
       )}
 
@@ -629,6 +726,40 @@ export default function NotebookDetailClient({
         message={alertConfig.message}
         onClose={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))}
       />
+
+      {showDeepPractice && selectedWord && (
+        <DeepPracticeModal
+          isOpen={showDeepPractice}
+          onClose={() => {
+            setShowDeepPractice(false);
+            setSelectedWord(null);
+          }}
+          word={selectedWord}
+          notebookId={notebookId}
+          lang={language}
+          onMasteredChange={(wordId, isMastered) => {
+            setAllWords(prev => prev.map(w => w.id === wordId ? { ...w, is_mastered: isMastered } : w));
+          }}
+        />
+      )}
+
+      {showFlashcardPlay && (
+        <FlashcardPlayModal
+          isOpen={showFlashcardPlay}
+          onClose={(masteredIds) => {
+            setShowFlashcardPlay(false);
+            if (masteredIds && masteredIds.size > 0) {
+              setAllWords(prev => prev.map(w => 
+                masteredIds.has(w.id) ? { ...w, is_mastered: true } : w
+              ));
+            }
+          }}
+          words={allWords}
+          notebookId={notebookId}
+          lang={language}
+          onMasteredChange={() => {}}
+        />
+      )}
     </div>
   );
 }

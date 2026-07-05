@@ -58,3 +58,14 @@ export const getActivities = async (): Promise<DailyActivityResponse[]> => {
   const response = await apiClient.get('/gamification/activities/');
   return response.data;
 };
+
+export interface GamificationDashboardResponse {
+  streak: GamificationStreak;
+  target: GamificationTarget;
+  history: StudyHistoryResponse[];
+}
+
+export const getGamificationDashboard = async (): Promise<GamificationDashboardResponse> => {
+  const response = await apiClient.get('/gamification/dashboard/');
+  return response.data;
+};

@@ -48,7 +48,7 @@ export default async function NotebookDetailPage({ params }: PageProps) {
     const notebook = await notebookRes.json();
 
     // Fetch words in notebook
-    const wordsRes = await fetch(`${GATEWAY_URL}/api/core/notes/notebooks/${notebookId}/words/`, {
+    const wordsRes = await fetch(`${GATEWAY_URL}/api/core/notes/notebooks/${notebookId}/words/?paginate=false`, {
       method: 'GET',
       headers,
       cache: 'no-store'

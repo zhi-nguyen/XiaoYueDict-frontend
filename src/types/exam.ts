@@ -7,10 +7,18 @@ export interface Option {
   ordering: number;
 }
 
+export interface Paragraph {
+  id: number;
+  paragraph_id: string;
+  title: string;
+  content: string;
+  ordering: number;
+}
+
 export interface Question {
   id: number;
   question_id: string;
-  question_type: 'true_false' | 'multiple_choice' | 'fill_blank' | 'matching' | 'ordering';
+  question_type: 'true_false' | 'multiple_choice' | 'fill_blank' | 'matching' | 'ordering' | 'essay';
   difficulty: 'easy' | 'medium' | 'hard';
   points: number;
   tags: string[];
@@ -25,6 +33,7 @@ export interface Question {
   explanation: string;
   ordering: number;
   options: Option[];
+  paragraph?: Paragraph;
 }
 
 export interface Section {
@@ -36,6 +45,7 @@ export interface Section {
   section_audio_url: string;
   ordering: number;
   questions: Question[];
+  paragraphs?: Paragraph[];
 }
 
 export interface Exam {

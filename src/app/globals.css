@@ -1,9 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 :root {
   /* ── Core Palette ── */
@@ -32,6 +32,31 @@
   --accent-gradient-end: #8B5CF6;
   --glow-primary: rgba(99, 102, 241, 0.15);
   --glow-recording: rgba(239, 68, 68, 0.2);
+
+  /* ── Exam Extended Palette (Material Design 3 tokens) ── */
+  --color-primary-container: #334155;
+  --color-on-primary-container: #9eadc5;
+  --color-surface-container-low: #eff4ff;
+  --color-surface-container: #e5eeff;
+  --color-on-surface-variant: #44474c;
+  --color-secondary-container: #c1e8d6;
+  --color-on-secondary-container: #466a5b;
+}
+
+.exam-glass {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.exam-grid-canvas {
+  background-image: radial-gradient(var(--color-outline) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
+.highlight-yellow {
+  background-color: #fef08a !important;
+  color: #1e293b !important;
+  display: inline;
 }
 
 * {
@@ -43,6 +68,10 @@ body {
   font-size: 1rem; /* 16px base — primary content size */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.exam-font-override {
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif !important;
 }
 
 /* ── Typography Scale (Mobile-first) ──
@@ -251,3 +280,92 @@ body {
 .score-bg-good { background-color: var(--score-good-bg); }
 .score-bg-moderate { background-color: var(--score-moderate-bg); }
 .score-bg-poor { background-color: var(--score-poor-bg); }
+
+/* FlashCard Modal Glass Overlay */
+.flashcard-glass-overlay {
+  background-color: rgba(29, 43, 62, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Audio Wave Animation */
+.audio-wave {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4.5px;
+  height: 40px;
+}
+.audio-wave span {
+  display: block;
+  width: 4px;
+  background-color: #3b82f6;
+  border-radius: 2px;
+  animation: wave-animation 1s ease-in-out infinite alternate;
+}
+@keyframes wave-animation {
+  0% { height: 10px; }
+  100% { height: 40px; }
+}
+.audio-wave span:nth-child(2) { animation-delay: 0.1s; }
+.audio-wave span:nth-child(3) { animation-delay: 0.2s; }
+.audio-wave span:nth-child(4) { animation-delay: 0.3s; }
+.audio-wave span:nth-child(5) { animation-delay: 0.4s; }
+
+/* Pulse Ring Animation */
+@keyframes pulse-ring {
+  0% { transform: scale(0.9); opacity: 0.6; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+.animate-pulse-ring {
+  animation: pulse-ring 1.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+.pulse-ring-1 {
+  animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  animation-delay: 0s;
+}
+.pulse-ring-2 {
+  animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  animation-delay: 0.6s;
+}
+.pulse-ring-3 {
+  animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  animation-delay: 1.2s;
+}
+
+/* ── 3D Card Flip Animation (FlashCard) ── */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.flip-card-inner {
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.flipped .flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+/* Custom transitions and scrollbar overrides */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+

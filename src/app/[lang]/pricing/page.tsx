@@ -8,6 +8,7 @@ import ConfirmModal from '@/components/ConfirmModal';
 import AlertModal from '@/components/AlertModal';
 import PaymentQRModal from '@/components/PaymentQRModal';
 import { RegisterResponse } from '@/lib/api/subscriptions';
+import { getErrorMessage } from '@/lib/errorHelper';
 
 export default function PricingPage() {
   const params = useParams();
@@ -153,11 +154,10 @@ export default function PricingPage() {
         });
       }
     } catch (err: any) {
-      const errMsg = err.response?.data?.error || err.message || 'Giao dịch thất bại. Vui lòng thử lại sau.';
       setAlertConfig({
         isOpen: true,
         title: 'Thất bại',
-        message: errMsg,
+        message: getErrorMessage(err),
         type: 'error'
       });
     }
@@ -195,7 +195,7 @@ export default function PricingPage() {
           setAlertConfig({
             isOpen: true,
             title: 'Thất bại',
-            message: err.response?.data?.error || 'Không thể hủy yêu cầu. Vui lòng thử lại sau.',
+            message: getErrorMessage(err),
             type: 'error'
           });
         }

@@ -1,12 +1,17 @@
 'use client';
 
 import React from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 
 export default function Footer() {
   const params = useParams();
+  const pathname = usePathname();
   const language = (params?.lang as string) || 'zh';
+
+  if (pathname && pathname.includes('/exam/take/')) {
+    return null;
+  }
 
   return (
     <footer className="w-full bg-surface border-t border-outline py-4 px-6 md:px-8 shrink-0">

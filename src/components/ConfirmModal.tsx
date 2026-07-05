@@ -10,6 +10,7 @@ interface ConfirmModalProps {
   onConfirm: () => void;
   onCancel: () => void;
   isDestructive?: boolean;
+  showConfirmButton?: boolean;
 }
 
 export default function ConfirmModal({
@@ -20,7 +21,8 @@ export default function ConfirmModal({
   cancelText = 'Hủy',
   onConfirm,
   onCancel,
-  isDestructive = false
+  isDestructive = false,
+  showConfirmButton = true
 }: ConfirmModalProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -80,13 +82,15 @@ export default function ConfirmModal({
           >
             {cancelText}
           </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className={`flex-1 py-3 px-5 text-sm font-semibold rounded-2xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${theme.button}`}
-          >
-            {confirmText}
-          </button>
+          {showConfirmButton && (
+            <button
+              type="button"
+              onClick={onConfirm}
+              className={`flex-1 py-3 px-5 text-sm font-semibold rounded-2xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${theme.button}`}
+            >
+              {confirmText}
+            </button>
+          )}
         </div>
       </div>
     </div>,

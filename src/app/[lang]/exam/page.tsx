@@ -14,8 +14,16 @@ const ExamClient = nextDynamic(() => import('./ExamClient'), {
 
 export const dynamic = 'force-dynamic';
 
-export default async function ExamPage() {
+interface ExamPageProps {
+  params: {
+    lang: string;
+  };
+}
+
+export default async function ExamPage({ params }: ExamPageProps) {
   let initialExams: Exam[] = [];
+  const lang = params.lang || 'zh';
+  
   try {
     const GATEWAY_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
     const token = await getServerAuthToken();
@@ -24,7 +32,7 @@ export default async function ExamPage() {
       headers.set('Authorization', `Bearer ${token}`);
     }
 
-    const res = await fetch(`${GATEWAY_URL}/api/core/exams/`, {
+    const res = await fetch(`${GATEWAY_URL}/api/core/exams/?language=${lang}`, {
       method: 'GET',
       headers,
       next: { revalidate: 60 }
@@ -39,3 +47,4 @@ export default async function ExamPage() {
 
   return <ExamClient initialExams={initialExams} />;
 }
+

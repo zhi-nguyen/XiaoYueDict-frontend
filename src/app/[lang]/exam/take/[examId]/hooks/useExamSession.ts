@@ -92,8 +92,12 @@ export function useExamSession() {
           if (entry.isIntersecting) {
             const sectionId = entry.target.getAttribute('id')?.replace('section-', '');
             const targetSection = exam.sections?.find((s) => String(s.id) === sectionId || s.section_id === sectionId);
-            const hasParagraphs = !!(targetSection?.paragraphs && targetSection.paragraphs.length > 0);
-            if (hasParagraphs) {
+            const isReadingSection = !!(
+              targetSection &&
+              (targetSection.section_name?.toLowerCase() === 'reading' ||
+                targetSection.section_id?.toLowerCase().includes('reading'))
+            );
+            if (isReadingSection) {
               setShowReadingSidebarButton(true);
               setActiveSection(targetSection || null);
             } else {

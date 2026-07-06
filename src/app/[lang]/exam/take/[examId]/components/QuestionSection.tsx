@@ -41,10 +41,22 @@ export default function QuestionSection({
   partSuffix = '',
 }: QuestionSectionProps) {
   const [textSize, setTextSize] = useState<TextSize>('text-base');
-  const paragraphs = section.paragraphs || [];
+  const getPassageText = (paragraph: any): string => {
+    if (!paragraph) return '';
+    if (typeof paragraph === 'string') return paragraph;
+    if (typeof paragraph === 'object') {
+      const title = paragraph.title || '';
+      const content = paragraph.content || '';
+      if (title && content) {
+        return `${title}\n\n${content}`;
+      }
+      return content || title || '';
+    }
+    return '';
+  };
 
-
-  const isReading = paragraphs.length > 0;
+  const passageText = getPassageText(section.questions[0]?.paragraph);
+  const isReading = section.section_name?.toLowerCase() === 'reading' || (section.section_id && section.section_id.toLowerCase().includes('reading'));
 
   const increaseTextSize = () => {
     if (textSize === 'text-sm') setTextSize('text-base');
@@ -149,15 +161,7 @@ export default function QuestionSection({
                 className={`text-primary leading-relaxed text-justify font-inter space-y-6 ${textSize}`}
                 style={{ textAlign: 'justify' }}
               >
-                {paragraphs.length > 0 ? (
-                  paragraphs.map((p, idx) => (
-                    <p key={p.id || idx} className="whitespace-pre-line">
-                      {p.content}
-                    </p>
-                  ))
-                ) : (
-                  <p className="whitespace-pre-line">{section.instruction}</p>
-                )}
+                <p className="whitespace-pre-line">{passageText}</p>
               </div>
             </div>
           </div>
@@ -250,15 +254,7 @@ export default function QuestionSection({
             className={`bg-slate-50 border border-outline rounded-2xl p-5 text-primary leading-relaxed text-justify font-inter space-y-6 ${textSize}`}
             style={{ textAlign: 'justify' }}
           >
-            {paragraphs.length > 0 ? (
-              paragraphs.map((p, idx) => (
-                <p key={p.id || idx} className="whitespace-pre-line">
-                  {p.content}
-                </p>
-              ))
-            ) : (
-              <p className="whitespace-pre-line">{section.instruction}</p>
-            )}
+            <p className="whitespace-pre-line">{passageText}</p>
           </div>
 
           <div className="space-y-6">

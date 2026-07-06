@@ -180,7 +180,7 @@ export default function ExamTakeEn({
       <div className="flex flex-1 relative min-h-0">
         {/* Center Main Area: Content Panels */}
         <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6 pb-24">
-          <div className="max-w-4xl mx-auto space-y-6">
+          <div className="max-w-6xl mx-auto space-y-6">
             {/* Context Badge */}
             <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-outline/85 relative overflow-hidden">
               {/* Top border strip mimicking IELTS Styling */}
@@ -254,7 +254,7 @@ export default function ExamTakeEn({
         </main>
 
         {/* Right Aside: Navigator Sidebar (PC Only) */}
-        <aside className="hidden xl:flex w-80 shrink-0 flex-col bg-white border-l border-outline/65 p-6 sticky top-16 h-[calc(100vh-4rem)]">
+        <aside className="hidden xl:flex w-[350px] shrink-0 flex-col bg-white border-l border-outline/65 p-4 sticky top-16 h-[calc(100vh-4rem)]">
           <QuestionNavigator
             allQuestions={allQuestions}
             answers={answers}
@@ -293,7 +293,7 @@ export default function ExamTakeEn({
       {showReadingSidebarButton && (
         <button
           onClick={() => setIsReadingDrawerOpen(true)}
-          className="fixed right-0 top-[calc(50%+60px)] xl:top-[calc(50%+60px)] -translate-y-1/2 z-40 p-3 bg-secondary text-white border border-r-0 border-secondary/20 rounded-l-2xl shadow-xl hover:bg-secondary/90 active:scale-95 transition-all flex items-center justify-center gap-1.5 focus:outline-none"
+          className="fixed right-0 top-[calc(50%+60px)] xl:hidden -translate-y-1/2 z-40 p-3 bg-secondary text-white border border-r-0 border-secondary/20 rounded-l-2xl shadow-xl hover:bg-secondary/90 active:scale-95 transition-all flex items-center justify-center gap-1.5 focus:outline-none"
           title="Xem đoạn văn"
         >
           <BookOpen className="w-6 h-6" />

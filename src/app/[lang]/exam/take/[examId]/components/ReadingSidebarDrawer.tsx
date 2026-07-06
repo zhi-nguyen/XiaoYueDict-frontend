@@ -21,7 +21,21 @@ export default function ReadingSidebarDrawer({
 
   if (!isOpen || !activeSection) return null;
 
-  const paragraphs = activeSection.paragraphs || [];
+  const getPassageText = (paragraph: any): string => {
+    if (!paragraph) return '';
+    if (typeof paragraph === 'string') return paragraph;
+    if (typeof paragraph === 'object') {
+      const title = paragraph.title || '';
+      const content = paragraph.content || '';
+      if (title && content) {
+        return `${title}\n\n${content}`;
+      }
+      return content || title || '';
+    }
+    return '';
+  };
+
+  const passageText = getPassageText(activeSection.questions[0]?.paragraph);
 
   const increaseTextSize = () => {
     if (textSize === 'text-sm') setTextSize('text-base');
@@ -86,15 +100,7 @@ export default function ReadingSidebarDrawer({
             className={`text-primary leading-relaxed text-justify font-inter space-y-6 ${textSize}`}
             style={{ textAlign: 'justify' }}
           >
-            {paragraphs.length > 0 ? (
-              paragraphs.map((p, idx) => (
-                <p key={p.id || idx} className="whitespace-pre-line">
-                  {p.content}
-                </p>
-              ))
-            ) : (
-              <p className="whitespace-pre-line">{activeSection.instruction}</p>
-            )}
+            <p className="whitespace-pre-line">{passageText}</p>
           </div>
         </div>
       </div>

@@ -168,12 +168,14 @@ export default function ExamTakeZh({
       </header>
 
       {/* Main Inner Frame */}
-      <div className="w-full p-4 md:p-8 pb-32">
-        <div className="max-w-7xl mx-auto flex flex-col xl:flex-row gap-8">
-          {/* Left Column: Main Exam Content */}
-          <div className="flex-1 bg-white rounded-[2rem] p-6 shadow-sm border border-outline/80 relative overflow-hidden">
-            {/* Top border strip mimicking HSK styling */}
-            <div className="absolute top-0 left-0 w-full h-[4px] bg-gradient-to-r from-primary via-sage to-secondary" />
+      <div className="flex flex-1 relative min-h-0">
+        {/* Center Main Area: Content Panels */}
+        <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6 pb-24">
+          <div className="max-w-6xl mx-auto space-y-6">
+            {/* Left Column: Main Exam Content */}
+            <div className="flex-1 bg-white rounded-[2rem] p-6 shadow-sm border border-outline/80 relative overflow-hidden">
+              {/* Top border strip mimicking HSK styling */}
+              <div className="absolute top-0 left-0 w-full h-[4px] bg-gradient-to-r from-primary via-sage to-secondary" />
 
             {/* Exam Title & Meta */}
             <div className="flex flex-col mb-4">
@@ -247,22 +249,22 @@ export default function ExamTakeZh({
               />
             ))}
           </div>
-        </div>
+            </div>
+          </div>
+        </main>
 
         {/* Right Column: Navigator Panel for PC */}
-        <div className="w-full xl:w-80 shrink-0 hidden xl:block">
-          <div className="sticky top-6">
-            <QuestionNavigator
-              allQuestions={allQuestions}
-              answers={answers}
-              isSubmitted={isSubmitted}
-              score={score}
-              totalScore={exam.total_score}
-              passingScore={exam.passing_score}
-              onSubmit={handleSubmit}
-            />
-          </div>
-        </div>
+        <aside className="hidden xl:flex w-[350px] shrink-0 flex-col bg-white border-l border-outline/65 p-4 sticky top-16 h-[calc(100vh-4rem)]">
+          <QuestionNavigator
+            allQuestions={allQuestions}
+            answers={answers}
+            isSubmitted={isSubmitted}
+            score={score}
+            totalScore={exam.total_score}
+            passingScore={exam.passing_score}
+            onSubmit={handleSubmit}
+          />
+        </aside>
       </div>
 
       {/* Floating Navigator Button on Mobile */}
@@ -291,7 +293,7 @@ export default function ExamTakeZh({
       {showReadingSidebarButton && (
         <button
           onClick={() => setIsReadingDrawerOpen(true)}
-          className="fixed right-0 top-[calc(50%+60px)] xl:top-[calc(50%+60px)] -translate-y-1/2 z-40 p-3 bg-sage text-white border border-r-0 border-sage/20 rounded-l-2xl shadow-xl hover:bg-sage/90 active:scale-95 transition-all flex items-center justify-center gap-1.5 focus:outline-none"
+          className="fixed right-0 top-[calc(50%+60px)] xl:hidden -translate-y-1/2 z-40 p-3 bg-sage text-white border border-r-0 border-sage/20 rounded-l-2xl shadow-xl hover:bg-sage/90 active:scale-95 transition-all flex items-center justify-center gap-1.5 focus:outline-none"
           title="Xem đoạn văn"
         >
           <BookOpen className="w-6 h-6" />
@@ -337,7 +339,6 @@ export default function ExamTakeZh({
         setZoom={setLightboxZoom}
         onClose={() => setLightboxImage(null)}
       />
-    </div>
     </div>
   );
 }

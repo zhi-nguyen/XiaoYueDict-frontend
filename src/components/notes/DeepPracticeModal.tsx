@@ -296,6 +296,10 @@ export default function DeepPracticeModal({
               pinyin={word.pinyin}
               lang={lang}
               onAnswered={(isCorrect) => setTabCompleted(3, isCorrect)}
+              onSkip={() => {
+                setTabCompleted(3, true);
+                setActiveTab(4);
+              }}
             />
           )}
           {activeTab === 4 && !isLoading && (
@@ -303,6 +307,10 @@ export default function DeepPracticeModal({
               vocabulary={word.vocabulary}
               lang={lang}
               onAnswered={(isCorrect) => setTabCompleted(4, isCorrect)}
+              onSkip={() => {
+                setTabCompleted(4, true);
+                setShowCompletion(true);
+              }}
             />
           )}
         </div>

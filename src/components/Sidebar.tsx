@@ -15,7 +15,6 @@ const navItems = [
   { href: '/writing', icon: 'edit', label: 'Luyện Viết' },
   { href: '/exam', icon: 'emoji_events', label: 'Luyện Thi' },
   { href: '/notes', icon: 'menu_book', label: 'Sổ Tay' },
-  { href: '/support', icon: 'contact_support', label: 'Hỗ trợ & Góp ý' },
 ];
 
 export default function Sidebar() {

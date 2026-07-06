@@ -13,6 +13,7 @@ interface DeepPracticeSpeakTabProps {
   pinyin?: string;
   lang: string;
   onAnswered: (isCorrect: boolean) => void;
+  onSkip?: () => void;
 }
 
 const SCORE_COLORS = {
@@ -27,6 +28,7 @@ export default function DeepPracticeSpeakTab({
   pinyin,
   lang,
   onAnswered,
+  onSkip,
 }: DeepPracticeSpeakTabProps) {
   const { tier, fetchUsage } = useSubscriptionStore();
   const durationLimit = getAudioDurationLimit(tier);
@@ -100,15 +102,18 @@ export default function DeepPracticeSpeakTab({
           Đọc to từ sau:
         </h3>
         <button
-          onClick={() => onAnswered(true)}
+          onClick={() => {
+            onAnswered(true);
+            onSkip?.();
+          }}
           className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline hover:bg-hover-bg text-secondary hover:text-primary transition-all text-xs font-bold focus:outline-none shrink-0 self-start sm:self-center"
           title="Tạm thời bỏ qua phần Nói"
         >
           <span className="material-symbols-outlined text-sm font-bold">skip_next</span>
-          Bỏ qua Nói (Bypass)
+          Bỏ qua Nói
         </button>
       </div>
-      
+
       <div className="mb-8 flex flex-col items-center justify-center">
         <div className="flex items-center justify-center gap-3 mb-1">
           <h2 className="text-4xl sm:text-5xl font-bold text-primary select-all">
@@ -147,9 +152,8 @@ export default function DeepPracticeSpeakTab({
               <button
                 disabled={isBusy}
                 onClick={handleToggleRecord}
-                className={`relative z-10 w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-105 active:scale-95 ${
-                  isRecording ? 'bg-red-500 hover:bg-red-600 text-white scale-105 shadow-red-200/50' : 'bg-primary text-white'
-                }`}
+                className={`relative z-10 w-20 h-20 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-105 active:scale-95 ${isRecording ? 'bg-red-500 hover:bg-red-600 text-white scale-105 shadow-red-200/50' : 'bg-primary text-white'
+                  }`}
                 title={isRecording ? "Dừng ghi âm" : "Bắt đầu nói"}
               >
                 <span className="material-symbols-outlined text-[36px]" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -157,7 +161,7 @@ export default function DeepPracticeSpeakTab({
                 </span>
               </button>
             </div>
-            
+
             {/* Height-consistent status text */}
             {isRecording ? (
               <p className="text-sm font-semibold text-red-500 animate-pulse">Đang ghi âm, hãy nói... ({timeLeft}s)</p>

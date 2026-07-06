@@ -22,3 +22,11 @@ export async function completeDeepPracticeExercise(exerciseId: string) {
   });
   return res.data;
 }
+
+export async function checkGeneralWriting(sentence: string, lang: string) {
+  const res = await djangoClient.post('/writing', {
+    sentence,
+    lang,
+  });
+  return res.data;
+}

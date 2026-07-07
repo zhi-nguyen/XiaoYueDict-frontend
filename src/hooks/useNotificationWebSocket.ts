@@ -5,6 +5,7 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { cacheScoreResult } from '@/lib/scoreResultCache';
+import axios from 'axios';
 
 // Danh sách event types cần lưu trữ và hiển thị cho người dùng (tác vụ dài)
 const PERSISTENT_EVENT_TYPES = new Set([
@@ -75,11 +76,25 @@ export function useNotificationWebSocket() {
     [isAuthenticated, addNotification, addToast, setLastMessage]
   );
 
-  const handleConnect = useCallback(() => {
+  const handleConnect = useCallback(async () => {
     if (!isAuthenticated) return;
     // Safety Net: Fetch unread messages & counts on connect/reconnect to capture offline notifications
     fetchNotifications();
     fetchUnreadCount();
+
+    // If the user currently has no avatar, fetch the latest profile details on connect
+    // to resolve any race conditions where the sync task completed before WebSocket handshake.
+    const currentUser = useAuthStore.getState().user;
+    if (currentUser && !currentUser.avatar) {
+      try {
+        const { data } = await axios.get('/api/auth/me');
+        if (data && data.avatar) {
+          useAuthStore.getState().updateProfile({ avatar: data.avatar });
+        }
+      } catch (err) {
+        console.error('Failed to fetch latest user profile on WS connect:', err);
+      }
+    }
   }, [isAuthenticated, fetchNotifications, fetchUnreadCount]);
 
   // Connect websocket using the core hook

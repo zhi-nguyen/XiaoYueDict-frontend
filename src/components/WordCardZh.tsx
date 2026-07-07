@@ -76,6 +76,13 @@ const renderClickableHanzi = (text: string, onCharClick?: (char: string) => void
   });
 };
 
+const capitalizeFirstLetter = (str: string): string => {
+  if (!str) return str;
+  const trimmed = str.trim();
+  if (!trimmed) return str;
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+};
+
 const TranslationVi = ({ text }: { text: string }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   if (!text) return null;
@@ -86,7 +93,7 @@ const TranslationVi = ({ text }: { text: string }) => {
       <span className="block space-y-1 text-left">
         {parts.map((part, idx) => (
           <span key={idx} className="block">
-            - {part}
+            {capitalizeFirstLetter(part)}
           </span>
         ))}
       </span>
@@ -100,7 +107,7 @@ const TranslationVi = ({ text }: { text: string }) => {
       <span className="block space-y-1 w-full">
         {displayedParts.map((part, idx) => (
           <span key={idx} className="block">
-            - {part}
+            - {capitalizeFirstLetter(part)}
           </span>
         ))}
       </span>

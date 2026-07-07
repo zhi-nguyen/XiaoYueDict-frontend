@@ -27,7 +27,7 @@ const TranslationVi = ({ text }: { text: string }) => {
       <span className="block space-y-1 text-center mt-4">
         {parts.map((part, idx) => (
           <span key={idx} className="block text-xl sm:text-2xl font-bold text-sage select-all">
-            - {capitalizeFirstLetter(part)}
+            {capitalizeFirstLetter(part)}
           </span>
         ))}
       </span>

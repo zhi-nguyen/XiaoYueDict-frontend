@@ -39,6 +39,12 @@ export function useNotificationWebSocket() {
       // Ignore generic ping/pong messages
       if (msg.type === 'ping' || msg.type === 'pong') return;
 
+      // Listen for avatar synced event to update user profile picture in real-time
+      if (msg.type === 'avatar_complete' && msg.payload?.avatar_url) {
+        useAuthStore.getState().updateProfile({ avatar: msg.payload.avatar_url });
+        addToast('Đồng bộ ảnh đại diện thành công', 'success');
+      }
+
       // Cache kết quả chấm điểm phát âm khi nhận sự kiện score_complete
       if (msg.type === 'score_complete' && msg.payload?.task_id) {
         cacheScoreResult({

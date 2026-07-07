@@ -127,9 +127,6 @@ export default function TermsPage() {
               <div className="bg-amber-50/80 border border-amber-200/60 rounded-xl p-5 md:p-6">
                 {/* Header with warning icon */}
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 shrink-0 rounded-xl bg-amber-500/15 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-amber-600 text-[22px]">psychology_alt</span>
-                  </div>
                   <div>
                     <h2 className="text-lg font-bold text-primary flex items-center gap-2">
                       <span className="text-xs font-semibold text-amber-700 bg-amber-100 rounded-md px-2 py-0.5">Điều 4</span>
@@ -208,6 +205,17 @@ export default function TermsPage() {
                       </p>
                     </div>
                   </div>
+
+                  {/* 4.6 Báo cáo bản quyền */}
+                  <div className="flex items-start gap-3 bg-blue-50/60 border border-blue-200/50 rounded-lg p-3">
+                    <span className="material-symbols-outlined text-blue-600 text-[18px] shrink-0 mt-0.5">copyright</span>
+                    <div>
+                      <h3 className="font-semibold text-primary text-sm mb-1">4.6. Báo cáo vi phạm bản quyền đối với nội dung AI</h3>
+                      <p className="text-xs">
+                        Nếu bạn phát hiện bất kỳ nội dung nào (bao gồm văn bản, hình ảnh hoặc âm thanh) do AI tạo ra trên hệ thống CnenDict có dấu hiệu xâm phạm quyền tác giả hoặc quyền sở hữu trí tuệ của bạn hoặc của một chủ thể mà bạn đại diện hợp pháp, xin vui lòng gửi thông báo cho chúng tôi kèm theo bằng chứng chứng minh quyền sở hữu hợp pháp. Bạn có thể gửi báo cáo trực tiếp thông qua <strong className="text-primary">tính năng báo cáo lỗi/vi phạm hiện có trên ứng dụng</strong>, hoặc liên hệ qua email <a href="mailto:support@cnendict.xyz" className="text-primary underline font-medium">support@cnendict.xyz</a> / số điện thoại (Zalo) <strong className="text-primary">0373664881</strong>. Chúng tôi cam kết tiếp nhận, xác minh và gỡ bỏ các nội dung này trong thời gian sớm nhất.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -243,7 +251,7 @@ export default function TermsPage() {
 
           {/* ── 7. Thanh toán ── */}
           <Section number="Điều 7" title="Thanh toán & Gói dịch vụ">
-            <p>CnenDict cung cấp many gói dịch vụ với các mức tính năng và hạn mức khác nhau:</p>
+            <p>CnenDict cung cấp nhiều gói dịch vụ với các mức tính năng và hạn mức khác nhau:</p>
             <ul className="list-disc list-inside space-y-1.5 pl-2">
               <li><strong className="text-primary">Free:</strong> Truy cập cơ bản với hạn mức sử dụng AI giới hạn.</li>
               <li><strong className="text-primary">Plus / Pro / Premium:</strong> Các gói trả phí với hạn mức AI cao hơn, tính năng nâng cao và ưu tiên hỗ trợ.</li>

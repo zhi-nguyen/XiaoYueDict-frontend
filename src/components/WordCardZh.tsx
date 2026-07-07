@@ -76,6 +76,48 @@ const renderClickableHanzi = (text: string, onCharClick?: (char: string) => void
   });
 };
 
+const TranslationVi = ({ text }: { text: string }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  if (!text) return null;
+
+  const parts = text.split(';').map(part => part.trim()).filter(Boolean);
+  if (parts.length <= 1) {
+    return (
+      <span className="block space-y-1 text-left">
+        {parts.map((part, idx) => (
+          <span key={idx} className="block">
+            - {part}
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  const displayedParts = isExpanded ? parts : [parts[0]];
+
+  return (
+    <div className="flex flex-col items-start w-full text-left">
+      <span className="block space-y-1 w-full">
+        {displayedParts.map((part, idx) => (
+          <span key={idx} className="block">
+            - {part}
+          </span>
+        ))}
+      </span>
+      <button
+        type="button"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="text-emerald-600 hover:text-emerald-700 font-bold text-xs mt-2.5 flex items-center gap-1 transition-colors focus:outline-none"
+      >
+        <span>{isExpanded ? 'Thu gọn' : 'Xem thêm'}</span>
+        <span className="material-symbols-outlined text-[16px] font-bold">
+          {isExpanded ? 'expand_less' : 'expand_more'}
+        </span>
+      </button>
+    </div>
+  );
+};
+
 export default function WordCardZh({ word, onPracticeClick, onCharClick }: WordCardZhProps) {
   const { isAuthenticated } = useAuthStore();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -273,9 +315,9 @@ export default function WordCardZh({ word, onPracticeClick, onCharClick }: WordC
         <h2 className="text-[13px] font-bold uppercase tracking-wider text-secondary mb-3">
           Nghĩa Tiếng Việt
         </h2>
-        <p className="text-2xl text-primary font-semibold leading-relaxed">
-          {word.translation_vi ? word.translation_vi.toUpperCase() : ''}
-        </p>
+        <div className="text-xl text-primary font-semibold leading-relaxed">
+          <TranslationVi text={word.translation_vi} />
+        </div>
         {word.popularity_rank !== undefined && word.popularity_rank !== null && (
           <p className="text-sm font-semibold text-secondary/60 mt-2">
             #Độ phổ biến: {word.popularity_rank}

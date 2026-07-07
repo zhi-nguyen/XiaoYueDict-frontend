@@ -14,7 +14,6 @@ export default function HomePage() {
     <div className="w-full p-4 md:p-8 pb-16">
       <div className="max-w-[1280px] mx-auto space-y-8">
         <WelcomeBanner language={language} />
-        <StatsGrid language={language} />
         <QuickActions language={language} />
       </div>
     </div>

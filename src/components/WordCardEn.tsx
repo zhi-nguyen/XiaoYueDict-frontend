@@ -83,17 +83,45 @@ const translatePartOfSpeech = (pos: string): string => {
   return capitalizeWords(res);
 };
 
-const renderTranslationVi = (text: string) => {
+const TranslationVi = ({ text }: { text: string }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
   if (!text) return null;
+
   const parts = text.split(';').map(part => part.trim()).filter(Boolean);
+  if (parts.length <= 1) {
+    return (
+      <span className="block space-y-1">
+        {parts.map((part, idx) => (
+          <span key={idx} className="block text-left">
+            - {part}
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  const displayedParts = isExpanded ? parts : [parts[0]];
+
   return (
-    <span className="block space-y-1">
-      {parts.map((part, idx) => (
-        <span key={idx} className="block">
-          - {part}
+    <div className="flex flex-col items-start w-full text-left">
+      <span className="block space-y-1 w-full">
+        {displayedParts.map((part, idx) => (
+          <span key={idx} className="block">
+            - {part}
+          </span>
+        ))}
+      </span>
+      <button
+        type="button"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="text-emerald-600 hover:text-emerald-700 font-bold text-xs mt-2.5 flex items-center gap-1 transition-colors focus:outline-none"
+      >
+        <span>{isExpanded ? 'Thu gọn' : 'Xem thêm'}</span>
+        <span className="material-symbols-outlined text-[16px] font-bold">
+          {isExpanded ? 'expand_less' : 'expand_more'}
         </span>
-      ))}
-    </span>
+      </button>
+    </div>
   );
 };
 
@@ -359,7 +387,7 @@ export default function WordCardEn({ word, onPracticeClick }: WordCardEnProps) {
                     </span>
                   </div>
                   <div className="text-base font-semibold text-primary leading-relaxed">
-                    {renderTranslationVi(def.translation_vi)}
+                    <TranslationVi text={def.translation_vi} />
                   </div>
                 </div>
 
@@ -398,7 +426,7 @@ export default function WordCardEn({ word, onPracticeClick }: WordCardEnProps) {
               Nghĩa Tiếng Việt
             </h2>
             <div className="text-lg font-semibold text-primary leading-relaxed">
-              {renderTranslationVi(word.translation_vi)}
+              <TranslationVi text={word.translation_vi} />
             </div>
           </div>
 

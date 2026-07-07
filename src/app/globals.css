@@ -65,13 +65,15 @@
 
 @media (min-width: 768px) {
   html {
-    font-size: 18.5px; /* Increases base font size by ~2pt on desktop/tablet */
+    font-size: 20px;
+    /* Increases base font size by ~2pt on desktop/tablet */
   }
 }
 
 body {
   font-family: 'Lexend', 'Inter', ui-sans-serif, system-ui, sans-serif;
-  font-size: 1rem; /* primary content size */
+  font-size: 1rem;
+  /* primary content size */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -86,11 +88,15 @@ body {
    - Mobile minimum: 16px — no text smaller than 16px on touch devices
    ───────────────────────────────────────────── */
 @media (max-width: 767px) {
+
   /* Enforce minimum 16px on mobile: override all sub-16px text sizes */
   .text-xs {
-    font-size: 1rem !important;     /* 16px */
-    line-height: 1.5rem !important; /* 24px */
+    font-size: 1rem !important;
+    /* 16px */
+    line-height: 1.5rem !important;
+    /* 24px */
   }
+
   /* Custom pixel sizes below 16px also get bumped on mobile
      EXCEPT Material Symbols icons which use text-[Npx] for icon sizing */
   .text-\[10px\]:not(.material-symbols-outlined),
@@ -117,9 +123,11 @@ body {
 .sidebar-scroll::-webkit-scrollbar {
   width: 4px;
 }
+
 .sidebar-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .sidebar-scroll::-webkit-scrollbar-thumb {
   background: var(--color-outline);
   border-radius: 10px;
@@ -128,7 +136,7 @@ body {
 /* ── Grid Canvas ── */
 .grid-canvas {
   background-image: linear-gradient(var(--color-outline) 1px, transparent 1px),
-                    linear-gradient(90deg, var(--color-outline) 1px, transparent 1px);
+    linear-gradient(90deg, var(--color-outline) 1px, transparent 1px);
   background-size: 30px 30px;
 }
 
@@ -138,9 +146,20 @@ body {
 
 /* Pulse ring around recording button */
 @keyframes pulse-ring {
-  0% { transform: scale(1); opacity: 0.6; }
-  50% { transform: scale(1.15); opacity: 0; }
-  100% { transform: scale(1); opacity: 0; }
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+
+  50% {
+    transform: scale(1.15);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
 }
 
 .animate-pulse-ring::before {
@@ -154,25 +173,35 @@ body {
 
 /* Shimmer loading effect */
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 .animate-shimmer {
-  background: linear-gradient(
-    90deg,
-    var(--color-hover-bg) 25%,
-    var(--color-outline) 37%,
-    var(--color-hover-bg) 63%
-  );
+  background: linear-gradient(90deg,
+      var(--color-hover-bg) 25%,
+      var(--color-outline) 37%,
+      var(--color-hover-bg) 63%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
 /* Slide up entrance */
 @keyframes slide-up {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .animate-slide-up {
@@ -181,8 +210,13 @@ body {
 
 /* Fade in */
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .animate-fade-in {
@@ -191,8 +225,15 @@ body {
 
 /* Scale in */
 @keyframes scale-in {
-  from { transform: scale(0.9); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .animate-scale-in {
@@ -201,8 +242,15 @@ body {
 
 /* Waveform bar animation */
 @keyframes wave-bar {
-  0%, 100% { transform: scaleY(0.3); }
-  50% { transform: scaleY(1); }
+
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+
+  50% {
+    transform: scaleY(1);
+  }
 }
 
 .animate-wave-bar {
@@ -211,8 +259,17 @@ body {
 
 /* Score count-up number */
 @keyframes count-appear {
-  from { transform: scale(0.5); opacity: 0; filter: blur(4px); }
-  to { transform: scale(1); opacity: 1; filter: blur(0); }
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+    filter: blur(4px);
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
 }
 
 .animate-count-appear {
@@ -221,8 +278,13 @@ body {
 
 /* Circular progress stroke animation */
 @keyframes progress-stroke {
-  from { stroke-dashoffset: var(--circumference, 339.292); }
-  to { stroke-dashoffset: var(--target-offset, 0); }
+  from {
+    stroke-dashoffset: var(--circumference, 339.292);
+  }
+
+  to {
+    stroke-dashoffset: var(--target-offset, 0);
+  }
 }
 
 .animate-progress-stroke {
@@ -231,8 +293,15 @@ body {
 
 /* Gentle floating */
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-6px);
+  }
 }
 
 .animate-float {
@@ -245,15 +314,18 @@ body {
     left: -40%;
     right: 100%;
   }
+
   50% {
     left: 20%;
     right: 20%;
   }
+
   100% {
     left: 100%;
     right: -40%;
   }
 }
+
 .animate-indeterminate-bar {
   animation: indeterminate-bar 1.8s cubic-bezier(0.65, 0.815, 0.735, 0.395) infinite;
 }
@@ -277,15 +349,37 @@ body {
 }
 
 /* ── Score Color Utilities ── */
-.score-excellent { color: var(--score-excellent); }
-.score-good { color: var(--score-good); }
-.score-moderate { color: var(--score-moderate); }
-.score-poor { color: var(--score-poor); }
+.score-excellent {
+  color: var(--score-excellent);
+}
 
-.score-bg-excellent { background-color: var(--score-excellent-bg); }
-.score-bg-good { background-color: var(--score-good-bg); }
-.score-bg-moderate { background-color: var(--score-moderate-bg); }
-.score-bg-poor { background-color: var(--score-poor-bg); }
+.score-good {
+  color: var(--score-good);
+}
+
+.score-moderate {
+  color: var(--score-moderate);
+}
+
+.score-poor {
+  color: var(--score-poor);
+}
+
+.score-bg-excellent {
+  background-color: var(--score-excellent-bg);
+}
+
+.score-bg-good {
+  background-color: var(--score-good-bg);
+}
+
+.score-bg-moderate {
+  background-color: var(--score-moderate-bg);
+}
+
+.score-bg-poor {
+  background-color: var(--score-poor-bg);
+}
 
 /* FlashCard Modal Glass Overlay */
 .flashcard-glass-overlay {
@@ -302,6 +396,7 @@ body {
   gap: 4.5px;
   height: 40px;
 }
+
 .audio-wave span {
   display: block;
   width: 4px;
@@ -309,31 +404,60 @@ body {
   border-radius: 2px;
   animation: wave-animation 1s ease-in-out infinite alternate;
 }
+
 @keyframes wave-animation {
-  0% { height: 10px; }
-  100% { height: 40px; }
+  0% {
+    height: 10px;
+  }
+
+  100% {
+    height: 40px;
+  }
 }
-.audio-wave span:nth-child(2) { animation-delay: 0.1s; }
-.audio-wave span:nth-child(3) { animation-delay: 0.2s; }
-.audio-wave span:nth-child(4) { animation-delay: 0.3s; }
-.audio-wave span:nth-child(5) { animation-delay: 0.4s; }
+
+.audio-wave span:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.audio-wave span:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.audio-wave span:nth-child(4) {
+  animation-delay: 0.3s;
+}
+
+.audio-wave span:nth-child(5) {
+  animation-delay: 0.4s;
+}
 
 /* Pulse Ring Animation */
 @keyframes pulse-ring {
-  0% { transform: scale(0.9); opacity: 0.6; }
-  100% { transform: scale(2.2); opacity: 0; }
+  0% {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
 }
+
 .animate-pulse-ring {
   animation: pulse-ring 1.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
 }
+
 .pulse-ring-1 {
   animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
   animation-delay: 0s;
 }
+
 .pulse-ring-2 {
   animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
   animation-delay: 0.6s;
 }
+
 .pulse-ring-3 {
   animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
   animation-delay: 1.2s;
@@ -369,9 +493,8 @@ body {
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-
-

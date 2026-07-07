@@ -94,7 +94,7 @@ export default function WordCardZh({ word, onPracticeClick, onCharClick }: WordC
   }, [word]);
 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [imageStatus, setImageStatus] = useState<'idle' | 'generating' | 'regenerating' | 'ready' | 'failed'>('idle');
+  const [imageStatus, setImageStatus] = useState<'idle' | 'generating' | 'regenerating' | 'ready' | 'failed' | 'collecting'>('idle');
 
   const isUUID = (str: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
 
@@ -109,6 +109,8 @@ export default function WordCardZh({ word, onPracticeClick, onCharClick }: WordC
       if (res.data.status === 'ready' && res.data.image_url) {
         setImageUrl(res.data.image_url);
         setImageStatus('ready');
+      } else if (res.data.status === 'collecting' || res.data.status === 'COLLECTING') {
+        setImageStatus('collecting');
       } else if (res.data.status === 'REGENERATING') {
         setImageStatus('regenerating');
       } else {
@@ -136,8 +138,12 @@ export default function WordCardZh({ word, onPracticeClick, onCharClick }: WordC
     onMessage: (msg) => {
       if (word && msg.payload?.word_id === word.id) {
         if (msg.type === 'image_complete') {
-          setImageUrl(msg.payload.image_url as string);
-          setImageStatus('ready');
+          if (msg.payload.status === 'collecting') {
+            setImageStatus('collecting');
+          } else {
+            setImageUrl(msg.payload.image_url as string);
+            setImageStatus('ready');
+          }
         } else if (msg.type === 'image_failed') {
           setImageStatus('failed');
         }
@@ -289,6 +295,12 @@ export default function WordCardZh({ word, onPracticeClick, onCharClick }: WordC
                 {imageStatus === 'regenerating' ? 'Đang tạo lại hình ảnh...' : 'Đang thiết kế hình ảnh...'}
               </span>
               <span className="text-xs text-secondary/60 mt-1">AI đang vẽ minh họa cho từ vựng này. Hãy đợi một chút...</span>
+            </div>
+          ) : imageStatus === 'collecting' ? (
+            <div className="relative w-full h-[200px] rounded-2xl bg-hover-bg border border-outline flex flex-col items-center justify-center overflow-hidden shadow-inner text-secondary select-none text-center p-6">
+              <span className="material-symbols-outlined text-3xl mb-2 text-secondary/40">photo_library</span>
+              <span className="text-sm font-semibold">Ảnh đang trong quá trình thu thập</span>
+              <span className="text-xs text-secondary/60 mt-1">Hình ảnh minh họa cho từ vựng này đang được cập nhật.</span>
             </div>
           ) : imageStatus === 'failed' ? (
             <div className="relative w-full h-[200px] rounded-2xl bg-hover-bg border border-outline flex flex-col items-center justify-center overflow-hidden shadow-inner text-secondary select-none text-center p-6 space-y-3">

@@ -55,7 +55,7 @@ export default function BadgesCard({ maxStreak, totalWords }: BadgesCardProps) {
               </span>
             </div>
             <span
-              className={`text-[10px] text-center leading-tight font-medium ${
+              className={`text-xs text-center leading-tight font-medium ${
                 badge.unlocked ? 'text-primary' : 'text-secondary/40'
               }`}
             >

@@ -90,7 +90,10 @@ export default function Sidebar() {
         <aside ref={sidebarRef} className={`fixed inset-y-0 left-0 z-50 h-full w-[260px] bg-surface border-r border-outline flex flex-col shrink-0 transition-all duration-300 md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           {/* Back to list button */}
           <button 
-            onClick={() => window.dispatchEvent(new CustomEvent('exam-sidebar-leave'))}
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('exam-sidebar-leave'));
+              setSidebarOpen(false);
+            }}
             className="flex items-center gap-3 px-4 py-3 mx-4 mt-4 text-red-500 hover:bg-red-50 rounded-xl transition-all font-bold text-sm text-left focus:outline-none"
           >
             <span className="material-symbols-outlined">arrow_back</span>
@@ -109,7 +112,7 @@ export default function Sidebar() {
                 <p className="font-lexend font-bold text-xs text-primary uppercase tracking-wide truncate">
                   {activeExam?.level || 'Đang thi'}
                 </p>
-                <p className="text-[11px] text-secondary font-medium mt-0.5 leading-tight truncate">
+                <p className="text-[13px] text-secondary font-medium mt-0.5 leading-tight truncate">
                   {activeExam?.exam_name || 'Đang tải đề thi...'}
                 </p>
               </div>
@@ -118,7 +121,7 @@ export default function Sidebar() {
 
           {/* Sections navigation */}
           <nav className="flex-1 px-4 space-y-1 sidebar-scroll overflow-y-auto overflow-x-hidden pt-2">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 mb-2 font-lexend">Phần thi</p>
+            <p className="text-[12px] font-bold uppercase tracking-wider text-slate-400 px-3 mb-2 font-lexend">Phần thi</p>
             {(() => {
               const sectionCounts: Record<string, number> = {};
               const sectionIndices: Record<string, number> = {};
@@ -154,7 +157,7 @@ export default function Sidebar() {
                     className="w-full flex items-center h-12 rounded-full px-3 text-secondary hover:bg-hover-bg hover:text-primary transition-all text-left focus:outline-none"
                   >
                     <span className="material-symbols-outlined w-6 flex justify-center shrink-0">{icon}</span>
-                    <span className="font-medium text-[14px] whitespace-nowrap ml-3 truncate">
+                    <span className="font-medium text-[16px] whitespace-nowrap ml-3 truncate">
                       {sec.section_name} - P.{sec.part_number}{suffix}
                     </span>
                   </button>
@@ -203,7 +206,7 @@ export default function Sidebar() {
                   className={`flex items-center h-12 rounded-full transition-all ${isDesktopSidebarCollapsed ? 'md:justify-center px-3 md:px-0' : 'px-3 justify-start'} ${isActive ? 'bg-primary text-white' : 'text-secondary hover:bg-hover-bg hover:text-primary'}`}
                 >
                   <span className={`material-symbols-outlined ${isActive ? 'filled' : ''} w-6 flex justify-center shrink-0`}>{item.icon}</span>
-                  <span className={`font-medium text-[15px] whitespace-nowrap transition-all duration-300 ml-3 ${isDesktopSidebarCollapsed ? 'md:opacity-0 md:w-0 md:ml-0 overflow-hidden' : 'md:opacity-100 md:w-auto'}`}>{item.label}</span>
+                  <span className={`font-medium text-[17px] whitespace-nowrap transition-all duration-300 ml-3 ${isDesktopSidebarCollapsed ? 'md:opacity-0 md:w-0 md:ml-0 overflow-hidden' : 'md:opacity-100 md:w-auto'}`}>{item.label}</span>
                 </Link>
               );
             })}
@@ -216,15 +219,15 @@ export default function Sidebar() {
               <div className={`flex items-center h-12 text-secondary/70 ${isDesktopSidebarCollapsed ? 'md:justify-center md:px-0' : ''}`}>
                 <span className="material-symbols-outlined w-6 flex justify-center shrink-0">headphones</span>
                 <div className={`flex flex-col justify-center whitespace-nowrap transition-all duration-300 ml-3 ${isDesktopSidebarCollapsed ? 'md:opacity-0 md:w-0 md:ml-0 overflow-hidden' : 'md:opacity-100 md:w-auto'}`}>
-                  <span className="font-medium text-[15px] leading-tight">Luyện Nghe</span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider">Sắp ra mắt</span>
+                  <span className="font-medium text-[17px] leading-tight">Luyện Nghe</span>
+                  <span className="text-[12px] font-bold uppercase tracking-wider">Sắp ra mắt</span>
                 </div>
               </div>
               <div className={`flex items-center h-12 text-secondary/70 ${isDesktopSidebarCollapsed ? 'md:justify-center md:px-0' : ''}`}>
                 <span className="material-symbols-outlined w-6 flex justify-center shrink-0">videogame_asset</span>
                 <div className={`flex flex-col justify-center whitespace-nowrap transition-all duration-300 ml-3 ${isDesktopSidebarCollapsed ? 'md:opacity-0 md:w-0 md:ml-0 overflow-hidden' : 'md:opacity-100 md:w-auto'}`}>
-                  <span className="font-medium text-[15px] leading-tight">Mini Game</span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider">Sắp ra mắt</span>
+                  <span className="font-medium text-[17px] leading-tight">Mini Game</span>
+                  <span className="text-[12px] font-bold uppercase tracking-wider">Sắp ra mắt</span>
                 </div>
               </div>
             </div>
@@ -237,7 +240,7 @@ export default function Sidebar() {
               className={`flex items-center h-12 rounded-full text-secondary hover:bg-hover-bg hover:text-primary transition-all ${isDesktopSidebarCollapsed ? 'md:justify-center px-3 md:px-0' : 'px-3 justify-start'}`}
             >
               <span className="material-symbols-outlined w-6 flex justify-center shrink-0">settings</span>
-              <span className={`font-medium text-[15px] whitespace-nowrap transition-all duration-300 ml-3 ${isDesktopSidebarCollapsed ? 'md:opacity-0 md:w-0 md:ml-0 overflow-hidden' : 'md:opacity-100 md:w-auto'}`}>Cài đặt</span>
+              <span className={`font-medium text-[17px] whitespace-nowrap transition-all duration-300 ml-3 ${isDesktopSidebarCollapsed ? 'md:opacity-0 md:w-0 md:ml-0 overflow-hidden' : 'md:opacity-100 md:w-auto'}`}>Cài đặt</span>
             </button>
           </div>
         </aside>

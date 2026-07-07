@@ -61,7 +61,7 @@ export default function DailyTargetCard({
 
       {/* SVG Progress Ring */}
       <div className="relative w-40 h-40 flex items-center justify-center">
-        <svg className="w-full h-full transform -rotate-90">
+        <svg className="block w-full h-full transform -rotate-90" viewBox="0 0 160 160">
           <circle cx="80" cy="80" r="70" className="stroke-hover-bg" strokeWidth="12" fill="none" />
           <circle
             cx="80"
@@ -75,10 +75,10 @@ export default function DailyTargetCard({
             strokeLinecap="round"
           />
         </svg>
-        <div className="absolute flex flex-col items-center justify-center text-center">
-          <span className="text-3xl font-bold text-primary">{currentValue}</span>
-          <span className="text-xs text-secondary uppercase tracking-wider font-semibold">
-            / {targetValue} {config.unit}
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+          <span className="text-3xl font-bold text-primary leading-none mb-1">{currentValue}</span>
+          <span className="text-xs text-secondary uppercase tracking-wider font-semibold leading-none">
+            / {targetValue}{targetType === 'duration' ? ` ${config.unit}` : ''}
           </span>
         </div>
       </div>

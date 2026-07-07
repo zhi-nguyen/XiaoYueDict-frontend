@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { useAuthStore } from '@/store/useAuthStore';
 import { 
   signInWithEmailAndPassword, 
@@ -14,9 +16,13 @@ import {
 import { auth } from '@/lib/firebase';
 
 export default function AuthModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const params = useParams();
+  const language = (params?.lang as string) || 'zh';
+
   const [mounted, setMounted] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
   
   // Registration fields
   const [username, setUsername] = useState('');
@@ -51,6 +57,12 @@ export default function AuthModal({ isOpen, onClose }: { isOpen: boolean; onClos
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!isForgotPassword && !acceptTerms) {
+      setError('Vui lòng đồng ý với Điều khoản dịch vụ và Chính sách bảo mật trước khi tiếp tục.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -103,6 +115,12 @@ export default function AuthModal({ isOpen, onClose }: { isOpen: boolean; onClos
 
   const handleGoogleLogin = async () => {
     setError('');
+
+    if (!acceptTerms) {
+      setError('Vui lòng đồng ý với Điều khoản dịch vụ và Chính sách bảo mật trước khi tiếp tục.');
+      return;
+    }
+
     setLoading(true);
     const provider = new GoogleAuthProvider();
 
@@ -236,6 +254,27 @@ export default function AuthModal({ isOpen, onClose }: { isOpen: boolean; onClos
                   placeholder="••••••••"
                   className="w-full px-4 py-2.5 rounded-xl border border-outline bg-hover-bg focus:bg-surface focus:border-sage focus:ring-1 focus:ring-sage transition-all outline-none"
                 />
+              </div>
+
+              <div className="flex items-start gap-2.5 my-3">
+                <input
+                  type="checkbox"
+                  id="accept-terms"
+                  checked={acceptTerms}
+                  onChange={(e) => setAcceptTerms(e.target.checked)}
+                  className="w-4 h-4 rounded border-outline text-sage focus:ring-sage focus:ring-opacity-25 mt-0.5 cursor-pointer"
+                />
+                <label htmlFor="accept-terms" className="text-xs text-secondary leading-normal select-none cursor-pointer">
+                  Tôi đồng ý với{' '}
+                  <Link href={`/${language}/terms`} target="_blank" className="text-primary underline hover:text-opacity-80 transition-opacity">
+                    Điều khoản dịch vụ
+                  </Link>{' '}
+                  và{' '}
+                  <Link href={`/${language}/privacy`} target="_blank" className="text-primary underline hover:text-opacity-80 transition-opacity">
+                    Chính sách bảo mật
+                  </Link>{' '}
+                  của CnenDict.
+                </label>
               </div>
 
               <button 

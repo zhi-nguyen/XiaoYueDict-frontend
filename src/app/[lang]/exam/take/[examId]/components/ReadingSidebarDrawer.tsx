@@ -21,21 +21,20 @@ export default function ReadingSidebarDrawer({
 
   if (!isOpen || !activeSection) return null;
 
-  const getPassageText = (paragraph: any): string => {
-    if (!paragraph) return '';
-    if (typeof paragraph === 'string') return paragraph;
-    if (typeof paragraph === 'object') {
-      const title = paragraph.title || '';
-      const content = paragraph.content || '';
-      if (title && content) {
-        return `${title}\n\n${content}`;
-      }
-      return content || title || '';
+  const paragraphData = (() => {
+    const raw = activeSection.passage || activeSection.questions[0]?.paragraph;
+    if (!raw) return { title: '', content: '' };
+    if (typeof raw === 'string') return { title: '', content: raw };
+    if (typeof raw === 'object') {
+      return {
+        title: raw.title || '',
+        content: raw.content || '',
+      };
     }
-    return '';
-  };
+    return { title: '', content: '' };
+  })();
 
-  const passageText = getPassageText(activeSection.questions[0]?.paragraph);
+  const passageText = paragraphData.content || paragraphData.title;
 
   const increaseTextSize = () => {
     if (textSize === 'text-sm') setTextSize('text-base');
@@ -100,7 +99,12 @@ export default function ReadingSidebarDrawer({
             className={`text-primary leading-relaxed text-justify font-inter space-y-6 ${textSize}`}
             style={{ textAlign: 'justify' }}
           >
-            <p className="whitespace-pre-line">{passageText}</p>
+            {paragraphData.title && (
+              <h4 className="text-base font-bold text-primary mb-3 text-center font-lexend">
+                {paragraphData.title}
+              </h4>
+            )}
+            <p className="whitespace-pre-line">{paragraphData.content}</p>
           </div>
         </div>
       </div>

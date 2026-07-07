@@ -45,7 +45,7 @@ export interface Section {
   section_audio_url: string;
   ordering: number;
   questions: Question[];
-  paragraphs?: Paragraph[];
+  passage?: { title: string; content: string } | null;
 }
 
 export interface Exam {

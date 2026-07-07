@@ -82,10 +82,10 @@ export default function TermsPage() {
 
           {/* ── 1. Chấp thuận ── */}
           <Section number="Điều 1" title="Chấp thuận điều khoản">
-            <p>
+            <p className="text-justify">
               Bằng việc truy cập, đăng ký tài khoản hoặc sử dụng bất kỳ tính năng nào trên ứng dụng CnenDict (bao gồm website và các dịch vụ liên kết), bạn xác nhận rằng bạn đã đọc, hiểu rõ và đồng ý tuân thủ toàn bộ các điều khoản được nêu trong tài liệu này.
             </p>
-            <p>
+            <p className="text-justify">
               Nếu bạn không đồng ý với bất kỳ phần nào của các điều khoản, vui lòng ngừng sử dụng dịch vụ ngay lập tức. Việc tiếp tục sử dụng sau khi điều khoản được cập nhật đồng nghĩa với việc bạn chấp thuận các thay đổi mới.
             </p>
           </Section>
@@ -93,7 +93,7 @@ export default function TermsPage() {
           {/* ── 2. Tài khoản ── */}
           <Section number="Điều 2" title="Tài khoản người dùng">
             <p>Khi tạo tài khoản trên CnenDict, bạn cam kết:</p>
-            <ul className="list-disc list-inside space-y-1.5 pl-2">
+            <ul className="list-disc list-inside space-y-1.5 pl-2 text-justify">
               <li>Cung cấp thông tin đăng ký chính xác, đầy đủ và cập nhật.</li>
               <li>Bảo mật thông tin đăng nhập (mật khẩu, token xác thực) và không chia sẻ cho bất kỳ bên thứ ba nào.</li>
               <li>Chịu trách nhiệm hoàn toàn cho mọi hoạt động xảy ra dưới tài khoản của mình, bao gồm cả hành vi truy cập trái phép do lỗi bảo mật từ phía người dùng.</li>
@@ -107,7 +107,7 @@ export default function TermsPage() {
           {/* ── 3. Mô tả dịch vụ ── */}
           <Section number="Điều 3" title="Mô tả dịch vụ">
             <p>CnenDict cung cấp các dịch vụ học tập ngôn ngữ bao gồm nhưng không giới hạn:</p>
-            <ul className="list-disc list-inside space-y-1.5 pl-2">
+            <ul className="list-disc list-inside space-y-1.5 pl-2 text-justify">
               <li><strong className="text-primary">Tra cứu từ điển:</strong> Từ điển Trung-Việt, Anh-Việt với giải nghĩa, bính âm, ví dụ và stroke order.</li>
               <li><strong className="text-primary">Dịch thuật thông minh:</strong> Dịch văn bản đa ngôn ngữ, có hỗ trợ AI khi không tìm thấy trong cơ sở dữ liệu.</li>
               <li><strong className="text-primary">Luyện nói:</strong> Ghi âm và chấm điểm phát âm bằng công nghệ nhận dạng giọng nói.</li>
@@ -141,7 +141,7 @@ export default function TermsPage() {
                   <div>
                     <h3 className="font-semibold text-primary text-sm mb-2">4.1. Khai báo nội dung AI</h3>
                     <p>CnenDict sử dụng các mô hình Trí tuệ nhân tạo (AI) để tạo ra và hỗ trợ nhiều loại nội dung trên nền tảng, bao gồm nhưng không giới hạn:</p>
-                    <ul className="list-disc list-inside space-y-1 pl-2 mt-2">
+                    <ul className="list-disc list-inside space-y-1 pl-2 mt-2 text-justify">
                       <li><strong className="text-primary">Bản dịch AI:</strong> Khi hệ thống không tìm thấy kết quả trong cơ sở dữ liệu, AI sẽ tự động dịch và trả kết quả cho người dùng.</li>
                       <li><strong className="text-primary">Bài tập Flashcard:</strong> Bài tập reading và listening được sinh tự động bởi mô hình ngôn ngữ lớn (LLM).</li>
                       <li><strong className="text-primary">Chấm chữa ngữ pháp:</strong> Phản hồi về lỗi ngữ pháp, gợi ý sửa câu và giải thích quy tắc ngôn ngữ do AI tạo ra.</li>
@@ -157,11 +157,11 @@ export default function TermsPage() {
                       <span className="material-symbols-outlined text-amber-500 text-[18px]">warning</span>
                       4.2. Tuyên bố miễn trừ trách nhiệm
                     </h3>
-                    <div className="space-y-2">
+                    <div className="space-y-2 text-justify">
                       <p>
                         <strong className="text-primary">Nội dung do AI tạo ra chỉ mang tính chất tham khảo</strong> và không được coi là nguồn thông tin chính xác tuyệt đối. Mặc dù CnenDict nỗ lực sử dụng các mô hình AI tiên tiến nhất, chúng tôi <strong className="text-red-600">KHÔNG đảm bảo</strong> rằng:
                       </p>
-                      <ul className="list-disc list-inside space-y-1 pl-2">
+                      <ul className="list-disc list-inside space-y-1 pl-2 text-justify">
                         <li>Bản dịch AI luôn chính xác về ngữ nghĩa, ngữ pháp và ngữ cảnh sử dụng.</li>
                         <li>Bài tập do AI sinh ra không có lỗi về nội dung, đáp án hoặc logic.</li>
                         <li>Phản hồi ngữ pháp AI luôn đúng và phù hợp với mọi ngữ cảnh.</li>
@@ -175,7 +175,7 @@ export default function TermsPage() {
                   <div>
                     <h3 className="font-semibold text-primary text-sm mb-2">4.3. Khuyến cáo người dùng</h3>
                     <p>Chúng tôi khuyến khích người dùng:</p>
-                    <ul className="list-disc list-inside space-y-1 pl-2 mt-2">
+                    <ul className="list-disc list-inside space-y-1 pl-2 mt-2 text-justify">
                       <li>Luôn kiểm tra chéo nội dung AI với các nguồn uy tín khác (từ điển chính thống, giáo viên, tài liệu học thuật).</li>
                       <li>Không hoàn toàn phụ thuộc vào kết quả AI cho các quyết định quan trọng (thi cử, đánh giá năng lực chính thức).</li>
                       <li>Sử dụng nội dung AI như một công cụ bổ trợ, không phải nguồn thông tin duy nhất.</li>
@@ -187,7 +187,7 @@ export default function TermsPage() {
                   <div>
                     <h3 className="font-semibold text-primary text-sm mb-2">4.4. Giới hạn trách nhiệm đối với nội dung AI</h3>
                     <p>CnenDict <strong className="text-primary">không chịu trách nhiệm pháp lý</strong> đối với:</p>
-                    <ul className="list-disc list-inside space-y-1 pl-2 mt-2">
+                    <ul className="list-disc list-inside space-y-1 pl-2 mt-2 text-justify">
                       <li>Bất kỳ thiệt hại trực tiếp, gián tiếp, đặc biệt hoặc hậu quả nào phát sinh từ việc sử dụng hoặc tin tưởng vào nội dung do AI tạo ra.</li>
                       <li>Kết quả thi cử, đánh giá năng lực hoặc quyết định cá nhân/nghề nghiệp dựa trên phản hồi AI của ứng dụng.</li>
                       <li>Sự khác biệt giữa nội dung AI và thực tế ngôn ngữ học, bao gồm cả phương ngữ, biến thể vùng miền.</li>
@@ -197,10 +197,9 @@ export default function TermsPage() {
 
                   {/* 4.5 Cam kết cải tiến */}
                   <div className="flex items-start gap-3 bg-emerald-50/60 border border-emerald-200/50 rounded-lg p-3">
-                    <span className="material-symbols-outlined text-emerald-600 text-[18px] shrink-0 mt-0.5">auto_fix_high</span>
                     <div>
                       <h3 className="font-semibold text-primary text-sm mb-1">4.5. Cam kết cải tiến liên tục</h3>
-                      <p className="text-xs">
+                      <p className="text-xs text-justify">
                         CnenDict cam kết không ngừng nâng cấp các mô hình AI, mở rộng cơ sở dữ liệu và cải thiện độ chính xác của nội dung. Tuy nhiên, cam kết này <strong className="text-primary">không đồng nghĩa</strong> với việc đảm bảo nội dung AI sẽ hoàn toàn không có sai sót tại bất kỳ thời điểm nào.
                       </p>
                     </div>
@@ -208,10 +207,10 @@ export default function TermsPage() {
 
                   {/* 4.6 Báo cáo bản quyền */}
                   <div className="flex items-start gap-3 bg-blue-50/60 border border-blue-200/50 rounded-lg p-3">
-                    <span className="material-symbols-outlined text-blue-600 text-[18px] shrink-0 mt-0.5">copyright</span>
+
                     <div>
-                      <h3 className="font-semibold text-primary text-sm mb-1">4.6. Báo cáo vi phạm bản quyền đối với nội dung AI</h3>
-                      <p className="text-xs">
+                      <h3 className="font-semibold text-primary text-sm mb-1 ">4.6. Báo cáo vi phạm bản quyền đối với nội dung AI</h3>
+                      <p className="text-xs text-justify">
                         Nếu bạn phát hiện bất kỳ nội dung nào (bao gồm văn bản, hình ảnh hoặc âm thanh) do AI tạo ra trên hệ thống CnenDict có dấu hiệu xâm phạm quyền tác giả hoặc quyền sở hữu trí tuệ của bạn hoặc của một chủ thể mà bạn đại diện hợp pháp, xin vui lòng gửi thông báo cho chúng tôi kèm theo bằng chứng chứng minh quyền sở hữu hợp pháp. Bạn có thể gửi báo cáo trực tiếp thông qua <strong className="text-primary">tính năng báo cáo lỗi/vi phạm hiện có trên ứng dụng</strong>, hoặc liên hệ qua email <a href="mailto:support@cnendict.xyz" className="text-primary underline font-medium">support@cnendict.xyz</a> / số điện thoại (Zalo) <strong className="text-primary">0373664881</strong>. Chúng tôi cam kết tiếp nhận, xác minh và gỡ bỏ các nội dung này trong thời gian sớm nhất.
                       </p>
                     </div>

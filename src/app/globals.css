@@ -65,7 +65,7 @@
 
 @media (min-width: 768px) {
   html {
-    font-size: 20px;
+    font-size: 16px;
     /* Increases base font size by ~2pt on desktop/tablet */
   }
 }
@@ -99,12 +99,12 @@ body {
 
   /* Custom pixel sizes below 16px also get bumped on mobile
      EXCEPT Material Symbols icons which use text-[Npx] for icon sizing */
-  .text-\[10px\]:not(.material-symbols-outlined),
   .text-\[11px\]:not(.material-symbols-outlined),
   .text-\[12px\]:not(.material-symbols-outlined),
   .text-\[13px\]:not(.material-symbols-outlined),
   .text-\[14px\]:not(.material-symbols-outlined),
-  .text-\[15px\]:not(.material-symbols-outlined) {
+  .text-\[15px\]:not(.material-symbols-outlined),
+  .text-\[16px\]:not(.material-symbols-outlined) {
     font-size: 0.85rem !important;
     line-height: 1.25rem !important;
   }

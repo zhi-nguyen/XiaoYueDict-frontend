@@ -4,6 +4,7 @@ import React from 'react';
 import { useExamSession } from './hooks/useExamSession';
 import ExamTakeZh from './components/ExamTakeZh';
 import ExamTakeEn from './components/ExamTakeEn';
+import ExamResultView from './components/ExamResultView';
 import { useSettingsStore } from '@/store/useSettingsStore';
 
 export default function ExamTakeClient() {
@@ -30,6 +31,18 @@ export default function ExamTakeClient() {
           </div>
         </div>
       </div>
+    );
+  }
+
+  // If exam has been submitted, show the custom Results View dashboard
+  if (session.isSubmitted) {
+    return (
+      <ExamResultView
+        exam={session.exam}
+        answers={session.answers}
+        score={session.score}
+        language={session.language}
+      />
     );
   }
 

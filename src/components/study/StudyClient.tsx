@@ -74,7 +74,7 @@ export default function StudyClient() {
   const search = useStudySearch();
   const activeWordText = search.selectedWord?.word || search.searchQuery;
 
-  const hanzi = useHanziDetails(activeTab, activeWordText);
+  const hanzi = useHanziDetails(activeTab, search.searchQuery);
   const { hanVietSentence } = useHanVietSentence(
     search.exactExampleMatch,
     search.translationResult,
@@ -186,7 +186,7 @@ export default function StudyClient() {
   };
 
   const matchingExamples = getMatchingExamples();
-  const hanziChars = Array.from(activeWordText).filter(isChineseChar);
+  const hanziChars = Array.from(search.searchQuery).filter(isChineseChar);
 
   // ── Determine the current word/sentence to be practiced in PracticeHub ──
   const activePracticeWord = useMemo<ZhWord | null>(() => {

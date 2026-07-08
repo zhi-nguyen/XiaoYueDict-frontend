@@ -21,6 +21,15 @@ const capitalizeFirstLetter = (str: string): string => {
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
+const truncateByWords = (str: string, maxWords: number = 8): string => {
+  if (!str) return '';
+  const words = str.trim().split(/\s+/);
+  if (words.length > maxWords) {
+    return words.slice(0, maxWords).join(' ') + '...';
+  }
+  return str;
+};
+
 const translatePartOfSpeech = (pos: string): string => {
   if (!pos) return '';
   const mapping: Record<string, string> = {
@@ -243,19 +252,21 @@ export default function SearchBarZh({ onSelectWord, onSearch, onSelectExample }:
                       onClick={() => handleSelect(word)}
                       className="w-full text-left px-5 py-3 hover:bg-hover-bg transition-colors flex flex-col border-b border-outline/30 last:border-0 cursor-pointer"
                     >
-                      {/* Hàng 1: Từ, phồn thể (nếu có) và Pinyin */}
-                      <div className="flex justify-between items-baseline w-full">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-xl font-bold text-primary">{word.word}</span>
-                          {word.traditional && (
-                            <span className="text-xs text-secondary font-medium">
-                              ({word.traditional})
+                      {/* Hàng 1: Từ, Hán Việt (nếu có) và Pinyin */}
+                      <div className="flex justify-between items-baseline w-full gap-4">
+                        <div className="flex items-baseline gap-2 min-w-0 flex-1">
+                          <span className="text-xl font-bold text-primary truncate flex-shrink-0">
+                            {word.word.length > 8 ? `${word.word.slice(0, 8)}...` : word.word}
+                          </span>
+                          {word.han_viet && word.word.length <= 3 && (
+                            <span className="text-xs text-secondary font-medium truncate">
+                              ({truncateByWords(word.han_viet.toUpperCase(), 8)})
                             </span>
                           )}
                         </div>
                         {word.pinyin && (
-                          <span className="text-sm font-semibold text-primary/80 font-mono">
-                            {word.pinyin}
+                          <span className="text-sm font-semibold text-primary/80 font-mono truncate max-w-[50%] ml-2 flex-shrink-0">
+                            {truncateByWords(word.pinyin, 8)}
                           </span>
                         )}
                       </div>

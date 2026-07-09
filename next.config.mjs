@@ -42,13 +42,7 @@ const nextConfig = {
     ],
   },
   async rewrites() {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:80';
-    return [
-      {
-        source: '/media/:path*',
-        destination: `${apiUrl}/media/:path*`, // Proxy media to Nginx
-      }
-    ];
+    return [];
   },
   async headers() {
     return [

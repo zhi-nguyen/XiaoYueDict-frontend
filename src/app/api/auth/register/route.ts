@@ -10,6 +10,7 @@ export async function POST(request: Request) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(process.env.API_BYPASS_SECRET ? { 'x-vercel-signature': process.env.API_BYPASS_SECRET } : {}),
       },
       body: JSON.stringify(body),
     });

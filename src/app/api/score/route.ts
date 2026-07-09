@@ -24,8 +24,14 @@ export async function POST(request: NextRequest) {
     const servicePath = language === 'zh' ? '/api/ai/zh/score' : '/api/ai/en/score';
     const targetUrl = `${GATEWAY_URL}${servicePath}`;
 
+    const headers = new Headers();
+    if (process.env.API_BYPASS_SECRET) {
+      headers.set('x-vercel-signature', process.env.API_BYPASS_SECRET);
+    }
+
     const res = await fetch(targetUrl, {
       method: 'POST',
+      headers,
       body: microserviceForm,
     });
 

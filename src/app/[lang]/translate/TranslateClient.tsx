@@ -8,6 +8,7 @@ import { QUEUE_STRATEGIES } from '@/constants/queueStrategies';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { getGuestId } from '@/lib/guest';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import SpeakerIcon from '@/components/dictionary/SpeakerIcon';
 
 interface TranslationRecord {
@@ -40,6 +41,23 @@ export default function TranslateClient() {
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [pendingText, setPendingText] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const { tier, isActive, fetchSubscription } = useSubscriptionStore();
+  const isVip = isActive && (tier === 'Plus' || tier === 'Pro' || tier === 'Premium');
+  const [engine, setEngine] = useState<'ai' | 'google'>('ai');
+
+  useEffect(() => {
+    fetchSubscription();
+  }, [fetchSubscription]);
+
+  // Restrict non-VIP users to Google Translate
+  useEffect(() => {
+    if (!isVip) {
+      setEngine('google');
+    } else {
+      setEngine('ai');
+    }
+  }, [isVip]);
 
   // Auto-dismiss toast after 3 seconds
   useEffect(() => {
@@ -121,7 +139,8 @@ export default function TranslateClient() {
     try {
       const payload: any = { 
         text: trimmedInput,
-        direction: direction
+        direction: direction,
+        engine: engine
       };
       const guestId = !isAuthenticated ? getGuestId() : null;
       if (guestId) {
@@ -201,6 +220,41 @@ export default function TranslateClient() {
           <span className="material-symbols-outlined text-[20px]">swap_horiz</span>
         </button>
         <span className="font-bold text-primary text-[15px] text-left truncate pl-2">{targetLangLabel}</span>
+      </div>
+
+      {/* Engine Selector */}
+      <div className="flex justify-center w-full max-w-[360px] mx-auto bg-surface p-1 rounded-xl border border-outline shadow-sm -mt-2">
+        <button
+          onClick={() => {
+            if (isVip) {
+              setEngine('ai');
+            } else {
+              setToastMessage('Vui lòng nâng cấp VIP để sử dụng bộ dịch AI');
+            }
+          }}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[13px] font-medium transition-all ${
+            engine === 'ai'
+              ? 'bg-primary text-white shadow-sm font-semibold'
+              : 'text-secondary hover:text-primary'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[18px]">psychology</span>
+          <span>Dịch AI (Gemini)</span>
+          {!isVip && (
+            <span className="material-symbols-outlined text-[14px] text-secondary/60">lock</span>
+          )}
+        </button>
+        <button
+          onClick={() => setEngine('google')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[13px] font-medium transition-all ${
+            engine === 'google'
+              ? 'bg-primary text-white shadow-sm font-semibold'
+              : 'text-secondary hover:text-primary'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[18px]">g_translate</span>
+          <span>Google Translate</span>
+        </button>
       </div>
 
       {/* Translation Grid */}
@@ -307,15 +361,22 @@ export default function TranslateClient() {
           {/* Badge */}
           {translationSource && (
             <div className="px-4 py-3 flex justify-end border-t border-outline/50 bg-background/50">
-              {translationSource === 'database' ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium bg-green-100 text-green-700 border border-green-200">
+              {translationSource === 'database' && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
                   <span className="material-symbols-outlined text-[16px]">verified</span>
-                  Dịch chuẩn từ hệ thống
+                  Dịch hệ thống
                 </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium bg-purple-100 text-purple-700 border border-purple-200">
-                  <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
-                  Dịch tham khảo
+              )}
+              {translationSource === 'ai_translation' && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                  <span className="material-symbols-outlined text-[16px]">psychology</span>
+                  AI Gen
+                </span>
+              )}
+              {translationSource === 'google_translate' && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                  <span className="material-symbols-outlined text-[16px]">g_translate</span>
+                  Google Translate
                 </span>
               )}
             </div>
@@ -342,13 +403,19 @@ export default function TranslateClient() {
                 }}>
                   <div className="flex justify-between items-start gap-4">
                     <p className="text-primary font-medium line-clamp-1 flex-1">{item.original}</p>
-                    {item.source === 'database' ? (
-                      <span className="text-[10px] uppercase font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded flex items-center gap-1 shrink-0">
+                    {item.source === 'database' && (
+                      <span className="text-[10px] uppercase font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded flex items-center gap-1 shrink-0">
                         Hệ thống
                       </span>
-                    ) : (
-                      <span className="text-[10px] uppercase font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded flex items-center gap-1 shrink-0">
-                        Dịch tham khảo
+                    )}
+                    {item.source === 'ai_translation' && (
+                      <span className="text-[10px] uppercase font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded flex items-center gap-1 shrink-0">
+                        AI Gen
+                      </span>
+                    )}
+                    {item.source === 'google_translate' && (
+                      <span className="text-[10px] uppercase font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded flex items-center gap-1 shrink-0">
+                        Google
                       </span>
                     )}
                   </div>

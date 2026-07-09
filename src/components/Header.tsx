@@ -20,9 +20,8 @@ export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
 
-  if (pathname && pathname.includes('/exam/take/')) {
-    return null;
-  }
+  const toggleSidebar = useUIStore((state) => state.toggleSidebar);
+  const { isAuthenticated, user, logout, checkAuth } = useAuthStore();
 
   const switchLanguage = (newLang: string) => {
     if (typeof window !== 'undefined') {
@@ -32,8 +31,6 @@ export default function Header() {
       window.location.href = targetUrl;
     }
   };
-  const toggleSidebar = useUIStore((state) => state.toggleSidebar);
-  const { isAuthenticated, user, logout, checkAuth } = useAuthStore();
   
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -64,6 +61,10 @@ export default function Header() {
       fetchSubscription();
     }
   }, [isAuthenticated, fetchGamificationData, fetchSubscription]);
+
+  if (pathname && pathname.includes('/exam/take/')) {
+    return null;
+  }
 
   return (
     <header className="h-[72px] bg-surface border-b border-outline px-4 md:px-6 flex items-center justify-between shrink-0 top-0 sticky z-40">

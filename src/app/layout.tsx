@@ -54,6 +54,7 @@ export default function RootLayout({
           </div>
         </QueryProvider>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )

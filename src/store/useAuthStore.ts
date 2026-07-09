@@ -70,9 +70,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // Set up Firebase auth state listener
     onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
       if (firebaseUser) {
+        // 1. Check if email is verified. If not, sign out immediately to prevent State Leak
+        if (!firebaseUser.emailVerified) {
+          try {
+            await fbSignOut(firebaseAuth);
+          } catch (e) {
+            console.error('Failed to auto-sign out unverified user:', e);
+          }
+          set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false });
+          return;
+        }
+
         try {
-          // Get the current ID token from Firebase
-          const idToken = await firebaseUser.getIdToken();
+          // 2. Force refresh the token to obtain the latest email_verified claim from server
+          const idToken = await firebaseUser.getIdToken(true);
           
           // Send to Next.js BFF -> Django to verify and set secure cookies
           const { data } = await axios.post('/api/auth/firebase-login', { id_token: idToken });

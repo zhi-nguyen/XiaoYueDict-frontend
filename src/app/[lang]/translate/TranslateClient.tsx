@@ -61,8 +61,8 @@ export default function TranslateClient() {
       direction === 'en_vi' ? 'vi_en' : 'en_vi';
     
     setDirection(nextDirection);
-    setInputText(translatedText);
-    setTranslatedText(inputText);
+    // Keep input text and clear the previous translated result
+    setTranslatedText('');
     setErrorMsg('');
     setTranslationPhase('idle');
   };

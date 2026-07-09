@@ -175,14 +175,15 @@ export function useStudySearch(): UseStudySearchReturn {
     const trimmed = query.trim();
     setSearchQuery(trimmed);
 
-    // Reset previous search details if empty
+    // Always reset previous search details to prevent stale UI states
+    setWordResults([]);
+    setSelectedWord(null);
+    setExactExampleMatch(null);
+    setTranslationResult(null);
+    setTranslationError('');
+    setCurrentTaskId(null);
+
     if (!trimmed) {
-      setWordResults([]);
-      setSelectedWord(null);
-      setExactExampleMatch(null);
-      setTranslationResult(null);
-      setTranslationError('');
-      setCurrentTaskId(null);
       return;
     }
 
@@ -226,6 +227,12 @@ export function useStudySearch(): UseStudySearchReturn {
       if (query !== searchQuery) {
         setSearchQuery(query.trim());
         setPendingText(query.trim());
+        setWordResults([]);
+        setSelectedWord(null);
+        setExactExampleMatch(null);
+        setTranslationResult(null);
+        setTranslationError('');
+        setCurrentTaskId(null);
       }
     };
 

@@ -11,7 +11,9 @@ import {
   signInWithPopup, 
   GoogleAuthProvider,
   updateProfile,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  sendEmailVerification,
+  signOut
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
@@ -36,6 +38,7 @@ export default function AuthModal({ isOpen, onClose }: { isOpen: boolean; onClos
   // Forgot password fields
   const [resetEmail, setResetEmail] = useState('');
   const [resetSuccess, setResetSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -49,14 +52,22 @@ export default function AuthModal({ isOpen, onClose }: { isOpen: boolean; onClos
 
   const handleClose = () => {
     setError('');
+    setSuccessMessage('');
     setIsForgotPassword(false);
     setResetSuccess(false);
+    
+    // Auto sign out unverified user on close if they somehow bypassed state cleanups
+    if (auth.currentUser && !auth.currentUser.emailVerified) {
+      signOut(auth).catch(console.error);
+    }
+    
     onClose();
   };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
 
     if (!isForgotPassword && !acceptTerms) {
       setError('Vui lòng đồng ý với Điều khoản dịch vụ và Chính sách bảo mật trước khi tiếp tục.');
@@ -68,10 +79,24 @@ export default function AuthModal({ isOpen, onClose }: { isOpen: boolean; onClos
     try {
       if (isForgotPassword) {
         await sendPasswordResetEmail(auth, resetEmail);
+        setSuccessMessage('Đã gửi liên kết khôi phục mật khẩu đến email của bạn. Vui lòng kiểm tra hộp thư!');
         setResetSuccess(true);
       } else if (isLogin) {
         // Sign in with Firebase
-        await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
+        const userCredential = await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
+        
+        // Check if email is verified
+        if (!userCredential.user.emailVerified) {
+          // Resend email verification automatically
+          await sendEmailVerification(userCredential.user);
+          
+          setError('Email của bạn chưa được xác nhận. Một email xác nhận mới đã được gửi. Vui lòng xác thực email trước khi đăng nhập.');
+          
+          // Sign out immediately to avoid State Leak on reload
+          await signOut(auth);
+          setLoading(false);
+          return;
+        }
         handleClose();
       } else {
         // Sign up with Firebase
@@ -80,10 +105,18 @@ export default function AuthModal({ isOpen, onClose }: { isOpen: boolean; onClos
         // Update user display name with username
         if (userCredential.user) {
           await updateProfile(userCredential.user, { displayName: username });
+          
+          // Send email verification immediately
+          await sendEmailVerification(userCredential.user);
         }
         
-        // Wait briefly for onAuthStateChanged to pick up the update profile and sync with backend
-        handleClose();
+        setSuccessMessage('Đăng ký thành công! Một email xác nhận đã được gửi tới email của bạn. Vui lòng xác thực email trước khi đăng nhập.');
+        
+        // Sign out immediately to prevent client-side auto login
+        await signOut(auth);
+        
+        // Switch to login view for convenience
+        setIsLogin(true);
       }
     } catch (err: any) {
       console.error('Firebase Auth Error:', err);
@@ -159,9 +192,9 @@ export default function AuthModal({ isOpen, onClose }: { isOpen: boolean; onClos
           </div>
         )}
 
-        {resetSuccess && (
+        {successMessage && (
           <div className="mb-4 p-3 bg-green-500/10 border border-green-500/20 text-green-600 rounded-lg text-sm text-center">
-            Đã gửi liên kết khôi phục mật khẩu đến email của bạn. Vui lòng kiểm tra hộp thư!
+            {successMessage}
           </div>
         )}
 
@@ -323,9 +356,11 @@ export default function AuthModal({ isOpen, onClose }: { isOpen: boolean; onClos
             <div className="mt-6 text-center text-sm text-secondary">
               {isLogin ? 'Chưa có tài khoản? ' : 'Đã có tài khoản? '}
               <button 
+                type="button"
                 onClick={() => {
                   setIsLogin(!isLogin);
                   setError('');
+                  setSuccessMessage('');
                 }}
                 className="text-primary font-bold hover:underline"
               >

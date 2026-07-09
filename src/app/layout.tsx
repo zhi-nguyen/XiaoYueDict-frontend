@@ -12,6 +12,10 @@ export const metadata: Metadata = {
   title: 'CnenDict — Pronunciation Assessment',
   description: 'Pronunciation scoring for English and Chinese. Get word-level feedback in 5 seconds.',
   keywords: ['pronunciation', 'scoring', 'English', 'Chinese', 'Mandarin', 'HSK', 'IELTS'],
+  icons: {
+    icon: '/logo.webp',
+    apple: '/logo.webp',
+  },
   openGraph: {
     title: 'CnenDict — Pronunciation Assessment',
     description: 'Pronunciation scoring for English and Chinese.',

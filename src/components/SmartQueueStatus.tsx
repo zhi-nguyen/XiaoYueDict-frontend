@@ -78,7 +78,7 @@ export default function SmartQueueStatus({
   // 4. Phân tích lỗi (Error Classification) để hiển thị tiêu đề và nội dung phù hợp
   let effectiveErrorType = errorType;
   if (!effectiveErrorType && errorMessage) {
-    const msg = errorMessage.toLowerCase();
+    const msg = String(errorMessage || '').toLowerCase();
     if (msg.includes('hạn mức') || msg.includes('lượt') || msg.includes('rate limit')) {
       effectiveErrorType = 'rate_limit';
     } else if (msg.includes('giọng nói') || msg.includes('ngắn') || msg.includes('dài') || msg.includes('hợp lệ') || msg.includes('định dạng') || msg.includes('invalid') || msg.includes('chính tả') || msg.includes('timeout') || msg.includes('quá thời gian')) {

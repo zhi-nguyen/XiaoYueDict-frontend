@@ -10,6 +10,7 @@ import { getGuestId } from '@/lib/guest';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import SpeakerIcon from '@/components/dictionary/SpeakerIcon';
+import { parseApiError } from '@/lib/errorHelper';
 
 interface TranslationRecord {
   original: string;
@@ -162,7 +163,8 @@ export default function TranslateClient() {
       }
       
     } catch (error: any) {
-      setErrorMsg(error.response?.data?.error || error.message || 'Lỗi kết nối máy chủ');
+      const parsed = parseApiError(error);
+      setErrorMsg(parsed.message);
       setIsLoading(false);
       setTranslationPhase('error');
     }

@@ -35,6 +35,8 @@ const COMMON_ERRORS_VI: Record<string, string> = {
   'DatabaseUnavailable': 'Dịch vụ tạm thời không khả dụng do sự cố kết nối cơ sở dữ liệu.',
   'CacheServiceUnavailable': 'Dịch vụ tạm thời không khả dụng do sự cố hệ thống bộ nhớ đệm.',
   'InternalServerError': 'Đã xảy ra lỗi nội bộ trong hệ thống. Vui lòng liên hệ quản trị viên.',
+  'Request Entity Too Large': 'Văn bản gửi lên vượt quá giới hạn dung lượng cho phép.',
+  'Content Too Large': 'Văn bản gửi lên vượt quá giới hạn dung lượng cho phép.',
 };
 
 /**
@@ -95,6 +97,17 @@ export function parseApiError(error: any): ParsedError {
     const fields: Record<string, string> = {};
 
     if (data && typeof data === 'object') {
+      // If error field is present as an object (custom Google/Nginx/API error structure)
+      if (data.error && typeof data.error === 'object' && data.error !== null) {
+        const errObj = data.error as any;
+        if (errObj.message) {
+          return {
+            code: errObj.code ? String(errObj.code) : `HTTP_${status}`,
+            message: translateErrorMessage(String(errObj.message))
+          };
+        }
+      }
+
       // 1. If backend returns custom exceptions format {"error": "...", "message": "..."}
       if (data.error && data.message) {
         return {

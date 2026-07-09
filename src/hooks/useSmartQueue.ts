@@ -47,8 +47,7 @@ const validateAudioDuration = (blob: Blob): Promise<number> => {
  */
 function translateErrorMessage(msg: string): string {
   if (!msg) return 'Đã xảy ra lỗi không xác định.';
-  
-  const msgLower = msg.toLowerCase();
+  const msgLower = String(msg || '').toLowerCase();
   
   if (msgLower.includes('no speech detected in audio')) {
     return 'Không phát hiện thấy giọng nói trong file ghi âm. Vui lòng thử lại.';

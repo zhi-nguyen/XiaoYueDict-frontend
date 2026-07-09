@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { playTTSWithClientCache } from '@/lib/zhUtils';
 
 interface DeepPracticeVocabTabProps {
@@ -15,6 +15,69 @@ const capitalizeFirstLetter = (str: string): string => {
   const trimmed = str.trim();
   if (!trimmed) return str;
   return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+};
+
+const TranslationVi = ({ text }: { text: string }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  if (!text) return null;
+
+  const hasSemicolon = text.includes(';');
+  const parts = text.split(';').map(part => part.trim()).filter(Boolean);
+  if (parts.length <= 1) {
+    return (
+      <span className="block space-y-1 text-center mt-4">
+        {parts.map((part, idx) => {
+          const wordCount = part.split(/\s+/).filter(Boolean).length;
+          const isLong = wordCount > 5 || hasSemicolon;
+          return (
+            <span 
+              key={idx} 
+              className={`block text-xl sm:text-2xl font-bold text-sage select-all ${
+                isLong ? 'text-justify w-full max-w-md px-6' : ''
+              }`}
+              style={isLong ? { textIndent: '1.5em' } : undefined}
+            >
+              {capitalizeFirstLetter(part)}
+            </span>
+          );
+        })}
+      </span>
+    );
+  }
+
+  const displayedParts = isExpanded ? parts : [parts[0]];
+
+  return (
+    <div className="flex flex-col items-center w-full text-center mt-4">
+      <span className="block space-y-1.5 w-full flex flex-col items-center">
+        {displayedParts.map((part, idx) => {
+          const wordCount = part.split(/\s+/).filter(Boolean).length;
+          const isLong = wordCount > 5 || hasSemicolon;
+          return (
+            <span 
+              key={idx} 
+              className={`block text-xl sm:text-2xl font-bold text-sage select-all ${
+                isLong ? 'text-justify w-full max-w-md px-6' : ''
+              }`}
+              style={isLong ? { textIndent: '1.5em' } : undefined}
+            >
+              - {capitalizeFirstLetter(part)}
+            </span>
+          );
+        })}
+      </span>
+      <button
+        type="button"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="text-emerald-600 hover:text-emerald-700 font-bold text-sm mt-3 flex items-center gap-1 transition-colors focus:outline-none"
+      >
+        <span>{isExpanded ? 'Thu gọn' : 'Xem thêm'}</span>
+        <span className="material-symbols-outlined text-[18px] font-bold">
+          {isExpanded ? 'expand_less' : 'expand_more'}
+        </span>
+      </button>
+    </div>
+  );
 };
 
 export default function DeepPracticeVocabTab({
@@ -51,9 +114,7 @@ export default function DeepPracticeVocabTab({
             </span>
           </button>
         </div>
-        <p className="text-xl sm:text-2xl font-bold text-sage mt-4 select-all">
-          {capitalizeFirstLetter(meaning)}
-        </p>
+        <TranslationVi text={meaning} />
 
         {onMarkMastered && (
           <button

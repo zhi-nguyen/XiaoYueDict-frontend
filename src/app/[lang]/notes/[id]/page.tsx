@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import NotebookDetailClient from './NotebookDetailClient';
-import { getServerAuthToken } from '@/lib/serverAuth';
+import { getServerAuthToken, getServerHeaders } from '@/lib/serverAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,10 +30,7 @@ export default async function NotebookDetailPage({ params }: PageProps) {
   try {
     const GATEWAY_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
     const token = await getServerAuthToken();
-    const headers = new Headers({ 'Content-Type': 'application/json' });
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
+    const headers = getServerHeaders(token);
 
     // Fetch notebook details
     const notebookRes = await fetch(`${GATEWAY_URL}/api/core/notes/notebooks/${notebookId}/`, {

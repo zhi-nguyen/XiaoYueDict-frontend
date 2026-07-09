@@ -113,22 +113,22 @@ export default function ProfileInfoTab({ user, tier, onUpdateProfile }: ProfileI
         <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-primary mb-1">Họ (Last Name)</label>
-              <input
-                type="text"
-                disabled={!isEditingInfo}
-                value={formData.last_name}
-                onChange={e => setFormData({ ...formData, last_name: e.target.value })}
-                className="w-full px-4 py-2.5 bg-surface border border-outline rounded-xl focus:border-sage focus:outline-none disabled:opacity-50 text-sm text-primary"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-primary mb-1">Tên (First Name)</label>
+              <label className="block text-sm font-semibold text-primary mb-1">Họ</label>
               <input
                 type="text"
                 disabled={!isEditingInfo}
                 value={formData.first_name}
                 onChange={e => setFormData({ ...formData, first_name: e.target.value })}
+                className="w-full px-4 py-2.5 bg-surface border border-outline rounded-xl focus:border-sage focus:outline-none disabled:opacity-50 text-sm text-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-primary mb-1">Tên</label>
+              <input
+                type="text"
+                disabled={!isEditingInfo}
+                value={formData.last_name}
+                onChange={e => setFormData({ ...formData, last_name: e.target.value })}
                 className="w-full px-4 py-2.5 bg-surface border border-outline rounded-xl focus:border-sage focus:outline-none disabled:opacity-50 text-sm text-primary"
               />
             </div>

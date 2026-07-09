@@ -41,10 +41,21 @@ export default function QuestionSection({
   partSuffix = '',
 }: QuestionSectionProps) {
   const [textSize, setTextSize] = useState<TextSize>('text-base');
-  const paragraphs = section.paragraphs || [];
+  const paragraphData = (() => {
+    const raw = section.passage || section.questions[0]?.paragraph;
+    if (!raw) return { title: '', content: '' };
+    if (typeof raw === 'string') return { title: '', content: raw };
+    if (typeof raw === 'object') {
+      return {
+        title: raw.title || '',
+        content: raw.content || '',
+      };
+    }
+    return { title: '', content: '' };
+  })();
 
-
-  const isReading = paragraphs.length > 0;
+  const passageText = paragraphData.content || paragraphData.title;
+  const isReading = (section.section_name?.toLowerCase() === 'reading' || (section.section_id && section.section_id.toLowerCase().includes('reading'))) && !!passageText.trim();
 
   const increaseTextSize = () => {
     if (textSize === 'text-sm') setTextSize('text-base');
@@ -149,15 +160,12 @@ export default function QuestionSection({
                 className={`text-primary leading-relaxed text-justify font-inter space-y-6 ${textSize}`}
                 style={{ textAlign: 'justify' }}
               >
-                {paragraphs.length > 0 ? (
-                  paragraphs.map((p, idx) => (
-                    <p key={p.id || idx} className="whitespace-pre-line">
-                      {p.content}
-                    </p>
-                  ))
-                ) : (
-                  <p className="whitespace-pre-line">{section.instruction}</p>
+                {paragraphData.title && (
+                  <h4 className="text-lg font-bold text-primary mb-4 text-center font-lexend">
+                    {paragraphData.title}
+                  </h4>
                 )}
+                <p className="whitespace-pre-line">{paragraphData.content}</p>
               </div>
             </div>
           </div>
@@ -250,15 +258,12 @@ export default function QuestionSection({
             className={`bg-slate-50 border border-outline rounded-2xl p-5 text-primary leading-relaxed text-justify font-inter space-y-6 ${textSize}`}
             style={{ textAlign: 'justify' }}
           >
-            {paragraphs.length > 0 ? (
-              paragraphs.map((p, idx) => (
-                <p key={p.id || idx} className="whitespace-pre-line">
-                  {p.content}
-                </p>
-              ))
-            ) : (
-              <p className="whitespace-pre-line">{section.instruction}</p>
+            {paragraphData.title && (
+              <h4 className="text-base font-bold text-primary mb-3 text-center font-lexend">
+                {paragraphData.title}
+              </h4>
             )}
+            <p className="whitespace-pre-line">{paragraphData.content}</p>
           </div>
 
           <div className="space-y-6">
@@ -312,6 +317,23 @@ export default function QuestionSection({
           </p>
         )}
       </div>
+
+      {passageText && (
+        <div className="bg-slate-50 border border-outline rounded-[1.5rem] p-6 text-primary leading-relaxed text-justify font-inter space-y-4">
+          <div className="flex items-center gap-2 border-b border-outline/30 pb-3 mb-2">
+            <BookOpen className="w-5 h-5 text-primary" />
+            <h3 className="text-sm font-bold text-primary font-lexend uppercase tracking-wider">
+              Đoạn văn đọc
+            </h3>
+          </div>
+          {paragraphData.title && (
+            <h4 className="text-base font-bold text-primary mb-2 text-center font-lexend">
+              {paragraphData.title}
+            </h4>
+          )}
+          <p className="whitespace-pre-line text-base md:text-lg">{paragraphData.content}</p>
+        </div>
+      )}
 
       <div className="space-y-8">
         {section.questions.map((question) => {

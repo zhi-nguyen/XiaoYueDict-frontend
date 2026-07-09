@@ -76,6 +76,55 @@ const renderClickableHanzi = (text: string, onCharClick?: (char: string) => void
   });
 };
 
+const capitalizeFirstLetter = (str: string): string => {
+  if (!str) return str;
+  const trimmed = str.trim();
+  if (!trimmed) return str;
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+};
+
+const TranslationVi = ({ text }: { text: string }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  if (!text) return null;
+
+  const parts = text.split(';').map(part => part.trim()).filter(Boolean);
+  if (parts.length <= 1) {
+    return (
+      <span className="block space-y-1 text-left">
+        {parts.map((part, idx) => (
+          <span key={idx} className="block">
+            {capitalizeFirstLetter(part)}
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  const displayedParts = isExpanded ? parts : [parts[0]];
+
+  return (
+    <div className="flex flex-col items-start w-full text-left">
+      <span className="block space-y-1 w-full">
+        {displayedParts.map((part, idx) => (
+          <span key={idx} className="block">
+            - {capitalizeFirstLetter(part)}
+          </span>
+        ))}
+      </span>
+      <button
+        type="button"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="text-emerald-600 hover:text-emerald-700 font-bold text-xs mt-2.5 flex items-center gap-1 transition-colors focus:outline-none"
+      >
+        <span>{isExpanded ? 'Thu gọn' : 'Xem thêm'}</span>
+        <span className="material-symbols-outlined text-[16px] font-bold">
+          {isExpanded ? 'expand_less' : 'expand_more'}
+        </span>
+      </button>
+    </div>
+  );
+};
+
 export default function WordCardZh({ word, onPracticeClick, onCharClick }: WordCardZhProps) {
   const { isAuthenticated } = useAuthStore();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -94,7 +143,7 @@ export default function WordCardZh({ word, onPracticeClick, onCharClick }: WordC
   }, [word]);
 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [imageStatus, setImageStatus] = useState<'idle' | 'generating' | 'regenerating' | 'ready' | 'failed'>('idle');
+  const [imageStatus, setImageStatus] = useState<'idle' | 'generating' | 'regenerating' | 'ready' | 'failed' | 'collecting'>('idle');
 
   const isUUID = (str: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
 
@@ -109,6 +158,8 @@ export default function WordCardZh({ word, onPracticeClick, onCharClick }: WordC
       if (res.data.status === 'ready' && res.data.image_url) {
         setImageUrl(res.data.image_url);
         setImageStatus('ready');
+      } else if (res.data.status === 'collecting' || res.data.status === 'COLLECTING') {
+        setImageStatus('collecting');
       } else if (res.data.status === 'REGENERATING') {
         setImageStatus('regenerating');
       } else {
@@ -136,8 +187,12 @@ export default function WordCardZh({ word, onPracticeClick, onCharClick }: WordC
     onMessage: (msg) => {
       if (word && msg.payload?.word_id === word.id) {
         if (msg.type === 'image_complete') {
-          setImageUrl(msg.payload.image_url as string);
-          setImageStatus('ready');
+          if (msg.payload.status === 'collecting') {
+            setImageStatus('collecting');
+          } else {
+            setImageUrl(msg.payload.image_url as string);
+            setImageStatus('ready');
+          }
         } else if (msg.type === 'image_failed') {
           setImageStatus('failed');
         }
@@ -267,9 +322,9 @@ export default function WordCardZh({ word, onPracticeClick, onCharClick }: WordC
         <h2 className="text-[13px] font-bold uppercase tracking-wider text-secondary mb-3">
           Nghĩa Tiếng Việt
         </h2>
-        <p className="text-2xl text-primary font-semibold leading-relaxed">
-          {word.translation_vi ? word.translation_vi.toUpperCase() : ''}
-        </p>
+        <div className="text-xl text-primary font-semibold leading-relaxed">
+          <TranslationVi text={word.translation_vi} />
+        </div>
         {word.popularity_rank !== undefined && word.popularity_rank !== null && (
           <p className="text-sm font-semibold text-secondary/60 mt-2">
             #Độ phổ biến: {word.popularity_rank}
@@ -289,6 +344,12 @@ export default function WordCardZh({ word, onPracticeClick, onCharClick }: WordC
                 {imageStatus === 'regenerating' ? 'Đang tạo lại hình ảnh...' : 'Đang thiết kế hình ảnh...'}
               </span>
               <span className="text-xs text-secondary/60 mt-1">AI đang vẽ minh họa cho từ vựng này. Hãy đợi một chút...</span>
+            </div>
+          ) : imageStatus === 'collecting' ? (
+            <div className="relative w-full h-[200px] rounded-2xl bg-hover-bg border border-outline flex flex-col items-center justify-center overflow-hidden shadow-inner text-secondary select-none text-center p-6">
+              <span className="material-symbols-outlined text-3xl mb-2 text-secondary/40">photo_library</span>
+              <span className="text-sm font-semibold">Ảnh đang trong quá trình thu thập</span>
+              <span className="text-xs text-secondary/60 mt-1">Hình ảnh minh họa cho từ vựng này đang được cập nhật.</span>
             </div>
           ) : imageStatus === 'failed' ? (
             <div className="relative w-full h-[200px] rounded-2xl bg-hover-bg border border-outline flex flex-col items-center justify-center overflow-hidden shadow-inner text-secondary select-none text-center p-6 space-y-3">

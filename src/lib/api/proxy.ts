@@ -30,6 +30,11 @@ export async function handleProxy(
     if (val) headers.set(h, val);
   }
 
+  // Inject the bypass signature header for Cloudflare WAF bypass
+  if (process.env.API_BYPASS_SECRET) {
+    headers.set('x-vercel-signature', process.env.API_BYPASS_SECRET);
+  }
+
   const fetchOptions: RequestInit = {
     method: request.method,
     headers,

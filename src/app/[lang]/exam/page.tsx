@@ -1,7 +1,7 @@
 import React from 'react';
 import { Exam } from '@/types/exam';
 import nextDynamic from 'next/dynamic';
-import { getServerAuthToken } from '@/lib/serverAuth';
+import { getServerAuthToken, getServerHeaders } from '@/lib/serverAuth';
 
 const ExamListClient = nextDynamic(() => import('./ExamListClient'), {
   ssr: true,
@@ -27,10 +27,7 @@ export default async function ExamPage({ params }: ExamPageProps) {
   try {
     const GATEWAY_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
     const token = await getServerAuthToken();
-    const headers = new Headers({ 'Content-Type': 'application/json' });
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
+    const headers = getServerHeaders(token);
 
     const res = await fetch(`${GATEWAY_URL}/api/core/exams/?language=${lang}`, {
       method: 'GET',

@@ -23,8 +23,14 @@ export async function GET(request: NextRequest) {
 
     loggerInfo(`[Next.js TTS Proxy] Proxying request to: ${targetUrl}`);
 
+    const headers = new Headers();
+    if (process.env.API_BYPASS_SECRET) {
+      headers.set('x-vercel-signature', process.env.API_BYPASS_SECRET);
+    }
+
     const res = await fetch(targetUrl, {
       method: 'GET',
+      headers,
     });
 
     if (!res.ok) {

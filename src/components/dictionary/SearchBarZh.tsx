@@ -21,6 +21,15 @@ const capitalizeFirstLetter = (str: string): string => {
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
+const truncateByWords = (str: string, maxWords: number = 8): string => {
+  if (!str) return '';
+  const words = str.trim().split(/\s+/);
+  if (words.length > maxWords) {
+    return words.slice(0, maxWords).join(' ') + '...';
+  }
+  return str;
+};
+
 const translatePartOfSpeech = (pos: string): string => {
   if (!pos) return '';
   const mapping: Record<string, string> = {
@@ -241,30 +250,43 @@ export default function SearchBarZh({ onSelectWord, onSearch, onSelectExample }:
                   <li key={word.id}>
                     <button
                       onClick={() => handleSelect(word)}
-                      className="w-full text-left px-5 py-3 hover:bg-hover-bg transition-colors flex items-center justify-between group border-b border-outline/30 last:border-0"
+                      className="w-full text-left px-5 py-3 hover:bg-hover-bg transition-colors flex flex-col border-b border-outline/30 last:border-0 cursor-pointer"
                     >
-                      <div className="flex flex-col">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-2xl font-bold text-primary">{word.word}</span>
-                          {word.traditional && <span className="text-sm text-secondary">({word.traditional})</span>}
+                      {/* Hàng 1: Từ, Hán Việt (nếu có) và Pinyin */}
+                      <div className="flex justify-between items-baseline w-full gap-4">
+                        <div className="flex items-baseline gap-2 min-w-0 flex-1">
+                          <span className="text-xl font-bold text-primary truncate flex-shrink-0">
+                            {word.word.length > 8 ? `${word.word.slice(0, 8)}...` : word.word}
+                          </span>
+                          {word.han_viet && word.word.length <= 3 && (
+                            <span className="text-xs text-secondary font-medium truncate">
+                              ({truncateByWords(word.han_viet.toUpperCase(), 8)})
+                            </span>
+                          )}
                         </div>
-                        <span className="text-sm font-medium text-secondary truncate max-w-sm mt-1">
-                          {capitalizeFirstLetter(word.translation_vi)}
-                        </span>
+                        {word.pinyin && (
+                          <span className="text-sm font-semibold text-primary/80 font-mono truncate max-w-[50%] ml-2 flex-shrink-0">
+                            {truncateByWords(word.pinyin, 8)}
+                          </span>
+                        )}
                       </div>
 
-                      <div className="flex flex-col items-end">
-                        <span className="text-sm font-semibold text-primary">
-                          {word.pinyin}
-                        </span>
-                        <div className="flex gap-1.5 items-center mt-1">
-                          {word.part_of_speech && (
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-secondary/10 text-secondary">
+                      {/* Hàng 2: Nghĩa tiếng Việt và Từ loại + HSK */}
+                      <div className="flex justify-between items-center w-full mt-1.5 pb-0.5">
+                        {/* Cột 1: Nghĩa */}
+                        <div className="text-sm font-medium text-secondary truncate text-left flex-1 pr-4">
+                          {capitalizeFirstLetter(word.translation_vi)}
+                        </div>
+
+                        {/* Cột 2: Từ loại & HSK */}
+                        <div className="flex gap-1.5 items-center flex-shrink-0 text-right">
+                          {word.part_of_speech && word.part_of_speech.length > 0 && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-secondary/10 text-secondary inline-block truncate max-w-[120px]">
                               {word.part_of_speech.map(translatePartOfSpeech).join(', ')}
                             </span>
                           )}
                           {word.hsk_level && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary inline-block flex-shrink-0">
                               HSK {word.hsk_level}
                             </span>
                           )}

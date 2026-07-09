@@ -16,14 +16,19 @@ export async function PATCH(request: Request) {
     }
 
     // 3. Chuyển tiếp sang Django Backend (Bổ sung dấu / ở cuối URL)
+    const headers: Record<string, string> = {
+      'Authorization': authHeader,
+      'Content-Type': 'multipart/form-data', 
+    };
+    if (process.env.API_BYPASS_SECRET) {
+      headers['x-vercel-signature'] = process.env.API_BYPASS_SECRET;
+    }
+
     const response = await axios.patch(
       `${DJANGO_API_URL}/api/core/users/profile/`,
       clientFormData,
       {
-        headers: {
-          'Authorization': authHeader,
-          'Content-Type': 'multipart/form-data', 
-        },
+        headers,
       }
     );
 

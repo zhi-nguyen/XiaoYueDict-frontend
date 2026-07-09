@@ -38,6 +38,22 @@ export default function TranslationCard({
   const lang = (params?.lang as 'zh' | 'en') === 'en' ? 'en' : 'zh';
   const isSystemTranslation = isExactMatch || translationSource === 'database';
 
+  // Helper to detect Vietnamese diacritics
+  const hasVietnamese = (str: string) => {
+    const viPattern = /[àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđÀÁẢÃẠÂẦẤẨẪẬĂẰẮẲẴẶÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỸĐ]/;
+    return viPattern.test(str);
+  };
+
+  // Helper to detect Chinese characters
+  const hasChinese = (str: string) => {
+    return /[\u4e00-\u9fa5]/.test(str);
+  };
+
+  // Determine if sentenceText is target language
+  const isSentenceTarget = lang === 'en' ? !hasVietnamese(sentenceText) : hasChinese(sentenceText);
+  // Determine if translationVi is target language
+  const isTranslationTarget = lang === 'en' ? !hasVietnamese(translationVi) : hasChinese(translationVi);
+
   return (
     <div className="bg-surface border border-outline rounded-[1.5rem] p-8 shadow-sm">
       <div className="flex justify-between items-start mb-4">
@@ -45,7 +61,9 @@ export default function TranslationCard({
           {renderClickableHanzi(sentenceText, isExactMatch ? undefined : onSearch)}
         </h2>
         <div className="flex gap-3 flex-shrink-0 ml-4">
-          <SpeakerIcon text={sentenceText} lang={lang} size={24} />
+          {isSentenceTarget && (
+            <SpeakerIcon text={sentenceText} lang={lang} size={24} />
+          )}
           <button
             title="Lưu vào sổ tay"
             className="text-secondary hover:text-primary transition-colors flex-shrink-0 focus:outline-none"
@@ -71,10 +89,18 @@ export default function TranslationCard({
       </div>
 
       {/* Translation Text */}
-      <div className="mb-6">
-        <p className="text-xl text-primary font-medium leading-relaxed">
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <p className="text-xl text-primary font-medium leading-relaxed flex-1">
           {translationVi}
         </p>
+        {isTranslationTarget && (
+          <SpeakerIcon
+            text={translationVi}
+            lang={lang}
+            size={24}
+            className="text-secondary hover:text-primary transition-colors flex-shrink-0 focus:outline-none mt-1"
+          />
+        )}
       </div>
 
       {/* Card Footer Buttons */}

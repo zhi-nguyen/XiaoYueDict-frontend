@@ -76,7 +76,7 @@ export default function ProfileInfoTab({ user, tier, onUpdateProfile }: ProfileI
                 />
               ) : (
                 user.first_name && user.last_name
-                  ? (user.last_name.charAt(0) + user.first_name.charAt(0)).toUpperCase()
+                  ? (user.first_name.charAt(0) + user.last_name.charAt(0)).toUpperCase()
                   : (user.first_name || user.username).substring(0, 2).toUpperCase()
               )}
               {isEditingInfo && (
@@ -100,8 +100,8 @@ export default function ProfileInfoTab({ user, tier, onUpdateProfile }: ProfileI
             />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="text-2xl font-bold text-primary truncate" title={user.first_name ? `${user.last_name || ''} ${user.first_name}`.trim() : user.username}>
-              {user.first_name ? `${user.last_name || ''} ${user.first_name}`.trim() : user.username}
+            <h2 className="text-2xl font-bold text-primary truncate" title={user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user.username}>
+              {user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user.username}
             </h2>
             <p className="text-secondary truncate" title={user.email}>{user.email}</p>
             <div className="mt-2 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-surface border border-outline text-xs font-bold text-primary">
@@ -113,22 +113,22 @@ export default function ProfileInfoTab({ user, tier, onUpdateProfile }: ProfileI
         <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-primary mb-1">Họ (Last Name)</label>
-              <input
-                type="text"
-                disabled={!isEditingInfo}
-                value={formData.last_name}
-                onChange={e => setFormData({ ...formData, last_name: e.target.value })}
-                className="w-full px-4 py-2.5 bg-surface border border-outline rounded-xl focus:border-sage focus:outline-none disabled:opacity-50 text-sm text-primary"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-primary mb-1">Tên (First Name)</label>
+              <label className="block text-sm font-semibold text-primary mb-1">Họ</label>
               <input
                 type="text"
                 disabled={!isEditingInfo}
                 value={formData.first_name}
                 onChange={e => setFormData({ ...formData, first_name: e.target.value })}
+                className="w-full px-4 py-2.5 bg-surface border border-outline rounded-xl focus:border-sage focus:outline-none disabled:opacity-50 text-sm text-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-primary mb-1">Tên</label>
+              <input
+                type="text"
+                disabled={!isEditingInfo}
+                value={formData.last_name}
+                onChange={e => setFormData({ ...formData, last_name: e.target.value })}
                 className="w-full px-4 py-2.5 bg-surface border border-outline rounded-xl focus:border-sage focus:outline-none disabled:opacity-50 text-sm text-primary"
               />
             </div>

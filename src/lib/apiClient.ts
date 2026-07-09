@@ -26,12 +26,11 @@ export const djangoClient = axios.create({
   xsrfHeaderName: 'X-CSRFToken',
 });
 
-// VPS direct connection for high-performance reading APIs (bypassing Vercel BFF)
 const isLocal = typeof window !== 'undefined' && 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
 const VPS_API_BASE_URL = process.env.NEXT_PUBLIC_VPS_API_URL || 
-  (isLocal ? 'http://localhost/api/core' : 'https://api.cnendict.xyz/api/core');
+  (isLocal ? 'http://localhost/api/core' : '/api/core');
 
 export const directVpsClient = axios.create({
   baseURL: VPS_API_BASE_URL,

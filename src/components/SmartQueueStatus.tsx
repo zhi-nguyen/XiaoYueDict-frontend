@@ -91,17 +91,17 @@ export default function SmartQueueStatus({
   }
 
   let errorTitle = 'Gặp sự cố kết nối';
-  let errorDescription = strategy?.errorText || 'Kết nối với máy chủ AI bị gián đoạn.';
+  let errorDescription = strategy?.errorText || 'Kết nối với máy chủ bị gián đoạn.';
 
   if (effectiveErrorType === 'validation') {
     errorTitle = 'Lỗi dữ liệu đầu vào';
     errorDescription = 'Bản ghi âm hoặc văn bản mẫu không đáp ứng yêu cầu phân tích.';
   } else if (effectiveErrorType === 'rate_limit') {
     errorTitle = 'Vượt quá hạn mức';
-    errorDescription = 'Tài khoản của bạn đã đạt giới hạn dung lượng tải lên trong ngày/giờ.';
+    errorDescription = 'Tài khoản của bạn đã đạt giới hạn hạn mức được cấp.';
   } else if (effectiveErrorType === 'processing') {
-    errorTitle = 'Lỗi xử lý âm thanh';
-    errorDescription = 'Có sự cố xảy ra trong quá trình tính toán điểm số tại máy chủ.';
+    errorTitle = 'Lỗi xử lý';
+    errorDescription = 'Có sự cố xảy ra trong quá trình xử lý.';
   }
 
   return (
@@ -117,12 +117,12 @@ export default function SmartQueueStatus({
               </div>
               <h4 className="font-bold text-red-800 text-sm leading-snug">{errorTitle}</h4>
             </div>
-            
+
             {/* Hàng 2: Hàng 1 cột duy nhất chứa subtitle */}
             <p className="text-red-700 text-xs leading-relaxed">
               {errorDescription}
             </p>
-            
+
             {/* Hàng 3: Hàng 1 cột duy nhất chứa chi tiết lỗi và nút bấm */}
             <div className="w-full space-y-4">
               {errorMessage && (
@@ -146,11 +146,10 @@ export default function SmartQueueStatus({
       ) : (
         // TRẠNG THÁI LOADING ĐA GIAI ĐOẠN (STAGE 1, 2, 3)
         <div
-          className={`relative overflow-hidden rounded-2xl border transition-all duration-300 p-6 shadow-sm ${
-            isStage3
-              ? 'bg-amber-50 border-amber-200 text-amber-900'
-              : 'bg-surface border-outline'
-          }`}
+          className={`relative overflow-hidden rounded-2xl border transition-all duration-300 p-6 shadow-sm ${isStage3
+            ? 'bg-amber-50 border-amber-200 text-amber-900'
+            : 'bg-surface border-outline'
+            }`}
         >
           {/* Hiệu ứng shimmer nền cho giai đoạn 1 và 2 */}
           {!isStage3 && (
@@ -162,9 +161,8 @@ export default function SmartQueueStatus({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p
-                    className={`font-semibold text-sm leading-snug transition-all duration-300 ${
-                      isStage3 ? 'text-amber-900 font-bold' : 'text-primary'
-                    }`}
+                    className={`font-semibold text-sm leading-snug transition-all duration-300 ${isStage3 ? 'text-amber-900 font-bold' : 'text-primary'
+                      }`}
                   >
                     {displayMessage}
                   </p>
@@ -186,15 +184,13 @@ export default function SmartQueueStatus({
             </div>
 
             {/* Thanh tiến trình chuyển động mượt mà */}
-            <div className={`h-2 w-full rounded-full overflow-hidden relative ${
-              isStage3 ? 'bg-amber-200/70' : 'bg-slate-200'
-            }`}>
+            <div className={`h-2 w-full rounded-full overflow-hidden relative ${isStage3 ? 'bg-amber-200/70' : 'bg-slate-200'
+              }`}>
               <div
-                className={`absolute inset-y-0 rounded-full transition-all duration-500 ${
-                  isStage3
-                    ? 'bg-gradient-to-r from-amber-500 via-orange-600 to-amber-700'
-                    : 'bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500'
-                } animate-indeterminate-bar`}
+                className={`absolute inset-y-0 rounded-full transition-all duration-500 ${isStage3
+                  ? 'bg-gradient-to-r from-amber-500 via-orange-600 to-amber-700'
+                  : 'bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-500'
+                  } animate-indeterminate-bar`}
               />
             </div>
 

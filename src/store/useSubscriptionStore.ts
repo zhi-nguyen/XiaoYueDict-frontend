@@ -21,6 +21,8 @@ export interface VolumeUsageInfo {
   used_hr: number;
   used_day: number;
   service_available?: boolean;
+  translation_zh_limit?: number;
+  translation_en_limit?: number;
 }
 
 interface SubscriptionState {

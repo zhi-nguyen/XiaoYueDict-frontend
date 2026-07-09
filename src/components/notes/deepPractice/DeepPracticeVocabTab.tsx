@@ -21,15 +21,26 @@ const TranslationVi = ({ text }: { text: string }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   if (!text) return null;
 
+  const hasSemicolon = text.includes(';');
   const parts = text.split(';').map(part => part.trim()).filter(Boolean);
   if (parts.length <= 1) {
     return (
       <span className="block space-y-1 text-center mt-4">
-        {parts.map((part, idx) => (
-          <span key={idx} className="block text-xl sm:text-2xl font-bold text-sage select-all">
-            {capitalizeFirstLetter(part)}
-          </span>
-        ))}
+        {parts.map((part, idx) => {
+          const wordCount = part.split(/\s+/).filter(Boolean).length;
+          const isLong = wordCount > 5 || hasSemicolon;
+          return (
+            <span 
+              key={idx} 
+              className={`block text-xl sm:text-2xl font-bold text-sage select-all ${
+                isLong ? 'text-justify w-full max-w-md px-6' : ''
+              }`}
+              style={isLong ? { textIndent: '1.5em' } : undefined}
+            >
+              {capitalizeFirstLetter(part)}
+            </span>
+          );
+        })}
       </span>
     );
   }
@@ -38,12 +49,22 @@ const TranslationVi = ({ text }: { text: string }) => {
 
   return (
     <div className="flex flex-col items-center w-full text-center mt-4">
-      <span className="block space-y-1.5 w-full">
-        {displayedParts.map((part, idx) => (
-          <span key={idx} className="block text-xl sm:text-2xl font-bold text-sage select-all">
-            - {capitalizeFirstLetter(part)}
-          </span>
-        ))}
+      <span className="block space-y-1.5 w-full flex flex-col items-center">
+        {displayedParts.map((part, idx) => {
+          const wordCount = part.split(/\s+/).filter(Boolean).length;
+          const isLong = wordCount > 5 || hasSemicolon;
+          return (
+            <span 
+              key={idx} 
+              className={`block text-xl sm:text-2xl font-bold text-sage select-all ${
+                isLong ? 'text-justify w-full max-w-md px-6' : ''
+              }`}
+              style={isLong ? { textIndent: '1.5em' } : undefined}
+            >
+              - {capitalizeFirstLetter(part)}
+            </span>
+          );
+        })}
       </span>
       <button
         type="button"

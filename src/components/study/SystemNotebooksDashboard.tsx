@@ -282,48 +282,71 @@ export function SystemNotebooksDashboard({ lang, onSearchWord }: SystemNotebooks
                 {words.map((w: any) => (
                   <div
                     key={w.id}
-                    className="p-4 bg-surface-alt border border-outline rounded-2xl flex items-start justify-between hover:border-primary/45 transition-all group hover:shadow-sm"
+                    className="p-4 bg-surface-alt border border-outline rounded-2xl flex flex-col gap-2 hover:border-primary/45 transition-all group hover:shadow-sm"
                   >
-                    <div className="space-y-1">
-                      <div className="flex items-baseline gap-2">
+                    {/* Row 1: Word + Actions */}
+                    <div className="grid grid-cols-[1fr_80px] items-center gap-3 w-full">
+                      {/* Col 1: Word */}
+                      <div className="min-w-0 flex items-center gap-2">
                         <span
                           onClick={() => onSearchWord(w.word)}
-                          className="text-2xl font-bold text-primary cursor-pointer hover:underline hover:text-primary-hover"
+                          className="text-2xl font-bold text-primary cursor-pointer hover:underline hover:text-primary-hover truncate block"
+                          title={w.word}
                         >
                           {w.word}
                         </span>
                         {w.traditional && (
-                          <span className="text-sm text-secondary font-medium">({w.traditional})</span>
-                        )}
-                        {(w.pinyin || w.ipa) && (
-                          <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100/50">
-                            {w.pinyin || w.ipa}
+                          <span className="text-sm text-secondary font-medium truncate" title={w.traditional}>
+                            ({w.traditional})
                           </span>
                         )}
                       </div>
+
+                      {/* Col 2: Actions */}
+                      <div className="flex items-center justify-end gap-1.5 shrink-0">
+                        <SpeakerIcon
+                          text={w.word}
+                          lang={lang === 'en' ? 'en' : 'zh'}
+                          size={16}
+                          className="p-2 rounded-full hover:bg-primary/10 text-secondary hover:text-primary transition-colors flex items-center justify-center border border-transparent hover:border-primary/20 bg-surface shrink-0"
+                        />
+                        <button
+                          onClick={() => {
+                            setToastMessage(`Đã ghi nhận báo cáo sai sót cho từ "${w.word}". Cảm ơn bạn!`);
+                          }}
+                          className="p-2 rounded-full hover:bg-red-50 text-secondary hover:text-red-600 transition-colors flex items-center justify-center border border-transparent hover:border-red-100 bg-surface shrink-0"
+                          title="Báo cáo sai từ/nghĩa"
+                        >
+                          <AlertCircle className="w-4 h-4 text-secondary hover:text-red-600" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Row 2: IPA / Pinyin */}
+                    {(w.pinyin || w.ipa) && (
+                      <div className="w-full min-w-0">
+                        <span 
+                          className="inline-block text-xs font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100/50 truncate max-w-full"
+                          title={w.pinyin || w.ipa}
+                        >
+                          {w.pinyin || w.ipa}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Row 3: Translation */}
+                    <div className="w-full min-w-0">
                       {w.han_viet && lang !== 'en' && (
-                        <p className="text-xs text-secondary/80 font-bold">Hán Việt: {w.han_viet.toUpperCase()}</p>
+                        <p className="text-xs text-secondary/80 font-bold mb-0.5 truncate" title={`Hán Việt: ${w.han_viet.toUpperCase()}`}>
+                          Hán Việt: {w.han_viet.toUpperCase()}
+                        </p>
                       )}
-                      <p className="text-sm text-secondary font-medium line-clamp-2 leading-relaxed mt-1">
+                      <p 
+                        className="text-sm text-secondary font-medium leading-relaxed truncate"
+                        title={capitalizeFirstLetter(w.translation_vi)}
+                      >
                         {capitalizeFirstLetter(w.translation_vi)}
                       </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <SpeakerIcon
-                        text={w.word}
-                        lang={lang === 'en' ? 'en' : 'zh'}
-                        size={16}
-                        className="p-2 rounded-full hover:bg-primary/10 text-secondary hover:text-primary transition-colors flex items-center justify-center border border-transparent hover:border-primary/20 bg-surface"
-                      />
-                      <button
-                        onClick={() => {
-                          setToastMessage(`Đã ghi nhận báo cáo sai sót cho từ "${w.word}". Cảm ơn bạn!`);
-                        }}
-                        className="p-2 rounded-full hover:bg-red-50 text-secondary hover:text-red-600 transition-colors flex items-center justify-center border border-transparent hover:border-red-100 bg-surface"
-                        title="Báo cáo sai từ/nghĩa"
-                      >
-                        <AlertCircle className="w-4 h-4" />
-                      </button>
                     </div>
                   </div>
                 ))}

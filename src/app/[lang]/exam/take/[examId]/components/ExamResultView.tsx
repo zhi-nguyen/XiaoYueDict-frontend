@@ -15,13 +15,16 @@ import {
   Home,
   Check,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Menu,
+  LogOut
 } from 'lucide-react';
 import { Exam, Question, Section } from '@/types/exam';
 import { clearExamState } from '@/lib/examState';
 import QuestionCard from './QuestionCard';
 import ImageLightbox from './ImageLightbox';
 import dynamic from 'next/dynamic';
+import { useUIStore } from '@/store/useUIStore';
 
 const ConfirmModal = dynamic(() => import('@/components/ConfirmModal'), { ssr: false });
 const ReportModal = dynamic(() => import('@/components/ReportModal'), { ssr: false });
@@ -67,6 +70,7 @@ export default function ExamResultView({
   language,
 }: ExamResultViewProps) {
   const router = useRouter();
+  const { setSidebarOpen } = useUIStore();
 
   const [activeTab, setActiveTab] = useState<'all' | 'correct' | 'incorrect'>('all');
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
@@ -74,6 +78,17 @@ export default function ExamResultView({
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportQuestionId, setReportQuestionId] = useState<string | null>(null);
   const [isRestartConfirmOpen, setIsRestartConfirmOpen] = useState(false);
+
+  // Auto scroll to top when result page mounts
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, 0);
+      document.querySelector('main')?.scrollTo(0, 0);
+      document.querySelectorAll('.overflow-y-auto').forEach(el => el.scrollTo(0, 0));
+      document.documentElement.scrollTo(0, 0);
+      document.body.scrollTo(0, 0);
+    }
+  }, []);
 
   // Audio Play State for review questions
   const segmentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -276,7 +291,7 @@ export default function ExamResultView({
   const strokeDashoffset = circumference - (percentageFill / 100) * circumference;
 
   return (
-    <div className="w-full min-h-screen bg-slate-50/50 pb-24 md:pb-12 font-lexend">
+    <div className="w-full min-h-screen bg-slate-50/50 pb-12 font-lexend">
       {/* Hidden Audio Element for Segment Playback */}
       <audio
         ref={segmentAudioRef as any}
@@ -292,8 +307,47 @@ export default function ExamResultView({
         className="hidden"
       />
 
+      {/* Top Sticky Header */}
+      <header className="sticky top-0 w-full z-40 bg-white/80 backdrop-blur-xl border-b border-slate-200 px-6 h-16 flex justify-between items-center shadow-sm">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="md:hidden p-2 hover:bg-slate-100 rounded-lg text-slate-700 focus:outline-none"
+            title="Mở menu phần thi"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <span className="font-display-lg text-lg font-extrabold text-slate-800 font-lexend">
+            XiaoYueDict
+          </span>
+          <span className="hidden md:inline px-2 py-0.5 rounded bg-slate-100 text-slate-500 text-[10px] font-bold uppercase tracking-wider font-mono">
+            {isIelts ? 'Exam Results' : 'Kết quả thi'}
+          </span>
+        </div>
+
+        {/* Header Actions */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsRestartConfirmOpen(true)}
+            className={`bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-full font-bold text-xs transition-all shadow-sm flex items-center justify-center ${isIelts ? 'px-4 py-2 gap-1.5' : 'w-9 h-9'
+              }`}
+            title={isIelts ? 'Restart Test' : 'Làm lại bài'}
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleBackToHome}
+            className={`bg-slate-900 hover:bg-slate-800 text-white rounded-full font-bold text-xs transition-all shadow-sm flex items-center justify-center ${isIelts ? 'px-4 py-2 gap-1.5' : 'w-9 h-9'
+              }`}
+            title={isIelts ? 'Back to list' : 'Quay về'}
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+      </header>
+
       <div className="max-w-[1120px] mx-auto px-4 pt-8 md:pt-12">
-        {/* Header Section (PC Top Actions, Mobile Centered Layout) */}
+        {/* Header Section (Mobile Centered Layout) */}
         <div className="flex flex-col md:flex-row md:justify-between md:items-center text-center md:text-left gap-4 mb-8">
           <div>
             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1">
@@ -305,24 +359,6 @@ export default function ExamResultView({
             <p className="text-sm text-slate-500 font-medium font-inter mt-1.5">
               {exam.exam_name} • Hoàn thành ngày {completedDate}
             </p>
-          </div>
-
-          {/* Actions for Desktop */}
-          <div className="hidden md:flex items-center gap-3">
-            <button
-              onClick={() => setIsRestartConfirmOpen(true)}
-              className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-full font-bold text-sm transition-all shadow-sm flex items-center gap-2"
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span>{isIelts ? 'Restart Test' : 'Làm lại bài'}</span>
-            </button>
-            <button
-              onClick={handleBackToHome}
-              className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-full font-bold text-sm transition-all shadow-sm flex items-center gap-2"
-            >
-              <Home className="w-4 h-4" />
-              <span>{isIelts ? 'Back to Home' : 'Quay về trang chủ'}</span>
-            </button>
           </div>
         </div>
 
@@ -478,8 +514,8 @@ export default function ExamResultView({
             <button
               onClick={() => setActiveTab('all')}
               className={`px-5 py-2 rounded-full font-bold text-xs transition-all duration-200 ${activeTab === 'all'
-                  ? 'bg-slate-900 text-white shadow-sm'
-                  : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                ? 'bg-slate-900 text-white shadow-sm'
+                : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
                 }`}
             >
               Tất cả ({allQuestions.length})
@@ -487,8 +523,8 @@ export default function ExamResultView({
             <button
               onClick={() => setActiveTab('correct')}
               className={`px-5 py-2 rounded-full font-bold text-xs transition-all duration-200 flex items-center gap-1.5 ${activeTab === 'correct'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100/50'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100/50'
                 }`}
             >
               <Check className="w-3.5 h-3.5" />
@@ -497,8 +533,8 @@ export default function ExamResultView({
             <button
               onClick={() => setActiveTab('incorrect')}
               className={`px-5 py-2 rounded-full font-bold text-xs transition-all duration-200 flex items-center gap-1.5 ${activeTab === 'incorrect'
-                  ? 'bg-rose-600 text-white shadow-sm'
-                  : 'bg-rose-50 text-rose-600 hover:bg-rose-100/50'
+                ? 'bg-rose-600 text-white shadow-sm'
+                : 'bg-rose-50 text-rose-600 hover:bg-rose-100/50'
                 }`}
             >
               <XCircle className="w-3.5 h-3.5" />
@@ -542,25 +578,6 @@ export default function ExamResultView({
           )}
         </div>
       </div>
-
-      {/* Sticky Bottom Actions for Mobile */}
-      <div className="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 p-4 flex gap-3 md:hidden z-40 shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
-        <button
-          onClick={handleBackToHome}
-          className="flex-1 py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
-        >
-          <Home className="w-4 h-4" />
-          <span>Trang chủ</span>
-        </button>
-        <button
-          onClick={() => setIsRestartConfirmOpen(true)}
-          className="w-14 h-14 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-2xl font-bold flex items-center justify-center transition-all shadow-sm shrink-0"
-          title="Làm lại đề thi"
-        >
-          <RotateCcw className="w-5 h-5" />
-        </button>
-      </div>
-
       {/* Confirm Restart Dialog */}
       <ConfirmModal
         isOpen={isRestartConfirmOpen}

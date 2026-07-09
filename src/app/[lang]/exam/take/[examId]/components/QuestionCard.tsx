@@ -152,7 +152,7 @@ export default function QuestionCard({
                   src={getMediaUrl(question.image_url)}
                   alt="Question Context"
                   loading="lazy"
-                  className="w-full max-w-[480px] h-auto object-contain rounded-2xl shadow-sm border border-outline cursor-zoom-in hover:opacity-90 transition-opacity"
+                  className="w-full max-w-[480px] md:max-w-[280px] h-auto object-contain rounded-2xl shadow-sm border border-outline cursor-zoom-in hover:opacity-90 transition-opacity"
                   onClick={() => {
                     setLightboxImage(getMediaUrl(question.image_url));
                     setLightboxZoom(1);

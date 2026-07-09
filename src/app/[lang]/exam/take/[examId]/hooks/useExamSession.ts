@@ -155,6 +155,15 @@ export function useExamSession() {
     if (examId) loadExam();
   }, [examId]);
 
+  // Share state to window for Sidebar
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__activeExamSubmitted = isSubmitted;
+      (window as any).__activeExamAnswers = answers;
+      window.dispatchEvent(new CustomEvent('exam-state-update'));
+    }
+  }, [isSubmitted, answers]);
+
   // Timer countdown
   useEffect(() => {
     if (isSubmitted || timeRemaining === null) return;

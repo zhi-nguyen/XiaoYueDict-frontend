@@ -150,9 +150,9 @@ export default function PaymentQRModal({
       data-portal="payment-qr-modal"
       className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-primary/40 backdrop-blur-md transition-opacity duration-300 font-sans"
     >
-      <div className="bg-surface rounded-3xl w-full max-w-md border border-outline shadow-[0_20px_50px_rgba(0,0,0,0.08)] transform transition-all scale-100 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+      <div className="bg-surface rounded-3xl w-full max-w-md max-h-[calc(100dvh-2rem)] md:max-h-[90dvh] flex flex-col border border-outline shadow-[0_20px_50px_rgba(0,0,0,0.08)] transform transition-all scale-100 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-primary to-sage px-6 py-4 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-primary to-sage px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-white text-xl">qr_code_2</span>
             <h3 className="text-lg font-bold text-white tracking-tight">Thanh toán chuyển khoản</h3>
@@ -165,7 +165,7 @@ export default function PaymentQRModal({
           </button>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-5 overflow-y-auto flex-1">
           {/* Payment status indicator */}
           {isPaid ? (
             <div className="flex flex-col items-center py-4">
@@ -206,7 +206,7 @@ export default function PaymentQRModal({
                   <img
                     src={paymentData.qr_url}
                     alt="Mã QR thanh toán VietQR"
-                    className="w-52 h-52 object-contain"
+                    className="w-64 h-64 object-contain"
                   />
                 </div>
               </div>

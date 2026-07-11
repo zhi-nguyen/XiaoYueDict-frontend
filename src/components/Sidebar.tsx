@@ -13,6 +13,7 @@ const navItems = [
   { href: '/translate', icon: 'g_translate', label: 'Dịch thông minh' },
   { href: '/speaking', icon: 'mic', label: 'Luyện Nói' },
   { href: '/writing', icon: 'edit', label: 'Luyện Viết' },
+  { href: '/ai-chat', icon: 'forum', label: 'Trò chuyện AI' },
   { href: '/exam', icon: 'emoji_events', label: 'Luyện Thi' },
   { href: '/notes', icon: 'menu_book', label: 'Sổ Tay' },
 ];
@@ -90,6 +91,12 @@ export default function Sidebar() {
         label: language === 'zh' ? 'Luyện Thi HSK' : 'Luyện Thi IELTS',
       };
     }
+    if (item.href === '/ai-chat') {
+      return {
+        ...item,
+        label: language === 'zh' ? 'Ai Chat' : 'AI Chat',
+      };
+    }
     return item;
   });
 
@@ -97,8 +104,8 @@ export default function Sidebar() {
     <>
       {/* Mobile Overlay */}
       {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 md:hidden" 
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -107,7 +114,7 @@ export default function Sidebar() {
         /* Exam Sidebar Mode */
         <aside ref={sidebarRef} className={`fixed inset-y-0 left-0 z-50 h-full w-[260px] bg-surface border-r border-outline flex flex-col shrink-0 transition-all duration-300 md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           {/* Back to list button */}
-          <button 
+          <button
             onClick={() => {
               window.dispatchEvent(new CustomEvent('exam-sidebar-leave'));
               setSidebarOpen(false);
@@ -136,7 +143,7 @@ export default function Sidebar() {
               </div>
             </div>
           </div>
-           {/* Sections navigation or Map Question */}
+          {/* Sections navigation or Map Question */}
           {isSubmitted ? (
             <nav className="flex-1 px-4 space-y-4 sidebar-scroll overflow-y-auto overflow-x-hidden pt-2">
               <div>
@@ -146,7 +153,7 @@ export default function Sidebar() {
                 <div className="grid grid-cols-4 gap-2 px-1">
                   {(() => {
                     const allQuestions = activeExam?.sections?.flatMap((s: any) => s.questions) || [];
-                    
+
                     const isQuestionCorrect = (q: any) => {
                       const isTextInput =
                         q.question_type === 'fill_blank' ||
@@ -163,10 +170,10 @@ export default function Sidebar() {
 
                     return allQuestions.map((q: any, idx: number) => {
                       const correct = isQuestionCorrect(q);
-                      const bgClass = correct 
-                        ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200' 
+                      const bgClass = correct
+                        ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200'
                         : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200';
-                      
+
                       return (
                         <button
                           key={q.question_id}
@@ -205,7 +212,7 @@ export default function Sidebar() {
               {(() => {
                 const sectionCounts: Record<string, number> = {};
                 const sectionIndices: Record<string, number> = {};
-                
+
                 activeExam?.sections?.forEach((sec: any) => {
                   const key = `${sec.section_name}_${sec.part_number}`;
                   sectionCounts[key] = (sectionCounts[key] || 0) + 1;
@@ -213,11 +220,11 @@ export default function Sidebar() {
 
                 return activeExam?.sections?.map((sec: any) => {
                   const nameLower = sec.section_name?.toLowerCase() || '';
-                  const icon = nameLower.includes('listen') 
-                    ? 'headphones' 
-                    : nameLower.includes('read') 
-                    ? 'menu_book' 
-                    : 'edit';
+                  const icon = nameLower.includes('listen')
+                    ? 'headphones'
+                    : nameLower.includes('read')
+                      ? 'menu_book'
+                      : 'edit';
 
                   const key = `${sec.section_name}_${sec.part_number}`;
                   sectionIndices[key] = (sectionIndices[key] || 0) + 1;
@@ -282,7 +289,7 @@ export default function Sidebar() {
               const targetHref = `/${language}${item.href}`;
               const isActive = isMounted && (pathname === targetHref || (item.href !== '/' && pathname.startsWith(targetHref)));
               return (
-                <Link 
+                <Link
                   key={item.href}
                   href={targetHref}
                   onClick={() => setSidebarOpen(false)}

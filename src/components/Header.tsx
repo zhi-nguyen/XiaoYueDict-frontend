@@ -38,6 +38,7 @@ export default function Header() {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [scoreModalData, setScoreModalData] = useState<any>(null);
+  const [isPromoDismissed, setIsPromoDismissed] = useState(false);
 
   // Initialize notification WebSocket
   useNotificationWebSocket();
@@ -46,6 +47,9 @@ export default function Header() {
   const language = isMounted ? ((params?.lang as string) || 'zh') : 'zh';
   const { currentStreak, fetchGamificationData, isInitialized: isGamificationInit } = useGamificationStore();
   const { tier: subscriptionTier, fetchSubscription, isInitialized: isSubInit } = useSubscriptionStore();
+
+  const isHomeOrWritingPage = pathname === '/' || pathname === `/${language}` || pathname === `/${language}/writing` || pathname === `/writing`;
+  const showPromoBubble = isMounted && !isAuthenticated && isHomeOrWritingPage && !isPromoDismissed;
 
   useEffect(() => {
     setIsMounted(true);
@@ -247,13 +251,46 @@ export default function Header() {
             </div>
           </div>
         ) : (
-          <button 
-            className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center hover:opacity-90 transition-opacity shadow-sm"
-            onClick={() => setIsAuthModalOpen(true)}
-            title="Đăng nhập"
-          >
-            <span className="material-symbols-outlined text-xl">person</span>
-          </button>
+          <div className="relative">
+            <button 
+              className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center hover:opacity-90 transition-opacity shadow-sm"
+              onClick={() => setIsAuthModalOpen(true)}
+              title="Đăng nhập"
+            >
+              <span className="material-symbols-outlined text-xl">person</span>
+            </button>
+
+            {showPromoBubble && (
+              <div className="absolute right-0 mt-3 w-64 bg-gradient-to-br from-yellow-500 via-orange-500 to-amber-600 text-white rounded-2xl shadow-2xl p-3.5 z-50 border border-yellow-300 animate-in fade-in slide-in-from-top-2">
+                <div className="absolute -top-1.5 right-3.5 w-3 h-3 bg-yellow-500 rotate-45 transform"></div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsPromoDismissed(true);
+                  }}
+                  className="absolute top-1 right-2 text-white/70 hover:text-white text-xs font-bold p-1"
+                  title="Đóng"
+                >
+                  <span className="material-symbols-outlined text-[14px]">close</span>
+                </button>
+                <p className="text-[10px] font-extrabold uppercase tracking-widest mb-1 flex items-center gap-1 text-yellow-100">
+                  <span className="material-symbols-outlined text-xs filled">workspace_premium</span>
+                  Quà tặng mới!
+                </p>
+                <p className="text-xs font-bold leading-snug pr-3">
+                  Đăng ký tài khoản mới để nhận ngay <strong>3 ngày trải nghiệm gói PRO miễn phí</strong>!
+                </p>
+                <button 
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="mt-2.5 w-full py-1.5 bg-white font-extrabold text-[11px] rounded-lg shadow hover:bg-orange-50 transition-colors flex items-center justify-center gap-1"
+                  style={{ color: '#ea580c' }}
+                >
+                  <span className="material-symbols-outlined text-xs font-bold" style={{ color: '#ea580c' }}>login</span>
+                  Đăng nhập / Đăng ký
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
 

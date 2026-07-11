@@ -26,7 +26,6 @@ export default function SubscriptionHistoryTab() {
     fetchPlans,
     fetchSubscription,
     registerPlan,
-    cancelPendingDowngrade
   } = useSubscriptionStore();
 
   const [showVat, setShowVat] = useState(true);
@@ -103,26 +102,6 @@ export default function SubscriptionHistoryTab() {
         isDestructive: currentTier !== 'Free',
         onConfirm: () => executeRegister(planTier)
       });
-    } else {
-      // Downgrade Flow
-      if (currentTier === 'Premium') {
-        setConfirmConfig({
-          isOpen: true,
-          title: `Hạ cấp xuống gói ${planTier.toUpperCase()}`,
-          message: `Vì tài khoản của bạn đang sử dụng gói PREMIUM Vĩnh viễn (Lifetime), việc hạ cấp xuống gói ${planTier.toUpperCase()} sẽ được thực hiện NGAY LẬP TỨC. Bạn có chắc chắn muốn tiếp tục?`,
-          isDestructive: true,
-          onConfirm: () => executeRegister(planTier)
-        });
-      } else {
-        const formattedDate = endDate ? new Date(endDate).toLocaleDateString('vi-VN') : 'cuối chu kỳ';
-        setConfirmConfig({
-          isOpen: true,
-          title: `Hạ cấp xuống gói ${planTier.toUpperCase()}`,
-          message: `Bạn đang gửi yêu cầu hạ cấp xuống gói ${planTier.toUpperCase()}. Quyền lợi của gói ${currentTier?.toUpperCase()} vẫn sẽ được GIỮ NGUYÊN cho đến hết chu kỳ hiện tại (ngày ${formattedDate}). Sau ngày này, tài khoản mới tự động chuyển về gói ${planTier.toUpperCase()}.`,
-          isDestructive: false,
-          onConfirm: () => executeRegister(planTier)
-        });
-      }
     }
   };
 
@@ -175,34 +154,7 @@ export default function SubscriptionHistoryTab() {
     });
   };
 
-  const handleCancelDowngrade = () => {
-    setConfirmConfig({
-      isOpen: true,
-      title: 'Hủy yêu cầu hạ cấp',
-      message: `Bạn có muốn hủy yêu cầu hạ cấp đang chờ xử lý? Tài khoản của bạn sẽ tiếp tục gia hạn gói ${currentTier?.toUpperCase()} như bình thường.`,
-      isDestructive: false,
-      onConfirm: async () => {
-        setConfirmConfig(prev => ({ ...prev, isOpen: false }));
-        try {
-          await cancelPendingDowngrade();
-          setAlertConfig({
-            isOpen: true,
-            title: 'Hủy thành công',
-            message: 'Yêu cầu hạ cấp của bạn đã được hủy bỏ thành công.',
-            type: 'success'
-          });
-          refreshHistory();
-        } catch (err: any) {
-          setAlertConfig({
-            isOpen: true,
-            title: 'Thất bại',
-            message: err.response?.data?.error || 'Không thể hủy yêu cầu.',
-            type: 'error'
-          });
-        }
-      }
-    });
-  };
+  // Hủy yêu cầu hạ cấp (Không khả dụng vì tính năng hạ cấp đã bị xóa)
 
   const formatPrice = (priceStr: string, planTier: string) => {
     const priceNum = parseFloat(priceStr);
@@ -292,23 +244,7 @@ export default function SubscriptionHistoryTab() {
             )}
           </div>
 
-          {pendingDowngradeTier && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 max-w-sm">
-              <p className="text-xs text-yellow-800 font-bold leading-tight">
-                ⚠️ Đã lên lịch hạ cấp xuống gói {pendingDowngradeTier.toUpperCase()}
-              </p>
-              <p className="text-[10px] text-yellow-700/80 mt-0.5">
-                Quyền lợi hiện tại vẫn giữ nguyên cho đến ngày hết hạn của gói.
-              </p>
-              <button
-                onClick={handleCancelDowngrade}
-                className="mt-2 text-xs text-red-500 hover:text-red-600 font-extrabold flex items-center gap-0.5 hover:underline"
-              >
-                <span className="material-symbols-outlined text-sm">cancel</span>
-                Hủy yêu cầu hạ cấp
-              </button>
-            </div>
-          )}
+          {/* pendingDowngradeTier UI block removed */}
         </div>
       </div>
 
@@ -407,12 +343,12 @@ export default function SubscriptionHistoryTab() {
                         Đang dùng
                       </button>
                     </div>
-                  ) : isPending ? (
+                  ) : ['Free', 'Plus', 'Pro', 'Premium'].indexOf(plan.tier) < ['Free', 'Plus', 'Pro', 'Premium'].indexOf(normalizedUserTier) ? (
                     <button
                       disabled
-                      className="w-full py-2 bg-yellow-50 border border-yellow-200 text-yellow-700 font-bold text-xs rounded-xl cursor-default"
+                      className="w-full py-2 bg-outline/20 text-secondary/40 font-bold text-xs rounded-xl cursor-not-allowed"
                     >
-                      Chờ hạ cấp
+                      Không hỗ trợ hạ cấp
                     </button>
                   ) : (
                     <button
@@ -422,9 +358,7 @@ export default function SubscriptionHistoryTab() {
                         : 'bg-primary hover:opacity-90 text-white shadow-sm'
                         }`}
                     >
-                      {['Free', 'Plus', 'Pro', 'Premium'].indexOf(plan.tier) > ['Free', 'Plus', 'Pro', 'Premium'].indexOf(normalizedUserTier)
-                        ? 'Nâng cấp'
-                        : 'Hạ cấp'}
+                      Nâng cấp
                     </button>
                   )}
                 </div>

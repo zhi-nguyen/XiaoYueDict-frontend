@@ -87,3 +87,17 @@ export async function finishStudySession(sessionId: string, cardResults: CardRes
   const response = await apiClient.post(`/gamification/study-session/${sessionId}/finish/`, { card_results: cardResults });
   return response.data;
 }
+
+export interface TierCoinConfig {
+  tier: 'Free' | 'Plus' | 'Pro' | 'Premium';
+  weekly_refill_cap: number;
+  words_per_coin: number;
+  daily_free_earn_limit: number;
+  chat_create_cost: number;
+  chat_message_cost: number;
+}
+
+export async function getAllCoinConfigs(): Promise<TierCoinConfig[]> {
+  const response = await apiClient.get('/gamification/wallet/all-configs/');
+  return response.data;
+}

@@ -22,8 +22,10 @@ export default function PricingPage() {
     pendingDowngradeTier,
     endDate,
     plans,
+    coinConfigs,
     isLoading,
     fetchPlans,
+    fetchCoinConfigs,
     fetchSubscription,
     registerPlan,
     cancelPendingDowngrade
@@ -69,10 +71,11 @@ export default function PricingPage() {
 
   useEffect(() => {
     fetchPlans();
+    fetchCoinConfigs();
     if (isAuthenticated) {
       fetchSubscription();
     }
-  }, [fetchPlans, fetchSubscription, isAuthenticated]);
+  }, [fetchPlans, fetchCoinConfigs, fetchSubscription, isAuthenticated]);
 
   const handleAction = (planTier: string) => {
     if (!isAuthenticated) {
@@ -317,6 +320,15 @@ export default function PricingPage() {
               const isPending = pendingDowngradeTier === plan.tier;
               const features = getFeatures(plan);
 
+              const coinConfig = coinConfigs.find(c => c.tier === plan.tier) || {
+                tier: plan.tier,
+                weekly_refill_cap: plan.tier === 'Free' ? 5 : plan.tier === 'Plus' ? 20 : plan.tier === 'Pro' ? 50 : 100,
+                words_per_coin: plan.tier === 'Free' ? 5 : plan.tier === 'Plus' ? 4 : plan.tier === 'Pro' ? 3 : 2,
+                daily_free_earn_limit: plan.tier === 'Free' ? 20 : plan.tier === 'Plus' ? 50 : plan.tier === 'Pro' ? 100 : 0,
+                chat_create_cost: plan.tier === 'Free' ? 5 : plan.tier === 'Plus' ? 3 : plan.tier === 'Pro' ? 2 : 1,
+                chat_message_cost: plan.tier === 'Free' ? 1 : plan.tier === 'Plus' ? 1 : plan.tier === 'Pro' ? 1 : 0,
+              };
+
               // Determine card styling based on tier
               const isPopular = plan.tier === 'Premium';
               const cardBg = isPopular
@@ -377,6 +389,46 @@ export default function PricingPage() {
                       </li>
                     ))}
                   </ul>
+
+                  {/* Coin Perks Section */}
+                  <div className="border-t border-outline/50 pt-4 mt-2">
+                    <h4 className="text-[10px] font-bold tracking-wider uppercase text-secondary/70 mb-3 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-xs filled text-primary">toll</span>
+                      Quyền lợi Coin
+                    </h4>
+                    <ul className="space-y-2.5">
+                      <li className="flex items-start text-xs gap-2">
+                        <span className="material-symbols-outlined shrink-0 text-[16px] text-primary">autorenew</span>
+                        <span className="text-secondary/90">
+                          Hồi: <strong className="text-primary">{coinConfig.weekly_refill_cap} coin</strong>/tuần
+                        </span>
+                      </li>
+                      <li className="flex items-start text-xs gap-2">
+                        <span className="material-symbols-outlined shrink-0 text-[16px] text-primary">menu_book</span>
+                        <span className="text-secondary/90">
+                          Tốc độ: <strong className="text-primary">{coinConfig.words_per_coin} từ</strong> = 1 coin
+                        </span>
+                      </li>
+                      <li className="flex items-start text-xs gap-2">
+                        <span className="material-symbols-outlined shrink-0 text-[16px] text-primary">speed</span>
+                        <span className="text-secondary/90">
+                          Trần ngày: <strong className="text-primary">{coinConfig.daily_free_earn_limit === 0 ? 'Không giới hạn' : `${coinConfig.daily_free_earn_limit} coin/ngày`}</strong>
+                        </span>
+                      </li>
+                      <li className="flex items-start text-xs gap-2">
+                        <span className="material-symbols-outlined shrink-0 text-[16px] text-primary">smart_toy</span>
+                        <span className="text-secondary/90">
+                          Tạo AI Persona: <strong className="text-primary">{coinConfig.chat_create_cost} coin</strong>
+                        </span>
+                      </li>
+                      <li className="flex items-start text-xs gap-2">
+                        <span className="material-symbols-outlined shrink-0 text-[16px] text-primary">chat_bubble</span>
+                        <span className="text-secondary/90">
+                          Chat AI: <strong className="text-primary">{coinConfig.chat_message_cost === 0 ? 'Miễn phí' : `${coinConfig.chat_message_cost} coin/tin`}</strong>
+                        </span>
+                      </li>
+                    </ul>
+                  </div>
 
                   {/* CTA Button logic */}
                   <div className="mt-6">

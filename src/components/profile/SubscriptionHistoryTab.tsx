@@ -24,8 +24,10 @@ export default function SubscriptionHistoryTab() {
     pendingDowngradeTier,
     endDate,
     plans,
+    coinConfigs,
     isLoading,
     fetchPlans,
+    fetchCoinConfigs,
     fetchSubscription,
     registerPlan,
   } = useSubscriptionStore();
@@ -77,6 +79,7 @@ export default function SubscriptionHistoryTab() {
 
   useEffect(() => {
     fetchPlans();
+    fetchCoinConfigs();
     fetchSubscription();
     fetchWalletBalances();
     fetchCoinConfig();
@@ -91,7 +94,7 @@ export default function SubscriptionHistoryTab() {
         setActiveSubTab('coins');
       }
     }
-  }, [fetchPlans, fetchSubscription, fetchWalletBalances, fetchCoinConfig]);
+  }, [fetchPlans, fetchCoinConfigs, fetchSubscription, fetchWalletBalances, fetchCoinConfig]);
 
   const refreshHistory = () => {
     getSubscriptionHistory()
@@ -231,12 +234,31 @@ export default function SubscriptionHistoryTab() {
 
   const normalizedUserTier = currentTier || 'Free';
 
-  const getFeatures = (tierName: string) => {
+  const getFeatures = (plan: any) => {
+    const tierName = plan.tier;
+    const limits = plan.limits || {};
+
+    const getLimitVal = (key: string, fallback: number) => {
+      return typeof limits[key] === 'number' ? limits[key] : fallback;
+    };
+
+    const mbMin = getLimitVal('mb_per_minute', tierName === 'Free' ? 1 : tierName === 'Plus' ? 2 : 5);
+    const mbDay = getLimitVal('mb_per_day', tierName === 'Free' ? 10 : tierName === 'Plus' ? 30 : 100);
+    const pdfDailyLimit = getLimitVal('pdf_daily_limit', tierName === 'Free' ? 2 : tierName === 'Plus' ? 10 : 50);
+    const pdfWordLimit = getLimitVal('pdf_word_limit', tierName === 'Free' ? 10 : tierName === 'Plus' ? 50 : 200);
+
+    const formatMbVal = (val: number) => {
+      if (val >= 1024) {
+        return `${(val / 1024).toFixed(0)}GB`;
+      }
+      return `${val}MB`;
+    };
+
     switch (tierName) {
       case 'Free':
         return [
           { name: 'Tra từ Trung-Việt, Anh-Việt cơ bản', available: true },
-          { name: 'Dung lượng tải file: 2MB/phút, 100MB/ngày', available: true },
+          { name: `Dung lượng tải file: ${formatMbVal(mbMin)}/phút, ${formatMbVal(mbDay)}/ngày`, available: true },
           { name: 'Tạo tối đa 2 sổ tay học tập', available: true },
           { name: 'Xuất file từ vựng PDF', available: false },
           { name: 'Đặc quyền VIP & Trọn đời vĩnh viễn', available: false },
@@ -244,24 +266,29 @@ export default function SubscriptionHistoryTab() {
       case 'Plus':
         return [
           { name: 'Tra từ song ngữ đầy đủ', available: true },
-          { name: 'Dung lượng tải file: 5MB/phút, 300MB/ngày', available: true },
+          { name: `Dung lượng tải file: ${formatMbVal(mbMin)}/phút, ${formatMbVal(mbDay)}/ngày`, available: true },
           { name: 'Không giới hạn số lượng sổ tay', available: true },
-          { name: 'Xuất tối đa 10 file PDF từ vựng/ngày', available: true },
+          { name: `Xuất tối đa ${pdfDailyLimit} file PDF từ vựng/ngày (tối đa ${pdfWordLimit} từ/file)`, available: true },
           { name: 'Hỗ trợ AI phân tích cơ bản', available: true },
           { name: 'Đặc quyền VIP & Trọn đời vĩnh viễn', available: false },
         ];
       case 'Pro':
         return [
           { name: 'Tra từ song ngữ đầy đủ', available: true },
-          { name: 'Dung lượng tải file: 20MB/phút, 1GB/ngày', available: true },
-          { name: 'Xuất tối đa 50 file PDF từ vựng/ngày', available: true },
+          { name: `Dung lượng tải file: ${formatMbVal(mbMin)}/phút, ${formatMbVal(mbDay)}/ngày`, available: true },
+          { name: `Xuất tối đa ${pdfDailyLimit} file PDF từ vựng/ngày (tối đa ${pdfWordLimit} từ/file)`, available: true },
           { name: 'Full tính năng Luyện Nói & Viết AI', available: true },
+          { name: 'Không giới hạn tính năng chấm điểm AI', available: true },
           { name: 'Ưu tiên đường truyền AI tốc độ cao', available: true },
           { name: 'Đặc quyền VIP & Trọn đời vĩnh viễn', available: false },
         ];
       case 'Premium':
         return [
-          { name: 'Bao gồm đặc quyền của gói Pro', available: true },
+          { name: 'Tra từ song ngữ đầy đủ', available: true },
+          { name: `Dung lượng tải file: ${formatMbVal(mbMin)}/phút, ${formatMbVal(mbDay)}/ngày`, available: true },
+          { name: `Xuất tối đa ${pdfDailyLimit} file PDF từ vựng/ngày (tối đa ${pdfWordLimit} từ/file)`, available: true },
+          { name: 'Full tính năng Luyện Nói & Viết AI', available: true },
+          { name: 'Không giới hạn tính năng chấm điểm AI', available: true },
           { name: 'Mua một lần dùng trọn đời vĩnh viễn', available: true },
           { name: 'Không mất chi phí duy trì hàng tháng', available: true },
         ];
@@ -365,8 +392,17 @@ export default function SubscriptionHistoryTab() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
               {plans.map((plan) => {
                 const isCurrent = normalizedUserTier === plan.tier && isActive;
-                const features = getFeatures(plan.tier);
+                const features = getFeatures(plan);
                 const isPopular = plan.tier === 'Premium';
+
+                const coinConfig = coinConfigs.find(c => c.tier === plan.tier) || {
+                  tier: plan.tier,
+                  weekly_refill_cap: plan.tier === 'Free' ? 5 : plan.tier === 'Plus' ? 20 : plan.tier === 'Pro' ? 50 : 100,
+                  words_per_coin: plan.tier === 'Free' ? 5 : plan.tier === 'Plus' ? 4 : plan.tier === 'Pro' ? 3 : 2,
+                  daily_free_earn_limit: plan.tier === 'Free' ? 20 : plan.tier === 'Plus' ? 50 : plan.tier === 'Pro' ? 100 : 0,
+                  chat_create_cost: plan.tier === 'Free' ? 5 : plan.tier === 'Plus' ? 3 : plan.tier === 'Pro' ? 2 : 1,
+                  chat_message_cost: plan.tier === 'Free' ? 1 : plan.tier === 'Plus' ? 1 : plan.tier === 'Pro' ? 1 : 0,
+                };
 
                 const cardBg = isCurrent
                   ? 'bg-emerald-50/20 border-emerald-300 ring-2 ring-emerald-500/10'
@@ -421,6 +457,46 @@ export default function SubscriptionHistoryTab() {
                         </li>
                       ))}
                     </ul>
+
+                    {/* Coin Perks Section */}
+                    <div className="border-t border-outline/50 pt-3 mt-1 mb-2">
+                      <h5 className="text-[9px] font-bold tracking-wider uppercase text-secondary/70 mb-2 flex items-center gap-0.5">
+                        <span className="material-symbols-outlined text-xs filled text-primary">toll</span>
+                        Quyền lợi Coin
+                      </h5>
+                      <ul className="space-y-2">
+                        <li className="flex items-start text-[10px] gap-1.5">
+                          <span className="material-symbols-outlined shrink-0 text-[14px] text-primary">autorenew</span>
+                          <span className="text-secondary/90">
+                            Hồi: <strong className="text-primary">{coinConfig.weekly_refill_cap} coin</strong>/tuần
+                          </span>
+                        </li>
+                        <li className="flex items-start text-[10px] gap-1.5">
+                          <span className="material-symbols-outlined shrink-0 text-[14px] text-primary">menu_book</span>
+                          <span className="text-secondary/90">
+                            Tốc độ: <strong className="text-primary">{coinConfig.words_per_coin} từ</strong> = 1 coin
+                          </span>
+                        </li>
+                        <li className="flex items-start text-[10px] gap-1.5">
+                          <span className="material-symbols-outlined shrink-0 text-[14px] text-primary">speed</span>
+                          <span className="text-secondary/90">
+                            Trần ngày: <strong className="text-primary">{coinConfig.daily_free_earn_limit === 0 ? 'Không giới hạn' : `${coinConfig.daily_free_earn_limit} coin/ngày`}</strong>
+                          </span>
+                        </li>
+                        <li className="flex items-start text-[10px] gap-1.5">
+                          <span className="material-symbols-outlined shrink-0 text-[14px] text-primary">smart_toy</span>
+                          <span className="text-secondary/90">
+                            Tạo AI Persona: <strong className="text-primary">{coinConfig.chat_create_cost} coin</strong>
+                          </span>
+                        </li>
+                        <li className="flex items-start text-[10px] gap-1.5">
+                          <span className="material-symbols-outlined shrink-0 text-[14px] text-primary">chat_bubble</span>
+                          <span className="text-secondary/90">
+                            Chat AI: <strong className="text-primary">{coinConfig.chat_message_cost === 0 ? 'Miễn phí' : `${coinConfig.chat_message_cost} coin/tin`}</strong>
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
 
                     {/* CTA Button */}
                     <div className="mt-4">

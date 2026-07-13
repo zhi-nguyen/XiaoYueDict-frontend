@@ -15,6 +15,7 @@ import { useNotificationWebSocket } from '@/hooks/useNotificationWebSocket';
 import NotificationPanel from '@/components/NotificationPanel';
 import ToastContainer from '@/components/ToastContainer';
 import ScoreResultModal from '@/components/ScoreResultModal';
+import { getMediaUrl } from '@/lib/mediaUtils';
 
 export default function Header() {
   const params = useParams();
@@ -205,7 +206,7 @@ export default function Header() {
               >
                 {user.avatar ? (
                   <Image 
-                    src={user.avatar} 
+                    src={getMediaUrl(user.avatar) || ''} 
                     alt="Avatar" 
                     width={40} 
                     height={40} 

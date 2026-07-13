@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Persona, EMOTION_MAP } from './types';
+import { getMediaUrl } from '@/lib/mediaUtils';
 
 interface ChatDrawerProps {
   isOpen: boolean;
@@ -51,7 +52,7 @@ export default function ChatDrawer({
             <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center">
               {activePersona.avatar_url ? (
                 <img
-                  src={activePersona.avatar_url}
+                  src={getMediaUrl(activePersona.avatar_url) || ''}
                   alt={activePersona.agent_name}
                   className="w-full h-full object-cover"
                 />

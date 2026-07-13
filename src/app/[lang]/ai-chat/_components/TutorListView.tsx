@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Persona } from './types';
+import { getMediaUrl } from '@/lib/mediaUtils';
 
 interface TutorListViewProps {
   personas: Persona[];
@@ -66,7 +67,7 @@ export default function TutorListView({
                   <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-2xl shrink-0 overflow-hidden relative">
                     {p.avatar_url ? (
                       <img
-                        src={p.avatar_url}
+                        src={getMediaUrl(p.avatar_url) || ''}
                         alt={p.agent_name}
                         className="w-full h-full object-cover"
                       />

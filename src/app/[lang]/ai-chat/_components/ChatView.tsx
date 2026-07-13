@@ -6,6 +6,7 @@ import { Persona, Message, EMOTION_MAP } from './types';
 import ChatDrawer from './ChatDrawer';
 import { useCoinStore } from '@/store/useCoinStore';
 import Link from 'next/link';
+import { getMediaUrl } from '@/lib/mediaUtils';
 
 
 interface ChatViewProps {
@@ -132,7 +133,7 @@ export default function ChatView({
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold overflow-hidden">
               {persona.avatar_url ? (
                 <img
-                  src={persona.avatar_url}
+                  src={getMediaUrl(persona.avatar_url) || ''}
                   alt={persona.agent_name}
                   className="w-full h-full object-cover"
                 />
@@ -199,7 +200,7 @@ export default function ChatView({
                   <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center shrink-0 shadow-md text-white font-bold text-sm overflow-hidden">
                     {user && user.avatar ? (
                       <Image
-                        src={user.avatar}
+                        src={getMediaUrl(user.avatar) || ''}
                         alt="User Avatar"
                         width={40}
                         height={40}
@@ -226,7 +227,7 @@ export default function ChatView({
                   <div className="w-full h-full rounded-2xl overflow-hidden flex items-center justify-center bg-primary/10">
                     {persona.avatar_url ? (
                       <img
-                        src={persona.avatar_url}
+                        src={getMediaUrl(persona.avatar_url) || ''}
                         alt={persona.agent_name}
                         className="w-full h-full object-cover"
                       />

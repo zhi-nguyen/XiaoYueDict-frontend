@@ -203,6 +203,7 @@ export default function ChatView({
                         alt="User Avatar"
                         width={40}
                         height={40}
+                        unoptimized
                         className="w-full h-full object-cover"
                       />
                     ) : (

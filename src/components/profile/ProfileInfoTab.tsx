@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import ImageCropper from '@/components/profile/ImageCropper';
+import { getMediaUrl } from '@/lib/mediaUtils';
 
 interface ProfileInfoTabProps {
   user: {
@@ -29,7 +30,7 @@ export default function ProfileInfoTab({ user, tier, onUpdateProfile }: ProfileI
   });
   const [selectedImageSrc, setSelectedImageSrc] = useState<string | null>(null);
   const [avatarBlob, setAvatarBlob] = useState<Blob | null>(null);
-  const [previewAvatar, setPreviewAvatar] = useState<string | null>(user.avatar || null);
+  const [previewAvatar, setPreviewAvatar] = useState<string | null>(getMediaUrl(user.avatar) || null);
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {

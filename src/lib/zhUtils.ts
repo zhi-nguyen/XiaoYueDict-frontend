@@ -208,9 +208,19 @@ export const COMMON_HAN_VIET: Readonly<Record<string, string>> = {
 
 // ── Client-Side TTS Cache Player ──────────────────────────────────────────────
 
+// In-flight WebSocket listener deduplication: prevents duplicate event listeners
+// for the same task_id when multiple callers await the same PENDING task.
+const inflightWSListeners = new Map<string, Promise<string>>();
+
 // Helper to wait for the WebSocket notification of TTS audio generation
 const waitForTTS = (taskId: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
+  // If a listener is already registered for this task_id, reuse the existing Promise
+  const existing = inflightWSListeners.get(taskId);
+  if (existing) {
+    return existing;
+  }
+
+  const promise = new Promise<string>((resolve, reject) => {
     const handleCompleted = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail && detail.task_id === taskId) {
@@ -238,7 +248,42 @@ const waitForTTS = (taskId: string): Promise<string> => {
 
     window.addEventListener('tts_task_completed', handleCompleted);
     window.addEventListener('tts_task_failed', handleFailed);
+  }).finally(() => {
+    inflightWSListeners.delete(taskId);
   });
+
+  inflightWSListeners.set(taskId, promise);
+  return promise;
+};
+
+// ── Client-Side TTS Cache Player ──────────────────────────────────────────────
+
+let activeAudio: HTMLAudioElement | null = null;
+let currentPlaybackToken = 0;
+
+/**
+ * Stop any active TTS audio playing (both HTML5 Audio and Web Speech Synthesis),
+ * and cancel any pending TTS audio requests that are currently loading.
+ */
+export const stopActiveTTS = (): void => {
+  currentPlaybackToken++; // Invalidate any pending play requests currently awaiting async fetches
+  if (activeAudio) {
+    try {
+      activeAudio.pause();
+      activeAudio.onended = null;
+      activeAudio.onerror = null;
+    } catch (e) {
+      // Ignored
+    }
+    activeAudio = null;
+  }
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    try {
+      window.speechSynthesis.cancel();
+    } catch (e) {
+      // Ignored
+    }
+  }
 };
 
 export const playTTSWithClientCache = async (
@@ -248,6 +293,11 @@ export const playTTSWithClientCache = async (
   onEnded?: () => void
 ): Promise<void> => {
   if (!text) return;
+
+  // Stop any currently playing audio and invalidate pending fetches
+  stopActiveTTS();
+  const myToken = currentPlaybackToken;
+
   const langCode = lang === 'en' ? 'en' : 'zh';
 
   let resolvedVoice = voice;
@@ -259,6 +309,11 @@ export const playTTSWithClientCache = async (
     } catch (e) {
       // Ignored
     }
+  }
+
+  if (myToken !== currentPlaybackToken) {
+    if (onEnded) onEnded();
+    return;
   }
 
   if (resolvedVoice === 'browser_base') {
@@ -275,14 +330,35 @@ export const playTTSWithClientCache = async (
   try {
     if (typeof window !== 'undefined' && 'caches' in window) {
       const cache = await caches.open('tts-audio-cache');
+      if (myToken !== currentPlaybackToken) {
+        if (onEnded) onEnded();
+        return;
+      }
       const cachedResponse = await cache.match(cacheKeyUrl);
+
+      if (myToken !== currentPlaybackToken) {
+        if (onEnded) onEnded();
+        return;
+      }
 
       if (cachedResponse) {
         const blob = await cachedResponse.blob();
+        if (myToken !== currentPlaybackToken) {
+          if (onEnded) onEnded();
+          return;
+        }
         const blobUrl = URL.createObjectURL(blob);
         const audio = new Audio(blobUrl);
+        activeAudio = audio;
         if (onEnded) {
-          audio.onended = onEnded;
+          audio.onended = () => {
+            if (activeAudio === audio) activeAudio = null;
+            onEnded();
+          };
+          audio.onerror = () => {
+            if (activeAudio === audio) activeAudio = null;
+            onEnded();
+          };
         }
         await audio.play();
         return;
@@ -296,6 +372,11 @@ export const playTTSWithClientCache = async (
         }
       });
 
+      if (myToken !== currentPlaybackToken) {
+        if (onEnded) onEnded();
+        return;
+      }
+
       let audioUrl = '';
       if (response.data.status === 'SUCCESS') {
         audioUrl = response.data.audio_url;
@@ -306,20 +387,42 @@ export const playTTSWithClientCache = async (
         throw new Error('Invalid TTS response status');
       }
 
+      if (myToken !== currentPlaybackToken) {
+        if (onEnded) onEnded();
+        return;
+      }
+
       // Fetch the binary file from GCS or Media storage to cache it locally
       const audioResponse = await fetch(audioUrl);
       if (!audioResponse.ok) {
         throw new Error('Failed to download generated TTS audio file');
       }
 
+      if (myToken !== currentPlaybackToken) {
+        if (onEnded) onEnded();
+        return;
+      }
+
       // Put cloned response to local cache using standard local key
       await cache.put(cacheKeyUrl, audioResponse.clone());
 
       const blob = await audioResponse.blob();
+      if (myToken !== currentPlaybackToken) {
+        if (onEnded) onEnded();
+        return;
+      }
       const blobUrl = URL.createObjectURL(blob);
       const audio = new Audio(blobUrl);
+      activeAudio = audio;
       if (onEnded) {
-        audio.onended = onEnded;
+        audio.onended = () => {
+          if (activeAudio === audio) activeAudio = null;
+          onEnded();
+        };
+        audio.onerror = () => {
+          if (activeAudio === audio) activeAudio = null;
+          onEnded();
+        };
       }
       await audio.play();
     } else {
@@ -331,6 +434,11 @@ export const playTTSWithClientCache = async (
         }
       });
 
+      if (myToken !== currentPlaybackToken) {
+        if (onEnded) onEnded();
+        return;
+      }
+
       let audioUrl = '';
       if (response.data.status === 'SUCCESS') {
         audioUrl = response.data.audio_url;
@@ -338,15 +446,75 @@ export const playTTSWithClientCache = async (
         audioUrl = await waitForTTS(response.data.task_id);
       }
 
+      if (myToken !== currentPlaybackToken) {
+        if (onEnded) onEnded();
+        return;
+      }
+
       const audio = new Audio(audioUrl);
+      activeAudio = audio;
       if (onEnded) {
-        audio.onended = onEnded;
+        audio.onended = () => {
+          if (activeAudio === audio) activeAudio = null;
+          onEnded();
+        };
+        audio.onerror = () => {
+          if (activeAudio === audio) activeAudio = null;
+          onEnded();
+        };
       }
       await audio.play();
     }
   } catch (err) {
     console.warn('TTS async orchestration failed, falling back to browser SpeechSynthesis:', err);
-    speakBrowserFallback(text, langCode, onEnded);
+    if (myToken === currentPlaybackToken) {
+      speakBrowserFallback(text, langCode, onEnded);
+    } else {
+      if (onEnded) onEnded();
+    }
+  }
+};
+
+// In-flight prefetch deduplication: prevents duplicate API calls for the same text+voice
+const inflightPrefetchRequests = new Map<string, Promise<void>>();
+
+// Internal implementation of prefetch TTS logic
+const _doPrefetchTTS = async (
+  text: string,
+  langCode: string,
+  resolvedVoice: string | undefined,
+  cacheKeyUrl: string
+): Promise<void> => {
+  if (typeof window !== 'undefined' && 'caches' in window) {
+    const cache = await caches.open('tts-audio-cache');
+    const cachedResponse = await cache.match(cacheKeyUrl);
+
+    if (cachedResponse) {
+      return;
+    }
+
+    const response = await directVpsClient.get(`/media/tts/`, {
+      params: {
+        text: text.trim(),
+        voice: resolvedVoice || ''
+      }
+    });
+
+    let audioUrl = '';
+    if (response.data.status === 'SUCCESS') {
+      audioUrl = response.data.audio_url;
+    } else if (response.data.status === 'PENDING') {
+      audioUrl = await waitForTTS(response.data.task_id);
+    } else {
+      throw new Error('Invalid TTS response status');
+    }
+
+    const audioResponse = await fetch(audioUrl);
+    if (!audioResponse.ok) {
+      throw new Error('Failed to download generated TTS audio file');
+    }
+
+    await cache.put(cacheKeyUrl, audioResponse.clone());
   }
 };
 
@@ -378,40 +546,130 @@ export const prefetchTTS = async (
     cacheKeyUrl += `&voice=${encodeURIComponent(resolvedVoice)}`;
   }
 
+  // Deduplicate: if the same text+lang+voice is already being prefetched, reuse
+  const dedupeKey = `${text.trim()}:${langCode}:${resolvedVoice || 'default'}`;
+  const existing = inflightPrefetchRequests.get(dedupeKey);
+  if (existing) {
+    return existing;
+  }
+
+  const promise = _doPrefetchTTS(text, langCode, resolvedVoice, cacheKeyUrl)
+    .catch((err) => {
+      // Graceful rejection: log warning locally, do not throw to caller
+      console.warn(`[Prefetch Ignored] Không thể tải trước TTS cho từ "${text}":`, err);
+    })
+    .finally(() => {
+      inflightPrefetchRequests.delete(dedupeKey);
+    });
+
+  inflightPrefetchRequests.set(dedupeKey, promise);
+  return promise;
+};
+
+/**
+ * Batch check which words already have TTS audio cached on backend.
+ * Returns a Map of text -> audio_url for cached items.
+ * Frontend can then skip prefetchTTS for these words and cache them locally directly.
+ */
+export const batchCheckTTSCache = async (
+  words: string[],
+  voice: string
+): Promise<Map<string, string>> => {
+  const result = new Map<string, string>();
+  if (!words.length || !voice) return result;
+
   try {
-    if (typeof window !== 'undefined' && 'caches' in window) {
-      const cache = await caches.open('tts-audio-cache');
-      const cachedResponse = await cache.match(cacheKeyUrl);
+    const response = await directVpsClient.post('/media/tts/batch-status/', {
+      items: words.map(text => ({ text: text.trim(), voice }))
+    });
 
-      if (cachedResponse) {
-        return;
+    const results = response.data?.results || [];
+    for (const item of results) {
+      if (item.status === 'cached' && item.audio_url) {
+        result.set(item.text, item.audio_url);
       }
-
-      const response = await directVpsClient.get(`/media/tts/`, {
-        params: {
-          text: text.trim(),
-          voice: resolvedVoice || ''
-        }
-      });
-
-      let audioUrl = '';
-      if (response.data.status === 'SUCCESS') {
-        audioUrl = response.data.audio_url;
-      } else if (response.data.status === 'PENDING') {
-        audioUrl = await waitForTTS(response.data.task_id);
-      } else {
-        throw new Error('Invalid TTS response status');
-      }
-
-      const audioResponse = await fetch(audioUrl);
-      if (!audioResponse.ok) {
-        throw new Error('Failed to download generated TTS audio file');
-      }
-
-      await cache.put(cacheKeyUrl, audioResponse.clone());
     }
   } catch (err) {
-    console.warn('[prefetchTTS] Failed to prefetch TTS:', err);
+    console.warn('[batchCheckTTSCache] Failed:', err);
   }
+
+  return result;
+};
+
+export interface BatchTTSResult {
+  text: string;
+  status: 'cached' | 'pending' | 'invalid';
+  audio_url?: string;
+  task_id?: string;
+}
+
+/**
+ * Batch trigger/check TTS status for all words.
+ * Triggers Celery generation tasks on backend for uncached words,
+ * and sets up background WebSocket listeners to pre-warm the browser cache.
+ */
+export const batchTriggerTTS = async (
+  words: string[],
+  voice: string,
+  lang: 'zh' | 'en'
+): Promise<Map<string, string>> => {
+  const cachedMap = new Map<string, string>();
+  if (!words.length || !voice) return cachedMap;
+
+  const langCode = lang === 'en' ? 'en' : 'zh';
+
+  try {
+    const response = await directVpsClient.post('/media/tts/batch-trigger/', {
+      items: words.map(text => ({ text: text.trim(), voice }))
+    });
+
+    const results: BatchTTSResult[] = response.data?.results || [];
+    const hasCacheSupport = typeof window !== 'undefined' && 'caches' in window;
+    const browserCache = hasCacheSupport ? await caches.open('tts-audio-cache') : null;
+
+    for (const item of results) {
+      const localKey = `/api/tts?text=${encodeURIComponent(item.text)}&lang=${langCode}&voice=${encodeURIComponent(voice)}`;
+
+      if (item.status === 'cached' && item.audio_url) {
+        cachedMap.set(item.text, item.audio_url);
+
+        // Pre-warm local browser cache
+        if (browserCache) {
+          const existing = await browserCache.match(localKey);
+          if (!existing) {
+            // Asynchronously fetch and cache
+            fetch(item.audio_url)
+              .then(resp => {
+                if (resp.ok) {
+                  browserCache.put(localKey, resp.clone());
+                }
+              })
+              .catch(() => { /* ignore */ });
+          }
+        }
+      } else if (item.status === 'pending' && item.task_id) {
+        // Listen to WebSocket and cache in background once completed
+        if (browserCache) {
+          waitForTTS(item.task_id)
+            .then(async (audioUrl) => {
+              const existing = await browserCache.match(localKey);
+              if (!existing) {
+                const resp = await fetch(audioUrl);
+                if (resp.ok) {
+                  await browserCache.put(localKey, resp.clone());
+                }
+              }
+            })
+            .catch((err) => {
+              console.warn(`[batchTriggerTTS] Background prefetch failed for "${item.text}":`, err);
+            });
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[batchTriggerTTS] Failed:', err);
+  }
+
+  return cachedMap;
 };
 

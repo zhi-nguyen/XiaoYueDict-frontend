@@ -6,6 +6,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useGamificationStore } from '@/store/useGamificationStore';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import { useCoinStore } from '@/store/useCoinStore';
 import Link from 'next/link';
 import Image from 'next/image';
 import AuthModal from '@/components/auth/AuthModal';
@@ -47,6 +48,7 @@ export default function Header() {
   const language = isMounted ? ((params?.lang as string) || 'zh') : 'zh';
   const { currentStreak, fetchGamificationData, isInitialized: isGamificationInit } = useGamificationStore();
   const { tier: subscriptionTier, fetchSubscription, isInitialized: isSubInit } = useSubscriptionStore();
+  const { wallets, fetchWalletBalances } = useCoinStore();
 
   const isHomeOrWritingPage = pathname === '/' || pathname === `/${language}` || pathname === `/${language}/writing` || pathname === `/writing`;
   const showPromoBubble = isMounted && !isAuthenticated && isHomeOrWritingPage && !isPromoDismissed;
@@ -63,8 +65,9 @@ export default function Header() {
     if (isAuthenticated) {
       fetchGamificationData();
       fetchSubscription();
+      fetchWalletBalances();
     }
-  }, [isAuthenticated, fetchGamificationData, fetchSubscription]);
+  }, [isAuthenticated, fetchGamificationData, fetchSubscription, fetchWalletBalances]);
 
   if (pathname && pathname.includes('/exam/take/')) {
     return null;
@@ -157,6 +160,8 @@ export default function Header() {
           </div>
         )}
 
+
+
         {isMounted && isAuthenticated && (
           <div className="relative">
             <button
@@ -220,15 +225,64 @@ export default function Header() {
                     className="fixed inset-0 z-40" 
                     onClick={() => setIsDropdownOpen(false)}
                   ></div>
-                  <div className="absolute right-0 mt-2 w-48 bg-surface rounded-xl shadow-lg border border-outline py-2 z-50 animate-in fade-in slide-in-from-top-2">
+                  <div className="absolute right-0 mt-2 w-56 bg-surface rounded-xl shadow-lg border border-outline py-2 z-50 animate-in fade-in slide-in-from-top-2">
                     <div className="px-4 py-2 border-b border-outline mb-1">
                       <p className="text-sm font-bold text-primary truncate">
                         {user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user.username}
                       </p>
                       <p className="text-xs text-secondary truncate">{user.email}</p>
                     </div>
+
+                    {/* Linh Thach Section */}
+                    <div className="px-4 py-2 border-b border-outline/50">
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-secondary uppercase tracking-wider">
+                        <span>💎</span>
+                        <span>Linh Thạch (ZH)</span>
+                      </div>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-xl font-black text-primary leading-none">
+                          {wallets?.zh?.total ?? 0}
+                        </span>
+                        <Link
+                          href={`/${language}/profile?tab=subs&subtab=coins`}
+                          onClick={() => setIsDropdownOpen(false)}
+                          className="w-6 h-6 rounded-md bg-hover-bg border border-outline hover:bg-outline/20 flex items-center justify-center transition-colors text-primary font-bold text-sm focus:outline-none"
+                          title="Nạp Linh Thạch"
+                        >
+                          +
+                        </Link>
+                      </div>
+                      <div className="text-[10px] text-secondary mt-1">
+                        Paid: {wallets?.zh?.paid ?? 0} | Free: {wallets?.zh?.free ?? 0}
+                      </div>
+                    </div>
+
+                    {/* Coin Section */}
+                    <div className="px-4 py-2 border-b border-outline/50 mb-1">
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-secondary uppercase tracking-wider">
+                        <span>🪙</span>
+                        <span>Coin (EN)</span>
+                      </div>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-xl font-black text-primary leading-none">
+                          {wallets?.en?.total ?? 0}
+                        </span>
+                        <Link
+                          href={`/${language}/profile?tab=subs&subtab=coins`}
+                          onClick={() => setIsDropdownOpen(false)}
+                          className="w-6 h-6 rounded-md bg-hover-bg border border-outline hover:bg-outline/20 flex items-center justify-center transition-colors text-primary font-bold text-sm focus:outline-none"
+                          title="Nạp Coin"
+                        >
+                          +
+                        </Link>
+                      </div>
+                      <div className="text-[10px] text-secondary mt-1">
+                        Paid: {wallets?.en?.paid ?? 0} | Free: {wallets?.en?.free ?? 0}
+                      </div>
+                    </div>
+
                     <Link 
-                      href="/profile" 
+                      href={`/${language}/profile`}
                       onClick={() => setIsDropdownOpen(false)}
                       className="w-full text-left px-4 py-2 text-sm text-primary hover:bg-hover-bg flex items-center gap-2 transition-colors"
                     >

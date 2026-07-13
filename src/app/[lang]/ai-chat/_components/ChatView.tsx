@@ -4,6 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { Persona, Message, EMOTION_MAP } from './types';
 import ChatDrawer from './ChatDrawer';
+import { useCoinStore } from '@/store/useCoinStore';
+import Link from 'next/link';
+
 
 interface ChatViewProps {
   persona: Persona;
@@ -19,6 +22,7 @@ interface ChatViewProps {
   sadLevel: number;
   onDeletePersona: () => void;
   user: any;
+  lang: string;
 }
 
 export default function ChatView({
@@ -35,11 +39,17 @@ export default function ChatView({
   sadLevel,
   onDeletePersona,
   user,
+  lang,
 }: ChatViewProps) {
   const [inputValue, setInputValue] = useState('');
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
   const [activeQuizAnswers, setActiveQuizAnswers] = useState<Record<string, string>>({});
   const [quizResults, setQuizResults] = useState<Record<string, boolean>>({});
+
+  const { wallets, config: coinConfig } = useCoinStore();
+  const currentLang = lang === 'en' ? 'en' : 'zh';
+  const balance = wallets[currentLang as 'zh' | 'en']?.total ?? 0;
+  const chatCost = coinConfig?.chat_message_cost ?? 1;
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -326,6 +336,18 @@ export default function ChatView({
 
       {/* Chat Input Footer Form */}
       <footer className="p-4 md:p-6 pb-8 bg-gradient-to-t from-content-bg via-content-bg/95 to-transparent shrink-0">
+        {balance < chatCost && (
+          <div className="max-w-4xl mx-auto mb-3 p-3 bg-rose-50 border border-rose-200 rounded-2xl flex items-center justify-between text-xs text-rose-700 font-semibold shadow-sm animate-in fade-in slide-in-from-bottom-2">
+            <span className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-rose-500 text-base">error</span>
+              Hết {currentLang === 'zh' ? 'Linh Thạch' : 'Coin'}! Nạp thêm hoặc học Flashcard để tiếp tục.
+            </span>
+            <Link href={`/${lang}/profile?tab=subs&subtab=coins`} className="text-primary hover:underline font-bold flex items-center gap-0.5">
+              Nạp điểm <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+            </Link>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto relative group">
           <div className="absolute -inset-1 bg-gradient-to-r from-premium-start/20 to-premium-end/20 rounded-[2rem] blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-500"></div>
           <div className="relative bg-white rounded-[1.5rem] shadow-2xl border border-outline/50 p-1.5 md:p-2 pl-3 md:pl-4 pr-2 flex items-center gap-2 md:gap-3">
@@ -346,21 +368,27 @@ export default function ChatView({
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              disabled={isSending || !isConnected}
-              placeholder={isConnected ? 'Nhập tin nhắn...' : 'Đang kết nối...'}
+              disabled={isSending || !isConnected || balance < chatCost}
+              placeholder={balance < chatCost ? `Vui lòng nạp thêm ${currentLang === 'zh' ? 'Linh Thạch' : 'Coin'}...` : isConnected ? 'Nhập tin nhắn...' : 'Đang kết nối...'}
               className="flex-1 border-none focus:ring-0 bg-transparent text-sm md:text-body-base py-3 px-1 md:px-2 placeholder:text-on-surface-variant/40 outline-none focus:outline-none text-slate-800 disabled:opacity-50"
             />
 
             <div className="shrink-0">
               <button
                 type="submit"
-                disabled={isSending || !inputValue.trim() || !isConnected}
+                disabled={isSending || !inputValue.trim() || !isConnected || balance < chatCost}
                 className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-primary text-white hover:bg-[#334155] active:scale-95 flex items-center justify-center shadow-lg transition-all disabled:opacity-50 focus:outline-none shrink-0"
                 title="Gửi"
               >
                 <span className="material-symbols-outlined text-[18px] md:text-[20px]">send</span>
               </button>
             </div>
+          </div>
+          
+          {/* Cost Indicator & Balance details */}
+          <div className="flex justify-between items-center px-4 mt-2 text-[10px] text-secondary font-bold">
+            <span>Chi phí: {currentLang === 'zh' ? '💎' : '🪙'} {chatCost} / tin nhắn</span>
+            <span>Số dư: {balance}</span>
           </div>
         </form>
       </footer>

@@ -63,9 +63,14 @@ export interface GamificationDashboardResponse {
   streak: GamificationStreak;
   target: GamificationTarget;
   history: StudyHistoryResponse[];
+  wallets?: {
+    zh: { name: string; paid: number; free: number; total: number; };
+    en: { name: string; paid: number; free: number; total: number; };
+  };
 }
 
 export const getGamificationDashboard = async (): Promise<GamificationDashboardResponse> => {
   const response = await apiClient.get('/gamification/dashboard/');
   return response.data;
 };
+

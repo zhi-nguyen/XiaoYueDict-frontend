@@ -325,6 +325,15 @@ export default function Sidebar() {
 
           {/* Bottom Actions */}
           <div className="p-4 shrink-0 border-t border-outline flex flex-col gap-2">
+            <Link
+              href={`/${language}/profile?tab=subs&subtab=coins`}
+              onClick={() => setSidebarOpen(false)}
+              className={`flex items-center h-12 rounded-full text-secondary hover:bg-hover-bg hover:text-primary transition-all ${isDesktopSidebarCollapsed ? 'md:justify-center px-3 md:px-0' : 'px-3 justify-start'}`}
+            >
+              <span className="material-symbols-outlined w-6 flex justify-center shrink-0">toll</span>
+              <span className={`font-medium text-[17px] whitespace-nowrap transition-all duration-300 ml-3 ${isDesktopSidebarCollapsed ? 'md:opacity-0 md:w-0 md:ml-0 overflow-hidden' : 'md:opacity-100 md:w-auto'}`}>Nạp điểm</span>
+            </Link>
+
             <button
               onClick={() => setSettingsOpen(true)}
               className={`flex items-center h-12 rounded-full text-secondary hover:bg-hover-bg hover:text-primary transition-all ${isDesktopSidebarCollapsed ? 'md:justify-center px-3 md:px-0' : 'px-3 justify-start'}`}

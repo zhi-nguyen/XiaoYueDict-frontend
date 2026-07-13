@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import { updateUserProfile } from '@/lib/api/users';
@@ -35,6 +35,16 @@ export default function ProfilePage() {
     message: '',
     type: 'error'
   });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab === 'subs') {
+        setActiveTab('subs');
+      }
+    }
+  }, []);
 
   if (!user) return null;
 

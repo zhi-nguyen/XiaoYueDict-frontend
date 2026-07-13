@@ -174,6 +174,9 @@ async function connectGlobal(isAuthenticated: boolean, user: any, isAuthLoading:
     socket.onmessage = (event) => {
       if (signal.aborted) return;
 
+      // Ignore binary messages (such as Blob or ArrayBuffer)
+      if (typeof event.data !== 'string') return;
+
       // Ignore pong responses
       if (event.data === 'pong') return;
 

@@ -8,6 +8,7 @@ import {
   SubscriptionPlan,
   RegisterResponse
 } from '@/lib/api/subscriptions';
+import { getAllCoinConfigs, TierCoinConfig } from '@/lib/api/coins';
 import { djangoClient } from '@/lib/apiClient';
 import { getGuestId } from '@/lib/guest';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -32,12 +33,14 @@ interface SubscriptionState {
   isInitialized: boolean;
   usageData: VolumeUsageInfo | null;
   plans: SubscriptionPlan[];
+  coinConfigs: TierCoinConfig[];
   pendingDowngradeTier: 'Free' | 'Plus' | 'Pro' | 'Premium' | null;
   endDate: string | null;
   
   fetchSubscription: (force?: boolean) => Promise<void>;
   fetchUsage: () => Promise<void>;
   fetchPlans: () => Promise<void>;
+  fetchCoinConfigs: () => Promise<void>;
   registerPlan: (tier: string) => Promise<RegisterResponse>;
   cancelPendingDowngrade: () => Promise<void>;
   resetStore: () => void;
@@ -50,6 +53,7 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
   isInitialized: false,
   usageData: null,
   plans: [],
+  coinConfigs: [],
   pendingDowngradeTier: null,
   endDate: null,
 
@@ -111,6 +115,16 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
       set({ plans });
     } catch (error) {
       console.error("Failed to fetch subscription plans:", error);
+    }
+  },
+
+  fetchCoinConfigs: async () => {
+    if (get().coinConfigs.length > 0) return;
+    try {
+      const coinConfigs = await getAllCoinConfigs();
+      set({ coinConfigs });
+    } catch (error) {
+      console.error("Failed to fetch coin configs:", error);
     }
   },
 

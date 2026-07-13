@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { djangoClient } from '@/lib/apiClient';
 import { CONTEXT_SETTINGS, ROLE_MAP, LEVEL_MAP } from './types';
+import { useCoinStore } from '@/store/useCoinStore';
+
 
 interface TutorSetupModalProps {
   isOpen: boolean;
@@ -27,6 +29,12 @@ export default function TutorSetupModal({
   const [formRelationChoice, setFormRelationChoice] = useState('peer');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const { wallets, config: coinConfig, fetchWalletBalances } = useCoinStore();
+  const currentLang = lang === 'en' ? 'en' : 'zh';
+  const coinCost = coinConfig?.chat_create_cost ?? 5;
+  const currentBalance = wallets[currentLang as 'zh' | 'en']?.total ?? 0;
+  const hasEnoughCoins = currentBalance >= coinCost;
+
   useEffect(() => {
     setFormName(defaultName);
   }, [defaultName]);
@@ -42,7 +50,19 @@ export default function TutorSetupModal({
     e.preventDefault();
     if (!formName.trim() || isSubmitting) return;
 
+    if (!hasEnoughCoins) {
+      alert(`Không đủ ${currentLang === 'zh' ? 'Linh Thạch' : 'Coin'} để tạo gia sư.`);
+      return;
+    }
+
     setIsSubmitting(true);
+    
+    // 1. Snapshot
+    const walletSnapshot = structuredClone(useCoinStore.getState().wallets);
+    
+    // 2. Optimistic spend
+    useCoinStore.getState().optimisticSpend(currentLang, coinCost);
+
     try {
       const { data } = await djangoClient.post('/xiaoyue-chat/persona/', {
         user_name: formName.trim(),
@@ -53,11 +73,20 @@ export default function TutorSetupModal({
         user_level: formLevel,
         relation_choice: formRelationChoice,
       });
+      
+      // Force refresh balances
+      fetchWalletBalances(true);
+
       onCreated(data);
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to create persona:', err);
-      alert('Không thể khởi tạo gia sư. Vui lòng thử lại.');
+      
+      // 3. Rollback
+      useCoinStore.setState({ wallets: walletSnapshot });
+
+      const errMsg = err.response?.data?.detail || 'Không thể khởi tạo gia sư. Vui lòng thử lại.';
+      alert(errMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -187,16 +216,26 @@ export default function TutorSetupModal({
             </select>
           </div>
 
+          {!hasEnoughCoins && (
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-700 font-semibold leading-relaxed">
+              ⚠️ Không đủ {currentLang === 'zh' ? 'Linh Thạch' : 'Coin'} để tạo gia sư.  
+              <br />
+              Chi phí: <strong>{coinCost} {currentLang === 'zh' ? 'Linh Thạch' : 'Coin'}</strong>. Hiện có: <strong>{currentBalance}</strong>.  
+              <br />
+              Hãy <a href={`/${lang}/profile?tab=subs&subtab=coins`} className="text-primary hover:underline font-bold">Nạp thêm điểm</a> hoặc học Flashcard để tích lũy.
+            </div>
+          )}
+
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !hasEnoughCoins}
             className="w-full py-4 bg-primary text-white font-bold rounded-2xl hover:bg-[#334155] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-md text-sm mt-6 focus:outline-none disabled:opacity-50"
           >
             {isSubmitting ? (
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
             ) : (
               <>
-                <span>Tạo Gia Sư Đồng Hành</span>
+                <span>Tạo Gia Sư Đồng Hành ({currentLang === 'zh' ? '💎' : '🪙'} {coinCost})</span>
                 <span className="material-symbols-outlined text-[18px]">smart_toy</span>
               </>
             )}

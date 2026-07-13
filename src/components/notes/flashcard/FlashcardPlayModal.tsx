@@ -1,11 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Loader2 } from 'lucide-react';
 import { Word } from '@/types/note';
 import { toggleWordMastered } from '@/lib/api/notes';
-import { playTTSWithClientCache, prefetchTTS } from '@/lib/zhUtils';
+import { playTTSWithClientCache, prefetchTTS, batchCheckTTSCache, batchTriggerTTS, stopActiveTTS } from '@/lib/zhUtils';
 import DeepPracticeModal from '@/components/notes/DeepPracticeModal';
 import { useGamificationStore } from '@/store/useGamificationStore';
+import { createStudySession, finishStudySession, CardResult } from '@/lib/api/coins';
+import { useCoinStore } from '@/store/useCoinStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
+
 
 interface FlashcardPlayModalProps {
   isOpen: boolean;
@@ -59,12 +63,21 @@ export default function FlashcardPlayModal({
   const [hasSavedSession, setHasSavedSession] = useState(false);
   const [savedSessionData, setSavedSessionData] = useState<any>(null);
 
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [cardResults, setCardResults] = useState<CardResult[]>([]);
+  const [coinsEarned, setCoinsEarned] = useState(0);
+  const [isCapped, setIsCapped] = useState(false);
+  const { wallets } = useCoinStore();
+  const staggeredTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
   const getSessionKey = () => `xiaoyue_flashcard_session_${notebookId}`;
 
   const saveSessionToLocalStorage = (
     currentIndexVal: number,
     sessionWordsVal: Word[],
-    masteredSet: Set<string>
+    masteredSet: Set<string>,
+    sId: string | null,
+    results: CardResult[]
   ) => {
     try {
       const sessionData = {
@@ -74,6 +87,8 @@ export default function FlashcardPlayModal({
         sessionWords: sessionWordsVal,
         currentIndex: currentIndexVal,
         interactedMasteredIds: Array.from(masteredSet),
+        sessionId: sId,
+        cardResults: results,
         timestamp: Date.now()
       };
       localStorage.setItem(getSessionKey(), JSON.stringify(sessionData));
@@ -109,15 +124,31 @@ export default function FlashcardPlayModal({
   // Prefetch next 2 words in the background when index or queue changes
   useEffect(() => {
     if (step === 'play' && sessionWords.length > 0) {
-      for (let i = 1; i <= 2; i++) {
-        const nextIdx = currentIndex + i;
-        if (nextIdx < sessionWords.length) {
-          const nextWord = sessionWords[nextIdx];
-          prefetchTTS(nextWord.vocabulary, lang === 'en' ? 'en' : 'zh');
+      // Defer the prefetching by 600ms so it doesn't collide with the entry animation of the card
+      const timer = setTimeout(() => {
+        for (let i = 1; i <= 2; i++) {
+          const nextIdx = currentIndex + i;
+          if (nextIdx < sessionWords.length) {
+            const nextWord = sessionWords[nextIdx];
+            prefetchTTS(nextWord.vocabulary, lang === 'en' ? 'en' : 'zh');
+          }
         }
-      }
+      }, 600);
+
+      return () => clearTimeout(timer);
     }
   }, [currentIndex, sessionWords, step, lang]);
+
+  // Cleanup staggered timers and stop active TTS on unmount or when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      stopActiveTTS();
+    }
+    return () => {
+      staggeredTimersRef.current.forEach(clearTimeout);
+      stopActiveTTS();
+    };
+  }, [isOpen]);
 
   const handleResumeSession = () => {
     if (!savedSessionData) return;
@@ -126,6 +157,8 @@ export default function FlashcardPlayModal({
     setSessionWords(savedSessionData.sessionWords);
     setCurrentIndex(savedSessionData.currentIndex);
     setInteractedMasteredIds(new Set(savedSessionData.interactedMasteredIds));
+    setSessionId(savedSessionData.sessionId || null);
+    setCardResults(savedSessionData.cardResults || []);
     setStep('play');
     setHasSavedSession(false);
   };
@@ -137,6 +170,10 @@ export default function FlashcardPlayModal({
   };
 
   const handleClose = () => {
+    // Clear staggered prefetch timers
+    staggeredTimersRef.current.forEach(clearTimeout);
+    staggeredTimersRef.current = [];
+    stopActiveTTS();
     onClose(interactedMasteredIds);
   };
 
@@ -159,7 +196,7 @@ export default function FlashcardPlayModal({
     });
   };
 
-  const handleStartSession = () => {
+  const handleStartSession = async () => {
     setConfigError(null);
     let filtered = [...words];
 
@@ -192,25 +229,60 @@ export default function FlashcardPlayModal({
     setCurrentIndex(0);
     setIsFlipped(false);
     setInteractedMasteredIds(new Set());
+    setCardResults([]);
+    setCoinsEarned(0);
+    setIsCapped(false);
+
+    let newSessionId: string | null = null;
+    try {
+      const response = await createStudySession(shuffled.map(w => w.id), lang === 'en' ? 'en' : 'zh');
+      newSessionId = response.session_id;
+      setSessionId(newSessionId);
+    } catch (err) {
+      console.error('Failed to create study session in backend:', err);
+      setSessionId(null);
+    }
+
     setStep('play');
 
     // Save session progress
-    saveSessionToLocalStorage(0, shuffled, new Set());
+    saveSessionToLocalStorage(0, shuffled, new Set(), newSessionId, []);
 
-    // Auto play audio of first word
-    setTimeout(() => {
-      if (shuffled.length > 0) {
-        playWordAudio(shuffled[0].vocabulary);
-      }
-    }, 400);
+    // Prefetch first word's TTS, then auto-play once ready
+    const voiceName = useSettingsStore.getState().getVoiceName(lang === 'en' ? 'en' : 'zh');
+    const ttsLang = lang === 'en' ? 'en' : 'zh' as const;
+
+    if (shuffled.length > 0 && voiceName !== 'browser_base') {
+      // Prefetch the first word so it's in the browser cache before playback
+      prefetchTTS(shuffled[0].vocabulary, ttsLang, voiceName)
+        .finally(() => {
+          // Play after prefetch completes (whether it succeeded or not)
+          setTimeout(() => playWordAudio(shuffled[0].vocabulary), 100);
+        });
+    } else if (shuffled.length > 0) {
+      // Browser-base voice: play directly after a short delay
+      setTimeout(() => playWordAudio(shuffled[0].vocabulary), 400);
+    }
+
+    // Batch trigger/check TTS for remaining words
+    if (voiceName !== 'browser_base' && shuffled.length > 1) {
+      const remainingWords = shuffled.slice(1).map(w => w.vocabulary);
+      batchTriggerTTS(remainingWords, voiceName, lang === 'en' ? 'en' : 'zh');
+    }
   };
 
-  const handleNextCard = (updatedMasteredIds?: Set<string>) => {
+  const handleNextCard = async (updatedMasteredIds?: Set<string>, updatedResults?: CardResult[]) => {
     const currentMastered = updatedMasteredIds || interactedMasteredIds;
+    const currentResults = updatedResults || [
+      ...cardResults,
+      { card_id: sessionWords[currentIndex].id, status: 'skipped' as const }
+    ];
+
     setIsFlipped(false);
     setIsPlayingAudio(false);
+    stopActiveTTS();
 
-    // Transition effect similar to temp design
+    // Transition effect
     const cardEl = document.getElementById('play-card');
     if (cardEl) {
       cardEl.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
@@ -218,26 +290,43 @@ export default function FlashcardPlayModal({
       cardEl.style.transform = 'translateX(50px)';
     }
 
-    setTimeout(() => {
+    setTimeout(async () => {
       if (currentIndex + 1 < sessionWords.length) {
         setCurrentIndex(prev => prev + 1);
+        setCardResults(currentResults);
         const nextWord = sessionWords[currentIndex + 1];
         if (cardEl) {
           cardEl.style.transform = 'translateX(-50px)';
         }
 
-        saveSessionToLocalStorage(currentIndex + 1, sessionWords, currentMastered);
+        saveSessionToLocalStorage(currentIndex + 1, sessionWords, currentMastered, sessionId, currentResults);
 
         setTimeout(() => {
           if (cardEl) {
             cardEl.style.opacity = '1';
             cardEl.style.transform = 'translateX(0)';
           }
-          // Autoplay pronunciation for the next word
-          playWordAudio(nextWord.vocabulary);
         }, 50);
+
+        // Play audio only after the transition animation has fully finished (50ms delay + 200ms duration)
+        setTimeout(() => {
+          playWordAudio(nextWord.vocabulary);
+        }, 300);
       } else {
         clearSessionFromLocalStorage();
+        setIsMarkingMastered(true); // Show loader during finish session
+        try {
+          if (sessionId) {
+            const finishRes = await finishStudySession(sessionId, currentResults);
+            setCoinsEarned(finishRes.coins_earned);
+            setIsCapped(!!finishRes.is_capped);
+            useCoinStore.getState().setWallets(finishRes.wallet_balances);
+          }
+        } catch (err) {
+          console.error('Failed to finish study session in backend:', err);
+        } finally {
+          setIsMarkingMastered(false);
+        }
         setStep('completed');
       }
     }, 200);
@@ -245,38 +334,31 @@ export default function FlashcardPlayModal({
 
   const handleMarkMastered = async (wordId: string) => {
     if (isMarkingMastered) return;
-    setIsMarkingMastered(true);
+    
+    // Instead of toggleWordMastered REST API, we buffer locally!
+    const updatedMastered = new Set(interactedMasteredIds);
+    updatedMastered.add(wordId);
+    setInteractedMasteredIds(updatedMastered);
+
+    const updatedResults: CardResult[] = [
+      ...cardResults,
+      { card_id: wordId, status: 'memorized' as const }
+    ];
+    setCardResults(updatedResults);
+
+    // Call onMasteredChange to let parent component know (updates parent cache/view instantly)
     try {
-      await toggleWordMastered(notebookId, wordId, true);
-
-      // Update Gamification Store client-side state
-      try {
-        const state = useGamificationStore.getState();
-        useGamificationStore.setState({
-          todayWords: state.todayWords + 1,
-          weeklyHistory: state.weeklyHistory.map(point =>
-            point.isToday ? { ...point, words: point.words + 1 } : point
-          )
-        });
-      } catch (storeErr) {
-        console.error("Failed to update gamification store locally:", storeErr);
-      }
-
-      const updatedMastered = new Set(interactedMasteredIds);
-      updatedMastered.add(wordId);
-      setInteractedMasteredIds(updatedMastered);
-
-      // Trigger success ping animation overlay
-      setShowSuccessOverlay(true);
-      setTimeout(() => setShowSuccessOverlay(false), 500);
-
-      // Advance to next card
-      handleNextCard(updatedMastered);
-    } catch (err) {
-      console.error("Lỗi khi đánh dấu từ đã thuộc:", err);
-    } finally {
-      setIsMarkingMastered(false);
+      onMasteredChange(wordId, true);
+    } catch (e) {
+      console.warn('onMasteredChange call error:', e);
     }
+
+    // Trigger success ping animation overlay
+    setShowSuccessOverlay(true);
+    setTimeout(() => setShowSuccessOverlay(false), 500);
+
+    // Advance to next card passing updated sets
+    handleNextCard(updatedMastered, updatedResults);
   };
 
   if (!isOpen) return null;
@@ -446,6 +528,13 @@ export default function FlashcardPlayModal({
                     );
                   })}
                 </div>
+              </div>
+
+              {/* Reward potential info */}
+              <div className="p-3.5 bg-primary/5 border border-primary/10 rounded-2xl text-xs text-secondary leading-relaxed">
+                💡 <strong>Phần thưởng Linh Thạch/Coin:</strong> Cứ mỗi 5 từ thuộc trong phiên học này, bạn sẽ nhận được 1 {lang === 'zh' ? 'Linh Thạch' : 'Coin'} thưởng (không tính từ bỏ qua).  
+                <br />
+                Số dư ví hiện tại: <strong>{lang === 'zh' ? '💎' : '🪙'} {lang === 'zh' ? (wallets?.zh?.total ?? 0) : (wallets?.en?.total ?? 0)}</strong>.
               </div>
 
               <button
@@ -687,8 +776,28 @@ export default function FlashcardPlayModal({
                     <span className="text-primary">Tổng số từ trong phiên</span>
                     <span className="text-right text-primary">{sessionWords.length} từ</span>
                   </div>
+                  {(coinsEarned > 0 || isCapped) && (
+                    <div className="grid grid-cols-2 px-4 py-3 text-left bg-primary/5 font-bold">
+                      <span className="text-primary flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs">toll</span>
+                        Điểm thưởng nhận được
+                      </span>
+                      <span className="text-right text-primary font-black">
+                        +{coinsEarned} {lang === 'zh' ? 'Linh Thạch' : 'Coin'}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {isCapped && (
+                <div className="w-full max-w-sm p-3.5 bg-amber-50 border border-amber-200/60 rounded-2xl text-xs text-amber-800 text-left flex items-start gap-2 shrink-0">
+                  <span className="material-symbols-outlined text-amber-600 text-base shrink-0 select-none mt-0.5 animate-pulse">info</span>
+                  <div>
+                    <strong>Đạt giới hạn hàng ngày:</strong> Bạn đã đạt mức trần nhận Linh Thạch/Coin miễn phí cho ngày hôm nay. Hãy tiếp tục học vào ngày mai để tích lũy thêm điểm thưởng!
+                  </div>
+                </div>
+              )}
 
               <div className="w-full flex flex-col sm:flex-row gap-3 mt-2 justify-center max-w-sm shrink-0">
                 <button

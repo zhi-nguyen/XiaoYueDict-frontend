@@ -11,6 +11,8 @@ import {
 } from '@/lib/api/gamification';
 import { useAuthStore } from '@/store/useAuthStore';
 import { mapHistoryToWeeklyChart, WeeklyChartDataPoint } from '@/lib/dashboardUtils';
+import { useCoinStore } from '@/store/useCoinStore';
+
 
 interface GamificationState {
   // --- Streak data ---
@@ -105,6 +107,13 @@ export const useGamificationStore = create<GamificationState>((set, get) => ({
 
       const todayStr = new Date().toLocaleDateString('sv-SE'); // "YYYY-MM-DD" in local time
       const todayRecord = data.history.find((h) => h.study_date === todayStr);
+
+      if (data.wallets) {
+        useCoinStore.getState().setWallets({
+          zh: { paid: data.wallets.zh.paid, free: data.wallets.zh.free, total: data.wallets.zh.total },
+          en: { paid: data.wallets.en.paid, free: data.wallets.en.free, total: data.wallets.en.total }
+        });
+      }
 
       set({
         currentStreak: data.streak.current_streak,

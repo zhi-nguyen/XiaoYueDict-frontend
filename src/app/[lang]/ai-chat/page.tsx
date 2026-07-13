@@ -10,6 +10,8 @@ import { Persona, Message } from './_components/types';
 import TutorListView from './_components/TutorListView';
 import TutorSetupModal from './_components/TutorSetupModal';
 import ChatView from './_components/ChatView';
+import { useCoinStore } from '@/store/useCoinStore';
+
 
 export default function AIChatPage() {
   const params = useParams();
@@ -359,6 +361,15 @@ export default function AIChatPage() {
   const handleSendMessage = async (text: string) => {
     if (!text || isSending || !isConnected || !activePersona) return;
 
+    const coinLang = activePersona.learning_language === 'en' ? 'en' : 'zh';
+    const cost = useCoinStore.getState().config?.chat_message_cost ?? 1;
+
+    // 1. Snapshot state
+    const walletSnapshot = structuredClone(useCoinStore.getState().wallets);
+
+    // 2. Optimistic spend
+    useCoinStore.getState().optimisticSpend(coinLang, cost);
+
     setIsSending(true);
     stopAudio();
 
@@ -383,18 +394,35 @@ export default function AIChatPage() {
         user_text: text,
         persona_id: activePersona.id,
       });
-    } catch (err) {
+      // Sync balance with server
+      useCoinStore.getState().fetchWalletBalances(true);
+    } catch (err: any) {
       console.error('Failed to send chat request:', err);
+      
+      // 3. Rollback
+      useCoinStore.setState({ wallets: walletSnapshot });
+      
       setIsSending(false);
       setMessages((prev) => prev.filter((m) => m.id !== 'stream-placeholder'));
+      
+      if (err.response?.status === 403) {
+        alert('Không đủ Linh thạch/Coin để gửi tin nhắn. Vui lòng học thêm Flashcard!');
+        useCoinStore.getState().fetchWalletBalances(true);
+      } else {
+        alert('Gửi tin nhắn thất bại. Điểm của bạn đã được hoàn lại!');
+      }
     }
   };
+
+  const { fetchWalletBalances, fetchCoinConfig } = useCoinStore();
 
   // Initialize view and websocket on mount
   useEffect(() => {
     if (user) {
       fetchPersonas();
       connectSocket();
+      fetchWalletBalances();
+      fetchCoinConfig();
     }
 
     return () => {
@@ -405,7 +433,7 @@ export default function AIChatPage() {
       }
       isConnectingRef.current = false;
     };
-  }, [connectSocket, stopAudio, user]);
+  }, [connectSocket, stopAudio, user, fetchWalletBalances, fetchCoinConfig]);
 
   // Load chat history when active tutor changes
   useEffect(() => {
@@ -495,6 +523,7 @@ export default function AIChatPage() {
           sadLevel={sadLevel}
           onDeletePersona={handleDeletePersona}
           user={user}
+          lang={lang}
         />
       ) : null}
 

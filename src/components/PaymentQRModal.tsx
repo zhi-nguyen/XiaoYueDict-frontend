@@ -11,7 +11,8 @@ interface PaymentData {
   bank_code: string;
   account_number: string;
   account_name: string;
-  amount: number;
+  amount?: number;
+  price?: number;
   transfer_content: string;
   order_code: string;
   order_id: string;
@@ -23,6 +24,8 @@ interface PaymentQRModalProps {
   paymentData: PaymentData | null;
   onClose: () => void;
   onPaymentSuccess: () => void;
+  pollUrl?: string;
+  wsEventType?: string;
 }
 
 const DEFAULT_POLL_INTERVAL_MS = 5000;
@@ -33,6 +36,8 @@ export default function PaymentQRModal({
   paymentData,
   onClose,
   onPaymentSuccess,
+  pollUrl,
+  wsEventType,
 }: PaymentQRModalProps) {
   const [mounted, setMounted] = useState(false);
   const [timeLeft, setTimeLeft] = useState('');
@@ -85,8 +90,9 @@ export default function PaymentQRModal({
   useEffect(() => {
     if (!isOpen || !paymentData || isPaid || !lastMessage) return;
 
+    const targetType = wsEventType || 'subscription_change';
     if (
-      lastMessage.type === 'subscription_change' &&
+      lastMessage.type === targetType &&
       lastMessage.payload?.order_id === paymentData.order_id &&
       lastMessage.payload?.status === 'PAID'
     ) {
@@ -97,14 +103,16 @@ export default function PaymentQRModal({
         onPaymentSuccess();
       }, 1500);
     }
-  }, [lastMessage, isOpen, paymentData, isPaid, onPaymentSuccess]);
+  }, [lastMessage, isOpen, paymentData, isPaid, onPaymentSuccess, wsEventType]);
 
   // Poll for payment status
   const pollPaymentStatus = useCallback(async () => {
     if (!paymentData || isExpired || isPaid) return;
 
     try {
-      const { data } = await apiClient.get(`/subscriptions/payment-status/${paymentData.order_id}/`);
+      const baseUrl = pollUrl || '/subscriptions/payment-status/';
+      const cleanUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+      const { data } = await apiClient.get(`${cleanUrl}${paymentData.order_id}/`);
 
       if (data.status === 'PAID') {
         setIsPaid(true);
@@ -121,7 +129,7 @@ export default function PaymentQRModal({
       // Silently ignore polling errors to avoid spamming the user
       console.error('[PaymentQRModal] Poll error:', error);
     }
-  }, [paymentData, isExpired, isPaid, onPaymentSuccess]);
+  }, [paymentData, isExpired, isPaid, onPaymentSuccess, pollUrl]);
 
   useEffect(() => {
     if (!isOpen || !paymentData || isExpired || isPaid) return;
@@ -143,7 +151,8 @@ export default function PaymentQRModal({
 
   if (!isOpen || !mounted || !paymentData) return null;
 
-  const formattedAmount = paymentData.amount.toLocaleString('vi-VN');
+  const amountToUse = paymentData.amount !== undefined ? paymentData.amount : paymentData.price;
+  const formattedAmount = (amountToUse || 0).toLocaleString('vi-VN');
 
   return createPortal(
     <div

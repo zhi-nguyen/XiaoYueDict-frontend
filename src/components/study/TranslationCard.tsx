@@ -6,6 +6,9 @@ import { Bookmark, ArrowUpDown, Flag } from 'lucide-react';
 import SpeakerIcon from '@/components/dictionary/SpeakerIcon';
 import { renderClickableHanzi } from '@/lib/zhUtils';
 import ReportModal from '@/components/ReportModal';
+import AddToNotebookModal from '@/components/dictionary/AddToNotebookModal';
+import AuthModal from '@/components/auth/AuthModal';
+import { useAuthStore } from '@/store/useAuthStore';
 
 interface TranslationCardProps {
   sentenceText: string;
@@ -34,13 +37,17 @@ export default function TranslationCard({
   sentenceId,
 }: TranslationCardProps) {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isNotebookModalOpen, setIsNotebookModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const { isAuthenticated } = useAuthStore();
+
   const params = useParams();
   const lang = (params?.lang as 'zh' | 'en') === 'en' ? 'en' : 'zh';
   const isSystemTranslation = isExactMatch || translationSource === 'database';
 
   // Helper to detect Vietnamese diacritics
   const hasVietnamese = (str: string) => {
-    const viPattern = /[àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđÀÁẢÃẠÂẦẤẨẪẬĂẰẮẲẴẶÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỸĐ]/;
+    const viPattern = /[àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđÀÁẢÃẠÂẦẤẨẪẬĂẰẮẲẴẶÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỔỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỸĐ]/;
     return viPattern.test(str);
   };
 
@@ -48,6 +55,49 @@ export default function TranslationCard({
   const hasChinese = (str: string) => {
     return /[\u4e00-\u9fa5]/.test(str);
   };
+
+  // Check eligibility for adding to notebook (<= 14 chars/words)
+  const isEligibleForNotebook = (() => {
+    if (lang === 'zh') {
+      const chineseText = hasChinese(sentenceText) ? sentenceText : translationVi;
+      return chineseText.length <= 14;
+    } else {
+      const englishText = !hasVietnamese(sentenceText) ? sentenceText : translationVi;
+      const wordCount = englishText.split(/\s+/).filter(Boolean).length;
+      return wordCount <= 14;
+    }
+  })();
+
+  // Construct notebook word object dynamically based on source/target
+  const notebookWordData = (() => {
+    if (lang === 'zh') {
+      if (hasChinese(sentenceText)) {
+        return {
+          word: sentenceText,
+          pinyin: pinyin || '',
+          translation_vi: translationVi
+        };
+      } else {
+        return {
+          word: translationVi,
+          pinyin: pinyin || '',
+          translation_vi: sentenceText
+        };
+      }
+    } else {
+      if (!hasVietnamese(sentenceText)) {
+        return {
+          word: sentenceText,
+          translation_vi: translationVi
+        };
+      } else {
+        return {
+          word: translationVi,
+          translation_vi: sentenceText
+        };
+      }
+    }
+  })();
 
   // Determine if sentenceText is target language
   const isSentenceTarget = lang === 'en' ? !hasVietnamese(sentenceText) : hasChinese(sentenceText);
@@ -64,12 +114,21 @@ export default function TranslationCard({
           {isSentenceTarget && (
             <SpeakerIcon text={sentenceText} lang={lang} size={24} />
           )}
-          <button
-            title="Lưu vào sổ tay"
-            className="text-secondary hover:text-primary transition-colors flex-shrink-0 focus:outline-none"
-          >
-            <Bookmark className="w-6 h-6" />
-          </button>
+          {isEligibleForNotebook && (
+            <button
+              onClick={() => {
+                if (isAuthenticated) {
+                  setIsNotebookModalOpen(true);
+                } else {
+                  setIsAuthModalOpen(true);
+                }
+              }}
+              title="Lưu vào sổ tay"
+              className="text-secondary hover:text-primary transition-colors flex-shrink-0 focus:outline-none"
+            >
+              <Bookmark className="w-6 h-6" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -117,13 +176,22 @@ export default function TranslationCard({
           <div />
         )}
         <div className="flex gap-2">
-          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
-            isSystemTranslation
-              ? 'bg-green-50 text-green-700 border border-green-200'
-              : 'bg-purple-50 text-purple-700 border border-purple-200'
-          }`}>
-            {isSystemTranslation ? 'Dịch hệ thống' : 'Dịch AI'}
-          </span>
+          {(isExactMatch || translationSource === 'database') ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-green-50 text-green-700 border border-green-200">
+              <span className="material-symbols-outlined text-[14px]">verified</span>
+              Dịch hệ thống
+            </span>
+          ) : translationSource === 'ai_translation' ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
+              <span className="material-symbols-outlined text-[14px]">psychology</span>
+              AI Gen
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">
+              <span className="material-symbols-outlined text-[14px]">g_translate</span>
+              Google Translate
+            </span>
+          )}
         </div>
       </div>
 
@@ -137,6 +205,19 @@ export default function TranslationCard({
           title="Báo cáo lỗi bản dịch"
         />
       )}
+
+      {isEligibleForNotebook && (
+        <AddToNotebookModal
+          isOpen={isNotebookModalOpen}
+          onClose={() => setIsNotebookModalOpen(false)}
+          word={notebookWordData}
+        />
+      )}
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
     </div>
   );
 }

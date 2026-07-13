@@ -43,13 +43,14 @@ export default function TranslateClient() {
   const [pendingText, setPendingText] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const { tier, isActive, fetchSubscription } = useSubscriptionStore();
+  const { tier, isActive, fetchSubscription, fetchUsage, usageData } = useSubscriptionStore();
   const isVip = isActive && (tier === 'Plus' || tier === 'Pro' || tier === 'Premium');
   const [engine, setEngine] = useState<'ai' | 'google'>('ai');
 
   useEffect(() => {
     fetchSubscription();
-  }, [fetchSubscription]);
+    fetchUsage();
+  }, [fetchSubscription, fetchUsage]);
 
   // Restrict non-VIP users to Google Translate
   useEffect(() => {
@@ -87,6 +88,32 @@ export default function TranslateClient() {
   };
 
   const { isAuthenticated } = useAuthStore();
+
+  const isEnMode = direction !== 'zh_vi';
+
+  const defaultLimit = (() => {
+    if (!isAuthenticated) {
+      return isEnMode ? 300 : 150;
+    }
+    const t = (tier || 'Free').toLowerCase();
+    if (t === 'plus') return isEnMode ? 2000 : 1000;
+    if (t === 'pro') return isEnMode ? 4000 : 2000;
+    if (t === 'premium') return isEnMode ? 6000 : 3000;
+    return isEnMode ? 1000 : 500; // Free
+  })();
+
+  const limit = (() => {
+    if (usageData) {
+      return isEnMode
+        ? (usageData.translation_en_limit ?? defaultLimit)
+        : (usageData.translation_zh_limit ?? defaultLimit);
+    }
+    return defaultLimit;
+  })();
+
+  const currentCount = inputText.trim().length;
+
+  const isExceeded = currentCount > limit;
 
   // Listen for WS translation results
   useWebSocket({
@@ -127,7 +154,7 @@ export default function TranslateClient() {
 
   const handleTranslate = async () => {
     const trimmedInput = inputText.trim();
-    if (!trimmedInput) return;
+    if (!trimmedInput || isExceeded) return;
 
     setIsLoading(true);
     setTranslationPhase('processing');
@@ -294,14 +321,17 @@ export default function TranslateClient() {
             className="flex-1 w-full resize-none p-4 bg-transparent outline-none text-[16px] text-primary min-h-[140px]"
             spellCheck="false"
           />
-          <div className="px-4 py-3 flex justify-end border-t border-outline/50 bg-background/50">
+          <div className="px-4 py-3 flex justify-between items-center border-t border-outline/50 bg-background/50">
+            <span className={`text-[13px] ${isExceeded ? 'text-error font-semibold animate-pulse' : 'text-secondary font-medium'}`}>
+              {currentCount} / {limit} ký tự
+            </span>
             <button
               onClick={handleTranslate}
-              disabled={isLoading || !inputText.trim()}
+              disabled={isLoading || !inputText.trim() || isExceeded}
               className={`flex items-center gap-2 px-6 py-2.5 rounded-full font-medium transition-all ${
-                isLoading || !inputText.trim() 
-                  ? 'bg-outline text-secondary/50 cursor-not-allowed' 
-                  : 'bg-primary text-white hover:bg-primary/90 shadow-md hover:shadow-lg'
+                isLoading || !inputText.trim() || isExceeded
+                  ? 'bg-outline text-secondary/50 cursor-not-allowed shadow-none' 
+                  : 'bg-primary text-white hover:bg-primary/90 shadow-md hover:shadow-lg hover:scale-105 active:scale-95'
               }`}
             >
               {isLoading ? (

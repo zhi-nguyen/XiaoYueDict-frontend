@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { fetchNotebooks, createWord } from '@/lib/api/notes';
+import { fetchNotebooks, createWord, createNotebook } from '@/lib/api/notes';
 import { Notebook } from '@/types/note';
 import { ZhWord } from '@/types/dictionary';
 
@@ -28,6 +28,10 @@ export default function AddToNotebookModal({ isOpen, onClose, word }: AddToNoteb
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   
+  const [isCreatingNotebook, setIsCreatingNotebook] = useState(false);
+  const [newNotebookName, setNewNotebookName] = useState('');
+  const [newNotebookDesc, setNewNotebookDesc] = useState('');
+
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -45,6 +49,9 @@ export default function AddToNotebookModal({ isOpen, onClose, word }: AddToNoteb
       setNote('');
       setErrorMsg('');
       setSuccessMsg('');
+      setIsCreatingNotebook(false);
+      setNewNotebookName('');
+      setNewNotebookDesc('');
     }
   }, [isOpen, word, lang]);
 
@@ -55,8 +62,10 @@ export default function AddToNotebookModal({ isOpen, onClose, word }: AddToNoteb
       setNotebooks(list);
       if (list.length > 0) {
         setSelectedNotebookId(list[0].id);
+        setIsCreatingNotebook(false);
       } else {
         setSelectedNotebookId('');
+        setIsCreatingNotebook(true);
       }
     } catch (err) {
       console.error("Lỗi khi tải danh sách sổ tay:", err);
@@ -68,9 +77,16 @@ export default function AddToNotebookModal({ isOpen, onClose, word }: AddToNoteb
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedNotebookId) {
-      setErrorMsg('Vui lòng chọn một sổ tay.');
-      return;
+    if (isCreatingNotebook) {
+      if (!newNotebookName.trim()) {
+        setErrorMsg('Tên sổ tay không được để trống.');
+        return;
+      }
+    } else {
+      if (!selectedNotebookId) {
+        setErrorMsg('Vui lòng chọn một sổ tay.');
+        return;
+      }
     }
     if (!vocab.trim() || !meaning.trim()) {
       setErrorMsg('Từ vựng và nghĩa không được để trống.');
@@ -80,7 +96,17 @@ export default function AddToNotebookModal({ isOpen, onClose, word }: AddToNoteb
     try {
       setIsSaving(true);
       setErrorMsg('');
-      await createWord(selectedNotebookId, {
+
+      let notebookId = selectedNotebookId;
+      if (isCreatingNotebook) {
+        const newNotebook = await createNotebook({
+          name: newNotebookName.trim(),
+          description: newNotebookDesc.trim()
+        }, lang);
+        notebookId = newNotebook.id;
+      }
+
+      await createWord(notebookId, {
         vocabulary: vocab.trim(),
         pinyin: pinyin.trim(),
         meaning: meaning.trim(),
@@ -130,18 +156,72 @@ export default function AddToNotebookModal({ isOpen, onClose, word }: AddToNoteb
         <form onSubmit={handleSave} className="flex-1 overflow-y-auto space-y-4 pr-1">
           {/* Notebook Selector */}
           <div>
-            <label className="block text-sm font-semibold text-secondary mb-1">Chọn Sổ Tay</label>
-            {isLoading ? (
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-sm font-semibold text-secondary">Chọn Sổ Tay</label>
+              {!isCreatingNotebook && notebooks.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCreatingNotebook(true);
+                    setNewNotebookName('');
+                    setNewNotebookDesc('');
+                  }}
+                  className="text-xs text-primary font-bold hover:underline"
+                >
+                  + Tạo sổ mới
+                </button>
+              )}
+            </div>
+
+            {isCreatingNotebook ? (
+              <div className="p-4 bg-hover-bg/50 border border-outline rounded-xl space-y-3">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-xs font-bold text-secondary uppercase tracking-wider">Tạo Sổ Tay Mới</h4>
+                  {notebooks.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setIsCreatingNotebook(false)}
+                      className="text-xs text-secondary hover:text-primary transition-colors"
+                    >
+                      Hủy
+                    </button>
+                  )}
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Tên sổ tay (ví dụ: Từ quan trọng, HSK4...)"
+                    value={newNotebookName}
+                    onChange={e => setNewNotebookName(e.target.value)}
+                    className="w-full border border-outline rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-primary transition-colors"
+                    required={isCreatingNotebook}
+                  />
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Mô tả sổ tay (tùy chọn)"
+                    value={newNotebookDesc}
+                    onChange={e => setNewNotebookDesc(e.target.value)}
+                    className="w-full border border-outline rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-primary transition-colors"
+                  />
+                </div>
+              </div>
+            ) : isLoading ? (
               <div className="py-2.5 px-4 border border-outline rounded-xl bg-hover-bg text-secondary text-sm flex items-center gap-2">
                 <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
                 Đang tải danh sách sổ...
               </div>
             ) : notebooks.length === 0 ? (
-              <div className="p-3 border border-dashed border-outline rounded-xl text-center text-secondary text-sm">
+              <div className="p-4 bg-hover-bg/30 border border-dashed border-outline rounded-xl text-center text-secondary text-sm">
                 Bạn chưa có sổ tay nào.
-                <a href={`/${lang}/notes`} className="text-primary font-bold block mt-1 hover:underline">
-                  Tạo sổ tay mới
-                </a>
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingNotebook(true)}
+                  className="text-primary font-bold block mt-1 hover:underline mx-auto"
+                >
+                  + Tạo sổ tay mới ngay
+                </button>
               </div>
             ) : (
               <select
@@ -221,7 +301,7 @@ export default function AddToNotebookModal({ isOpen, onClose, word }: AddToNoteb
             </button>
             <button 
               type="submit" 
-              disabled={isSaving || notebooks.length === 0 || !vocab.trim() || !meaning.trim()}
+              disabled={isSaving || (!isCreatingNotebook && notebooks.length === 0) || !vocab.trim() || !meaning.trim() || (isCreatingNotebook && !newNotebookName.trim())}
               className="bg-primary text-white px-5 py-2.5 rounded-xl font-bold hover:bg-primary-hover transition-colors disabled:opacity-50 flex items-center"
             >
               {isSaving ? (

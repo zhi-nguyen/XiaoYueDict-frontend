@@ -1,15 +1,21 @@
 "use client";
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import AuthModal from '@/components/auth/AuthModal';
 import { checkGeneralWriting } from '@/lib/api/deepPractice';
 import { Loader2 } from 'lucide-react';
 
 export default function WritingPage() {
   const params = useParams();
   const language = (params?.lang as string) || 'zh';
-  
+
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
   const tier = useSubscriptionStore((state) => state.tier);
   const isFree = !tier || tier === 'Free';
 
@@ -68,6 +74,14 @@ export default function WritingPage() {
     }
   };
 
+  if (isAuthLoading) {
+    return (
+      <div className="w-full min-h-[400px] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="w-full p-4 md:p-8 pb-16">
       <div className="max-w-[800px] mx-auto">
@@ -75,19 +89,43 @@ export default function WritingPage() {
           {/* Top border strip */}
           <div className="absolute top-0 left-0 w-full h-[4px] bg-gradient-to-r from-primary via-sage to-secondary" />
 
-          {isFree ? (
+          {!isAuthenticated ? (
+            <div className="py-12 flex flex-col items-center justify-center text-center">
+              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 animate-pulse">
+                <span className="material-symbols-outlined text-primary text-4xl font-bold">account_circle</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-primary mb-3">
+                {language === 'zh' ? 'Luyện Viết Tiếng Trung' : 'Luyện Viết Tiếng Anh'}
+              </h1>
+              <p className="text-secondary text-sm max-w-md mb-8 leading-relaxed">
+                Tính năng Luyện viết đoạn văn tự do và Nhận xét ngữ pháp chi tiết bằng AI chỉ dành cho thành viên của hệ thống. Vui lòng đăng nhập hoặc đăng ký tài khoản để bắt đầu học tập!
+              </p>
+              <button
+                onClick={() => setIsAuthModalOpen(true)}
+                className="px-8 py-3 bg-primary text-white font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2 shadow-sm"
+              >
+                <span className="material-symbols-outlined text-base">login</span>
+                Đăng nhập / Đăng ký
+              </button>
+            </div>
+          ) : isFree ? (
             <div className="py-12 flex flex-col items-center justify-center text-center">
               <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 animate-pulse">
                 <span className="material-symbols-outlined text-primary text-4xl font-bold">lock</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold text-primary mb-3">
-                {language === 'zh' ? 'Luyện Viết Tiếng Trung (VIP)' : 'Luyện Viết Tiếng Anh (VIP)'}
+                {language === 'zh' ? 'Luyện Viết Tiếng Trung' : 'Luyện Viết Tiếng Anh'}
               </h1>
               <p className="text-secondary text-sm max-w-md mb-8 leading-relaxed">
-                {language === 'zh'
-                  ? 'Tính năng Luyện viết đoạn văn tự do và Nhận xét ngữ pháp chi tiết bằng AI chỉ dành cho tài khoản VIP. Hãy nâng cấp tài khoản để bắt đầu học tập!'
-                  : 'Tính năng Luyện viết đoạn văn tự do và Nhận xét ngữ pháp chi tiết bằng AI chỉ dành cho tài khoản VIP. Hãy nâng cấp tài khoản để bắt đầu học tập!'}
+                Tính năng Luyện viết đoạn văn tự do và Nhận xét ngữ pháp chi tiết bằng AI chỉ dành cho tài khoản trả phí. Hãy nâng cấp tài khoản để bắt đầu học tập!
               </p>
+              <Link
+                href={`/${language}/pricing`}
+                className="px-8 py-3 bg-primary text-white font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2 shadow-sm"
+              >
+                <span className="material-symbols-outlined text-base">workspace_premium</span>
+                Nâng cấp tài khoản
+              </Link>
             </div>
           ) : (
             <>
@@ -143,11 +181,10 @@ export default function WritingPage() {
                   <div className="flex items-center justify-between border-b border-outline/50 pb-4 mb-4">
                     <span className="text-base font-bold text-primary">Kết quả AI đánh giá:</span>
                     <span
-                      className={`text-lg font-bold px-3 py-1 rounded-full ${
-                        result.score >= 70
+                      className={`text-lg font-bold px-3 py-1 rounded-full ${result.score >= 70
                           ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                           : 'bg-orange-100 text-orange-800 border border-orange-200'
-                      }`}
+                        }`}
                     >
                       {result.score}/100 Điểm
                     </span>
@@ -176,6 +213,7 @@ export default function WritingPage() {
           )}
         </div>
       </div>
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { djangoClient } from '@/lib/apiClient';
 import { CONTEXT_SETTINGS, ROLE_MAP, LEVEL_MAP } from './types';
 import { useCoinStore } from '@/store/useCoinStore';
+import AlertModal from '@/components/AlertModal';
 
 
 interface TutorSetupModalProps {
@@ -28,6 +29,17 @@ export default function TutorSetupModal({
   const [formLevel, setFormLevel] = useState('Beginner');
   const [formRelationChoice, setFormRelationChoice] = useState('peer');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    type: 'success' | 'error' | 'info';
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
 
   const { wallets, config: coinConfig, fetchWalletBalances } = useCoinStore();
   const currentLang = lang === 'en' ? 'en' : 'zh';
@@ -51,7 +63,12 @@ export default function TutorSetupModal({
     if (!formName.trim() || isSubmitting) return;
 
     if (!hasEnoughCoins) {
-      alert(`Không đủ ${currentLang === 'zh' ? 'Linh Thạch' : 'Coin'} để tạo gia sư.`);
+      setAlertConfig({
+        isOpen: true,
+        type: 'error',
+        title: 'Không đủ số dư',
+        message: `Không đủ ${currentLang === 'zh' ? 'Linh Thạch' : 'Coin'} để tạo gia sư.`,
+      });
       return;
     }
 
@@ -86,7 +103,12 @@ export default function TutorSetupModal({
       useCoinStore.setState({ wallets: walletSnapshot });
 
       const errMsg = err.response?.data?.detail || 'Không thể khởi tạo gia sư. Vui lòng thử lại.';
-      alert(errMsg);
+      setAlertConfig({
+        isOpen: true,
+        type: 'error',
+        title: 'Thất bại',
+        message: errMsg,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -250,6 +272,14 @@ export default function TutorSetupModal({
           </button>
         </form>
       </div>
+
+      <AlertModal
+        isOpen={alertConfig.isOpen}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onClose={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

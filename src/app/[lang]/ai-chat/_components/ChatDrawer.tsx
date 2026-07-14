@@ -25,8 +25,18 @@ export default function ChatDrawer({
 }: ChatDrawerProps) {
   if (!isOpen) return null;
 
+  const chineseFontStyle: React.CSSProperties = {
+    fontFamily: '"Noto Serif SC", serif',
+    fontOpticalSizing: 'auto',
+    fontStyle: 'normal',
+  };
+
   return (
     <>
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@200..900&display=swap" rel="stylesheet" />
+
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 transition-opacity duration-300"
@@ -65,15 +75,15 @@ export default function ChatDrawer({
             </span>
           </div>
 
-          <h3 className="font-bold text-lg text-primary mt-4">{activePersona.agent_name}</h3>
+          <h3 className="font-bold text-lg text-primary mt-4" style={chineseFontStyle}>{activePersona.agent_name}</h3>
 
-          <p className="text-[13px] text-secondary leading-relaxed mt-3">
+          <p className="text-[13px] text-secondary leading-relaxed mt-3" style={chineseFontStyle}>
             {activePersona.personality_desc || "Chưa thiết lập"}
           </p>
 
           <div className="w-full border-t border-outline/60 mt-4 pt-3 text-left space-y-2 text-[12px] text-secondary">
             <div>
-              <span className="font-bold text-primary">Cách xưng hô:</span> {activePersona.agent_self_ref || "AI"} (AI) - {activePersona.user_honorific || "Bạn"} (Bạn)
+              <span className="font-bold text-primary">Cách xưng hô:</span> <span style={chineseFontStyle}>{activePersona.agent_self_ref || "AI"}</span> (AI) - <span style={chineseFontStyle}>{activePersona.user_honorific || "Bạn"}</span> (Bạn)
             </div>
             <div>
               <span className="font-bold text-primary">Năm sinh AI:</span> {activePersona.agent_birth_year != null ? activePersona.agent_birth_year : '?'} ({activePersona.age_diff != null ? (activePersona.age_diff > 0 ? `Lớn hơn bạn ${activePersona.age_diff}` : activePersona.age_diff < 0 ? `Nhỏ hơn bạn ${Math.abs(activePersona.age_diff)}` : 'Bằng tuổi') : 'Bí ẩn'})

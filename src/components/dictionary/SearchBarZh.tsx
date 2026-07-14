@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, Loader2, Quote } from 'lucide-react';
+import { Search, X, Loader2, Quote, Grid, PenTool } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { djangoClient } from '@/lib/apiClient';
 import { ZhWord } from '@/types/dictionary';
+import RadicalLookupPanel from './RadicalLookupPanel';
+import HandwritingPanel from './HandwritingPanel';
 
 interface SearchBarProps {
   onSelectWord: (word: ZhWord) => void;
@@ -66,6 +68,7 @@ export default function SearchBarZh({ onSelectWord, onSearch, onSelectExample }:
   const [exactExample, setExactExample] = useState<ExactExample | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [activePanel, setActivePanel] = useState<'radical' | 'handwriting' | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const lastSubmittedQuery = useRef('');
 
@@ -73,6 +76,7 @@ export default function SearchBarZh({ onSelectWord, onSearch, onSelectExample }:
     function handleClickOutside(event: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setIsOpen(false);
+        setActivePanel(null);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -120,16 +124,16 @@ export default function SearchBarZh({ onSelectWord, onSearch, onSelectExample }:
 
   return (
     <div className="relative w-full max-w-2xl mx-auto mb-8 z-30" ref={wrapperRef}>
-      <div className={`relative flex items-center w-full h-14 rounded-full bg-surface border-2 transition-all duration-300 shadow-sm
+      <div className={`relative flex items-center w-full h-14 rounded-full bg-surface border-2 transition-all duration-300 shadow-sm overflow-hidden
         ${isOpen && (results.length > 0 || exactExample) ? 'border-primary shadow-md' : 'border-outline hover:border-primary/50'}`}>
 
-        <div className="pl-5 pr-2 text-secondary">
+        <div className="pl-5 pr-2 text-secondary shrink-0">
           {isLoading ? <Loader2 className="w-5 h-5 animate-spin text-primary" /> : <Search className="w-5 h-5" />}
         </div>
 
         <input
           type="text"
-          className="flex-1 h-full bg-transparent outline-none text-lg text-primary placeholder:text-secondary font-medium"
+          className="flex-1 min-w-0 h-full bg-transparent outline-none text-lg text-primary placeholder:text-secondary font-medium"
           placeholder="Tra từ tiếng Trung..."
           value={query}
           onChange={(e) => {
@@ -137,6 +141,9 @@ export default function SearchBarZh({ onSelectWord, onSearch, onSelectExample }:
             setQuery(val);
             if (val.trim() !== lastSubmittedQuery.current) {
               lastSubmittedQuery.current = '';
+            }
+            if (val.trim()) {
+              setActivePanel(null); // Close active panels when starting to type
             }
           }}
           onFocus={() => {
@@ -151,6 +158,7 @@ export default function SearchBarZh({ onSelectWord, onSearch, onSelectExample }:
                 onSearch(query.trim());
               }
               setIsOpen(false);
+              setActivePanel(null);
             }
           }}
         />
@@ -163,12 +171,72 @@ export default function SearchBarZh({ onSelectWord, onSearch, onSelectExample }:
               setExactExample(null);
               lastSubmittedQuery.current = '';
             }}
-            className="px-4 text-secondary hover:text-primary transition-colors"
+            className="px-2 text-secondary hover:text-primary transition-colors shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         )}
+
+        {/* Radical & Handwriting activation buttons */}
+        <div className="flex items-center gap-0.5 pr-2 pl-1.5 border-l border-outline/50 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              setActivePanel(activePanel === 'radical' ? null : 'radical');
+              setIsOpen(false);
+            }}
+            className={`p-2 rounded-full transition-all focus:outline-none hover:bg-hover-bg cursor-pointer
+              ${activePanel === 'radical' ? 'text-primary bg-primary/10' : 'text-secondary/70 hover:text-primary'}`}
+            title="Tra cứu bộ thủ"
+          >
+            <Grid className="w-5 h-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActivePanel(activePanel === 'handwriting' ? null : 'handwriting');
+              setIsOpen(false);
+            }}
+            className={`p-2 rounded-full transition-all focus:outline-none hover:bg-hover-bg cursor-pointer
+              ${activePanel === 'handwriting' ? 'text-primary bg-primary/10' : 'text-secondary/70 hover:text-primary'}`}
+            title="Nhận dạng nét vẽ"
+          >
+            <PenTool className="w-5 h-5" />
+          </button>
+        </div>
       </div>
+
+      {/* Radical lookup panel */}
+      {activePanel === 'radical' && (
+        <div className="mt-3 relative z-40">
+          <RadicalLookupPanel
+            onSelectChar={(char) => {
+              setQuery(char);
+              setActivePanel(null);
+              if (onSearch) {
+                onSearch(char);
+              }
+            }}
+            onClose={() => setActivePanel(null)}
+          />
+        </div>
+      )}
+
+      {/* Handwriting panel */}
+      {activePanel === 'handwriting' && (
+        <div className="mt-3 relative z-40">
+          <HandwritingPanel
+            onSelectChar={(char) => {
+              setQuery(char);
+              setActivePanel(null);
+              if (onSearch) {
+                onSearch(char);
+              }
+            }}
+            onClose={() => setActivePanel(null)}
+          />
+        </div>
+      )}
 
       {/* Dropdown Results */}
       {isOpen && (debouncedQuery.trim() !== '') && (

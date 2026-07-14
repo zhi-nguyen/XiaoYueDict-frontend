@@ -16,6 +16,7 @@
     "date-fns": "^4.3.0",
     "firebase": "^12.15.0",
     "hanzi-writer": "^3.7.3",
+    "hanzilookup-js": "^1.0.3",
     "js-cookie": "^3.0.8",
     "jwt-decode": "^4.0.0",
     "lucide-react": "^1.16.0",

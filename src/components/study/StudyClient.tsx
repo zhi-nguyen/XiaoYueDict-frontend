@@ -284,7 +284,8 @@ export default function StudyClient() {
     search.translationResult,
     hanVietSentence,
     hanzi.selectedHanziChar,
-    hanzi.hanziWords
+    hanzi.hanziWords,
+    language
   ]);
 
   // ── Tab definitions ──

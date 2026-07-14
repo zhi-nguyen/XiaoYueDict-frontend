@@ -309,7 +309,7 @@ export default function Sidebar() {
               <div className={`flex items-center h-12 text-secondary/70 ${isDesktopSidebarCollapsed ? 'md:justify-center md:px-0' : ''}`}>
                 <span className="material-symbols-outlined w-6 flex justify-center shrink-0">headphones</span>
                 <div className={`flex flex-col justify-center whitespace-nowrap transition-all duration-300 ml-3 ${isDesktopSidebarCollapsed ? 'md:opacity-0 md:w-0 md:ml-0 overflow-hidden' : 'md:opacity-100 md:w-auto'}`}>
-                  <span className="font-medium text-[17px] leading-tight">Luyện Nghe</span>
+                  <span className="font-medium text-[17px] leading-tight">Cửa Hàng</span>
                   <span className="text-[12px] font-bold uppercase tracking-wider">Sắp ra mắt</span>
                 </div>
               </div>

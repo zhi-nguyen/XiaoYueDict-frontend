@@ -10,6 +10,7 @@ import { QUEUE_STRATEGIES } from '@/constants/queueStrategies';
 import { useAuthStore } from '@/store/useAuthStore';
 import AuthModal from '@/components/auth/AuthModal';
 import ConfirmModal from '@/components/ConfirmModal';
+import { useCoinStore } from '@/store/useCoinStore';
 
 import { Word } from '@/types/note';
 
@@ -74,7 +75,12 @@ export default function ExportPDFModal({
     current_count: number;
     remaining_count: number;
     max_words: number;
+    pdf_normal_export_cost?: number;
+    pdf_stroke_export_cost?: number;
   } | null>(null);
+
+  const { wallets, fetchWalletBalances } = useCoinStore();
+  const coinBalance = wallets.zh.total; // Paid with Linh Thạch
 
   useEffect(() => {
     setMounted(true);
@@ -85,10 +91,11 @@ export default function ExportPDFModal({
     try {
       const res = await djangoClient.get(`/notes/notebooks/${notebookId}/export-pdf/limits/`);
       setLimitInfo(res.data);
+      fetchWalletBalances();
     } catch (err) {
       console.error('Lỗi khi tải thông tin hạn mức PDF:', err);
     }
-  }, [notebookId, isAuthenticated]);
+  }, [notebookId, isAuthenticated, fetchWalletBalances]);
 
   useEffect(() => {
     if (isOpen && isAuthenticated) {
@@ -144,6 +151,7 @@ export default function ExportPDFModal({
       window.URL.revokeObjectURL(url);
       setPhase('idle');
       setExporting(false);
+      fetchLimits(); // refresh limits count and wallet balance
       onClose();
     } catch (err: any) {
       console.error('Lỗi khi tải file PDF:', err);
@@ -315,29 +323,7 @@ export default function ExportPDFModal({
     }
   };
 
-  const handleExport = async () => {
-    if (isAuthLoading) return;
-    
-    // 1. Determine the list of words to be exported
-    let wordsToExport = words;
-    if (exportScope === 'selected') {
-      wordsToExport = words.filter(w => selectedWordIds.includes(w.id));
-    } else if (exportScope === 'mastered') {
-      wordsToExport = masteredWords;
-    } else if (exportScope === 'not_mastered') {
-      wordsToExport = notMasteredWords;
-    }
-
-    let finalWordCount = wordsToExport.length;
-    if (limitInfo && finalWordCount > limitInfo.max_words) {
-      setErrorMessage(`Số lượng từ (${finalWordCount} từ) vượt quá giới hạn tối đa (${limitInfo.max_words} từ) của gói ${limitInfo.tier}.`);
-      return;
-    }
-    if (limitInfo && limitInfo.remaining_count <= 0) {
-      setErrorMessage('Bạn đã dùng hết lượt xuất PDF của ngày hôm nay.');
-      return;
-    }
-
+  const runStrokeCheckAndExport = async (wordsToExportList: Word[]) => {
     setExporting(true);
     setPhase('uploading');
     setErrorMessage(null);
@@ -347,13 +333,13 @@ export default function ExportPDFModal({
     if (strokeByStroke) {
       try {
         // Collect invalid words based on length > 14
-        const invalidByLengthWords = wordsToExport.filter(w => {
+        const invalidByLengthWords = wordsToExportList.filter(w => {
           const hanziList = w.vocabulary.split('').filter(c => /^[\u4e00-\u9fa5]$/.test(c));
           return hanziList.length > 14;
         });
 
         // Collect unique characters from words with length <= 14 for stroke count checking
-        const wordsToCheck = wordsToExport.filter(w => {
+        const wordsToCheck = wordsToExportList.filter(w => {
           const hanziList = w.vocabulary.split('').filter(c => /^[\u4e00-\u9fa5]$/.test(c));
           return hanziList.length <= 14;
         });
@@ -421,7 +407,7 @@ export default function ExportPDFModal({
           }
 
           const combinedErrorMsg = errorTexts.join('; ');
-          const validWordsLeft = wordsToExport.filter(w => !invalidWordIds.includes(w.id));
+          const validWordsLeft = wordsToExportList.filter(w => !invalidWordIds.includes(w.id));
 
           if (validWordsLeft.length > 0) {
             setConfirmBlockTitle('Phát hiện từ không hợp lệ');
@@ -466,7 +452,53 @@ export default function ExportPDFModal({
     }
 
     // If no invalid words, proceed with exporting all
-    await proceedWithExport(wordsToExport);
+    await proceedWithExport(wordsToExportList);
+  };
+
+  const handleExport = async () => {
+    if (isAuthLoading) return;
+    
+    // 1. Determine the list of words to be exported
+    let wordsToExport = words;
+    if (exportScope === 'selected') {
+      wordsToExport = words.filter(w => selectedWordIds.includes(w.id));
+    } else if (exportScope === 'mastered') {
+      wordsToExport = masteredWords;
+    } else if (exportScope === 'not_mastered') {
+      wordsToExport = notMasteredWords;
+    }
+
+    let finalWordCount = wordsToExport.length;
+    if (limitInfo && finalWordCount > limitInfo.max_words) {
+      setErrorMessage(`Số lượng từ (${finalWordCount} từ) vượt quá giới hạn tối đa (${limitInfo.max_words} từ) của gói ${limitInfo.tier}.`);
+      return;
+    }
+
+    const isPaidExport = limitInfo && limitInfo.remaining_count <= 0;
+    const cost = strokeByStroke ? (limitInfo?.pdf_stroke_export_cost ?? 3) : (limitInfo?.pdf_normal_export_cost ?? 2);
+
+    if (isPaidExport) {
+      if (coinBalance < cost) {
+        setErrorMessage(`Đã hết lượt xuất PDF miễn phí trong ngày và số dư Linh Thạch không đủ để thanh toán phí xuất thêm (Yêu cầu ${cost} Linh Thạch, hiện có ${coinBalance} Linh Thạch).`);
+        return;
+      }
+
+      setConfirmBlockTitle("Xác nhận trừ Linh Thạch");
+      setConfirmBlockMessage(`Bạn đã dùng hết lượt xuất PDF miễn phí của ngày hôm nay. Xuất tiếp tục sẽ tốn ${cost} Linh Thạch. Bạn có đồng ý trừ ${cost} Linh Thạch từ tài khoản của mình không?`);
+      setConfirmBlockShowConfirm(true);
+      setConfirmBlockConfirmText("Đồng ý");
+      setConfirmBlockCancelText("Hủy");
+      setOnConfirmAction(() => () => {
+        setConfirmBlockOpen(false);
+        runStrokeCheckAndExport(wordsToExport);
+      });
+      setOnCancelAction(() => () => {
+        setConfirmBlockOpen(false);
+      });
+      setConfirmBlockOpen(true);
+    } else {
+      runStrokeCheckAndExport(wordsToExport);
+    }
   };
 
   const colorsList = [
@@ -787,7 +819,7 @@ export default function ExportPDFModal({
               isAuthLoading ||
               (exportScope === 'selected' && selectedWordIds.length === 0) ||
               (limitInfo !== null && currentWordCount > limitInfo.max_words) ||
-              (limitInfo !== null && limitInfo.remaining_count <= 0)
+              (limitInfo !== null && limitInfo.remaining_count <= 0 && coinBalance < (strokeByStroke ? (limitInfo.pdf_stroke_export_cost ?? 3) : (limitInfo.pdf_normal_export_cost ?? 2)))
             }
             className="flex-1 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary-hover transition-colors disabled:opacity-40 text-sm shadow-sm flex items-center justify-center gap-1.5"
           >
@@ -795,6 +827,11 @@ export default function ExportPDFModal({
               <>
                 <span className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
                 Đang xác thực...
+              </>
+            ) : limitInfo && limitInfo.remaining_count <= 0 ? (
+              <>
+                <span className="material-symbols-outlined text-lg font-bold">payments</span>
+                Xuất PDF ({strokeByStroke ? (limitInfo.pdf_stroke_export_cost ?? 3) : (limitInfo.pdf_normal_export_cost ?? 2)} Linh Thạch)
               </>
             ) : (
               <>

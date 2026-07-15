@@ -1,4 +1,4 @@
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, djangoClient } from '@/lib/apiClient';
 
 export interface WalletBalance {
   paid: number;
@@ -17,6 +17,12 @@ export interface CoinConfig {
   words_per_coin: number;
   chat_create_cost: number;
   chat_message_cost: number;
+  writing_base_cost_zh: number;
+  writing_increment_cost_zh: number;
+  writing_base_cost_en: number;
+  writing_increment_cost_en: number;
+  pdf_normal_export_cost: number;
+  pdf_stroke_export_cost: number;
   coin_price_vnd: number;
   purchase_presets: number[];
 }
@@ -95,9 +101,27 @@ export interface TierCoinConfig {
   daily_free_earn_limit: number;
   chat_create_cost: number;
   chat_message_cost: number;
+  writing_base_cost_zh: number;
+  writing_increment_cost_zh: number;
+  writing_base_cost_en: number;
+  writing_increment_cost_en: number;
+  pdf_normal_export_cost: number;
+  pdf_stroke_export_cost: number;
 }
 
 export async function getAllCoinConfigs(): Promise<TierCoinConfig[]> {
   const response = await apiClient.get('/gamification/wallet/all-configs/');
+  return response.data;
+}
+
+export async function getPendingWritingTask(lang: string, taskType: string): Promise<{ has_pending: boolean; task_id?: string; sentence?: string; target_word?: string; lang?: string; task_type?: string }> {
+  const response = await djangoClient.get('/flashcard/writing-tasks/pending/', {
+    params: { lang, task_type: taskType }
+  });
+  return response.data;
+}
+
+export async function getWritingTaskDetail(taskId: string): Promise<{ task_id: string; status: 'PENDING' | 'SUCCESS' | 'FAILED'; sentence: string; target_word: string; lang: string; task_type: string; result?: any; error?: string }> {
+  const response = await djangoClient.get(`/flashcard/writing-tasks/${taskId}/`);
   return response.data;
 }

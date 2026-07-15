@@ -9,7 +9,7 @@ export default function Footer() {
   const pathname = usePathname();
   const language = (params?.lang as string) || 'zh';
 
-  if (pathname && (pathname.includes('/exam/take/') || pathname.includes('/ai-chat'))) {
+  if (pathname && (pathname.includes('/exam/take/') || pathname.includes('/ai-chat') || pathname.includes('/community/post/'))) {
     return null;
   }
 

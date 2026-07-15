@@ -10,14 +10,16 @@ import StudyStatsTab from '@/components/profile/StudyStatsTab';
 import SubscriptionHistoryTab from '@/components/profile/SubscriptionHistoryTab';
 import AlertModal from '@/components/AlertModal';
 import { getErrorMessage } from '@/lib/errorHelper';
+import { CommunityManageTab } from '@/components/profile/CommunityManageTab';
 
-type ProfileTab = 'info' | 'security' | 'stats' | 'subs';
+type ProfileTab = 'info' | 'security' | 'stats' | 'subs' | 'community';
 
 const TABS: { id: ProfileTab; label: string; icon: string }[] = [
   { id: 'info', label: 'Thông tin cá nhân', icon: 'person' },
   { id: 'security', label: 'Bảo mật', icon: 'lock' },
   { id: 'stats', label: 'Thống kê', icon: 'monitoring' },
   { id: 'subs', label: 'Gói đăng ký', icon: 'stars' },
+  { id: 'community', label: 'Hoạt động Cộng đồng', icon: 'groups' },
 ];
 
 export default function ProfilePage() {
@@ -105,6 +107,11 @@ export default function ProfilePage() {
             )}
             {activeTab === 'subs' && (
               <SubscriptionHistoryTab />
+            )}
+            {activeTab === 'community' && (
+              <div className="w-full">
+                <CommunityManageTab lang="zh" />
+              </div>
             )}
           </div>
         </div>

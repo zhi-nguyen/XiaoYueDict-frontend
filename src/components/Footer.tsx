@@ -37,6 +37,9 @@ export default function Footer() {
             <Link href={`/${language}/terms`} className="hover:text-primary transition-colors">
               Điều khoản dịch vụ
             </Link>
+            <Link href={`/${language}/community-rules`} className="hover:text-primary transition-colors">
+              Điều khoản cộng đồng
+            </Link>
             <Link href={`/${language}/privacy`} className="hover:text-primary transition-colors">
               Chính sách bảo mật
             </Link>

@@ -176,20 +176,6 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ lang }) => {
             )}
           </div>
         </div>
-
-        {/* Sidebar Column */}
-        <aside className="space-y-6 lg:col-span-1">
-          {/* Guidelines Widget */}
-          <section className="bg-white p-6 rounded-2xl border border-[#E2E8F0] shadow-sm animate-slide-up flex flex-col gap-3" style={{ animationDelay: '0.5s' }}>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-[#44474c] font-lexend">Nội quy diễn đàn</h4>
-            <ul className="text-xs text-[#0b1c30] space-y-2 list-disc list-inside font-inter leading-relaxed">
-              <li>Chia sẻ các mẹo học từ vựng hữu ích.</li>
-              <li>Không spam hoặc đăng quảng cáo.</li>
-              <li>Bình luận lịch sự và tôn trọng người khác.</li>
-              <li>Bài viết nhận đủ 5 báo cáo sẽ bị ẩn tự động để kiểm duyệt.</li>
-            </ul>
-          </section>
-        </aside>
       </div>
 
       {/* Create Post Modal */}

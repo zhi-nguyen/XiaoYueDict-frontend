@@ -4,6 +4,7 @@ import React, { useState, useRef } from 'react';
 import { useCommunityStore } from '@/store/useCommunityStore';
 import AlertModal from '@/components/AlertModal';
 import Link from 'next/link';
+import { compressImage } from '@/lib/mediaUtils';
 
 interface CreatePostModalProps {
   isOpen: boolean;
@@ -34,20 +35,28 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({ isOpen, onClos
 
   if (!isOpen) return null;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      if (file.size > 5 * 1024 * 1024) {
+      // Increase size limit to 15MB since it will be compressed anyway
+      if (file.size > 15 * 1024 * 1024) {
         setAlertConfig({
           isOpen: true,
           type: 'error',
           title: 'Tệp quá lớn',
-          message: 'Kích thước ảnh tối đa là 5MB'
+          message: 'Kích thước ảnh gốc tối đa là 15MB'
         });
         return;
       }
-      setSelectedFile(file);
-      setImagePreview(URL.createObjectURL(file));
+      
+      try {
+        const compressed = await compressImage(file);
+        setSelectedFile(compressed);
+        setImagePreview(URL.createObjectURL(compressed));
+      } catch (err) {
+        setSelectedFile(file);
+        setImagePreview(URL.createObjectURL(file));
+      }
     }
   };
 

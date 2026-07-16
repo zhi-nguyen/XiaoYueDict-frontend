@@ -45,7 +45,7 @@ function SidebarNav({
     { href: '/community?tab=feed', icon: 'dynamic_feed', label: 'Feed', activeKey: 'feed' },
     { href: '/community?tab=leaderboard', icon: 'leaderboard', label: 'Bảng xếp hạng', activeKey: 'leaderboard' },
     { href: '/community?tab=profile', icon: 'person', label: 'Hoạt động cộng đồng', activeKey: 'profile' },
-    { href: '/study', icon: 'menu_book', label: 'Từ điển & Học tập', activeKey: 'dictionary' },
+    { href: '/study', icon: 'menu_book', label: 'Quay lại từ điển', activeKey: 'dictionary' },
   ];
 
   return (
@@ -233,7 +233,7 @@ export default function Sidebar() {
               </div>
             </div>
           </div>
-          
+
           <nav className="flex-1 px-4 space-y-4 sidebar-scroll overflow-y-auto overflow-x-hidden pt-2">
             <div>
               <p className="text-[12px] font-bold uppercase tracking-wider text-slate-400 px-3 mb-3 font-lexend">
@@ -246,11 +246,10 @@ export default function Sidebar() {
                     return (
                       <button
                         key={idx}
-                        className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-xs border ${
-                          answers[q.id]
-                            ? 'bg-[#e5eeff] border-primary text-primary'
-                            : 'bg-white border-[#E2E8F0] text-slate-400 hover:bg-[#F1F5F9]'
-                        }`}
+                        className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-xs border ${answers[q.id]
+                          ? 'bg-[#e5eeff] border-primary text-primary'
+                          : 'bg-white border-[#E2E8F0] text-slate-400 hover:bg-[#F1F5F9]'
+                          }`}
                         onClick={() => {
                           const el = document.getElementById(`question-${q.id}`);
                           if (el) {

@@ -149,7 +149,7 @@ export const PostDetail: React.FC<PostDetailProps> = ({ postId, lang }) => {
 
   return (
     <>
-      <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto pb-20 text-[#0b1c30]">
+      <div className="flex flex-col gap-6 w-full max-w-2xl lg:max-w-6xl mx-auto pb-20 text-[#0b1c30]">
       {/* Back Button */}
       <div>
         <Link href={`/${lang}/community`} className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-[#1d2b3e] transition-colors font-lexend">
@@ -158,139 +158,144 @@ export const PostDetail: React.FC<PostDetailProps> = ({ postId, lang }) => {
         </Link>
       </div>
 
-      {/* Main Post Card */}
-      <div className="bg-white border border-[#E2E8F0] rounded-2xl shadow-sm flex flex-col overflow-hidden animate-slide-up">
-        {/* Detail Body */}
-        <div className="p-6 flex flex-col gap-5">
-          {/* Author Header */}
-          <div className="flex justify-between items-start">
-            <div className="flex gap-3">
-              <div className="w-11 h-11 rounded-full overflow-hidden border border-[#E2E8F0] bg-slate-50 flex-shrink-0 flex items-center justify-center">
-                {currentPost.author?.avatar ? (
-                  <img src={getMediaUrl(currentPost.author.avatar) || ''} alt={currentPost.author.full_name || currentPost.author.username} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="material-symbols-outlined text-slate-400 text-2xl">person</span>
-                )}
-              </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-bold text-[#0b1c30] font-lexend">
-                  {currentPost.author?.full_name || currentPost.author?.username || 'Cộng đồng viên'}
-                </span>
-                <div className="flex items-center gap-2 text-slate-500 text-[11px] font-inter mt-0.5">
-                  <span>{formatTime(currentPost.created_at)}</span>
-                  <span className="w-1 h-1 bg-slate-350 rounded-full"></span>
-                  <span className={`font-bold uppercase tracking-wider text-[10px] ${
-                    currentPost.lang === 'zh' ? 'text-[#2a4d40]' : 'text-indigo-650'
-                  }`}>
-                    {langTagLabel}
-                  </span>
+      {/* 2-Panel Layout for PC / Single Column for Mobile */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start w-full animate-slide-up">
+        
+        {/* Left Panel: Main Post Card (3/5 width on PC) */}
+        <div className="lg:col-span-3 bg-white border border-[#E2E8F0] rounded-2xl shadow-sm flex flex-col overflow-hidden">
+          {/* Detail Body */}
+          <div className="p-6 flex flex-col gap-5">
+            {/* Author Header */}
+            <div className="flex justify-between items-start">
+              <div className="flex gap-3">
+                <div className="w-11 h-11 rounded-full overflow-hidden border border-[#E2E8F0] bg-slate-50 flex-shrink-0 flex items-center justify-center">
+                  {currentPost.author?.avatar ? (
+                    <img src={getMediaUrl(currentPost.author.avatar) || ''} alt={currentPost.author.full_name || currentPost.author.username} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="material-symbols-outlined text-slate-400 text-2xl">person</span>
+                  )}
                 </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-[#0b1c30] font-lexend">
+                    {currentPost.author?.full_name || currentPost.author?.username || 'Cộng đồng viên'}
+                  </span>
+                  <div className="flex items-center gap-2 text-slate-500 text-[11px] font-inter mt-0.5">
+                    <span>{formatTime(currentPost.created_at)}</span>
+                    <span className="w-1 h-1 bg-slate-350 rounded-full"></span>
+                    <span className={`font-bold uppercase tracking-wider text-[10px] ${
+                      currentPost.lang === 'zh' ? 'text-[#2a4d40]' : 'text-indigo-650'
+                    }`}>
+                      {langTagLabel}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Options */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowOptions(!showOptions)}
+                  className="text-slate-400 hover:text-slate-650 p-1 hover:bg-[#F1F5F9] rounded-lg transition-colors"
+                >
+                  <span className="material-symbols-outlined">more_horiz</span>
+                </button>
+                
+                {showOptions && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setShowOptions(false)} />
+                    <div className="absolute right-0 mt-1 bg-white border border-[#E2E8F0] rounded-xl shadow-xl w-36 py-1.5 z-20 animate-fade-in">
+                      {isAuthor ? (
+                        <button
+                          onClick={handleDelete}
+                          disabled={isDeleting}
+                          className="w-full px-4 py-2 text-left text-xs text-red-500 hover:bg-slate-55 transition-colors flex items-center gap-2"
+                        >
+                          <span className="material-symbols-outlined text-sm">delete</span>
+                          {isDeleting ? 'Đang xóa...' : 'Xóa bài viết'}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setShowOptions(false);
+                            handleReportPost();
+                          }}
+                          className="w-full px-4 py-2 text-left text-xs text-slate-650 hover:bg-slate-55 transition-colors flex items-center gap-2"
+                        >
+                          <span className="material-symbols-outlined text-sm">report</span>
+                          Báo cáo bài
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
-            {/* Options */}
-            <div className="relative">
-              <button
-                onClick={() => setShowOptions(!showOptions)}
-                className="text-slate-400 hover:text-slate-650 p-1 hover:bg-[#F1F5F9] rounded-lg transition-colors"
-              >
-                <span className="material-symbols-outlined">more_horiz</span>
-              </button>
-              
-              {showOptions && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setShowOptions(false)} />
-                  <div className="absolute right-0 mt-1 bg-white border border-[#E2E8F0] rounded-xl shadow-xl w-36 py-1.5 z-20 animate-fade-in">
-                    {isAuthor ? (
-                      <button
-                        onClick={handleDelete}
-                        disabled={isDeleting}
-                        className="w-full px-4 py-2 text-left text-xs text-red-500 hover:bg-slate-55 transition-colors flex items-center gap-2"
-                      >
-                        <span className="material-symbols-outlined text-sm">delete</span>
-                        {isDeleting ? 'Đang xóa...' : 'Xóa bài viết'}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setShowOptions(false);
-                          handleReportPost();
-                        }}
-                        className="w-full px-4 py-2 text-left text-xs text-slate-650 hover:bg-slate-55 transition-colors flex items-center gap-2"
-                      >
-                        <span className="material-symbols-outlined text-sm">report</span>
-                        Báo cáo bài
-                      </button>
-                    )}
-                  </div>
-                </>
+            {/* Content */}
+            <p className="text-[#0b1c30] font-inter text-sm leading-relaxed whitespace-pre-wrap">
+              {currentPost.content}
+            </p>
+
+            {/* Image Attachment */}
+            {currentPost.image_url && (
+              <div className="rounded-xl overflow-hidden border border-[#E2E8F0] bg-slate-50 aspect-video w-full relative">
+                <img 
+                  src={getMediaUrl(currentPost.image_url) || ''} 
+                  alt="Post media" 
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            )}
+
+            {/* Actions (Like, Save) */}
+            <div className="border-t border-[#E2E8F0]/80 pt-4 flex items-center justify-between text-slate-550">
+              <div className="flex items-center gap-6">
+                <button
+                  onClick={() => likePost(currentPost.id)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-[#F1F5F9] transition-all ${
+                    currentPost.is_liked ? 'text-rose-500 font-semibold' : ''
+                  }`}
+                >
+                  <span className={`material-symbols-outlined text-lg ${currentPost.is_liked ? 'fill-current' : ''}`}>
+                    favorite
+                  </span>
+                  <span className="text-xs font-inter font-medium">{currentPost.like_count || 0} lượt thích</span>
+                </button>
+
+                <button
+                  onClick={() => bookmarkPost(currentPost.id)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-[#F1F5F9] transition-all ${
+                    currentPost.is_bookmarked ? 'text-[#426657] font-semibold' : ''
+                  }`}
+                >
+                  <span className={`material-symbols-outlined text-lg ${currentPost.is_bookmarked ? 'fill-current' : ''}`}>
+                    bookmark
+                  </span>
+                  <span className="text-xs font-inter font-medium">{currentPost.is_bookmarked ? 'Đã lưu' : 'Lưu bài viết'}</span>
+                </button>
+              </div>
+
+              {!isAuthor && (
+                <button
+                  onClick={handleReportPost}
+                  className="flex items-center gap-1.5 text-slate-400 hover:text-rose-500 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[16px]">report</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Report</span>
+                </button>
               )}
             </div>
           </div>
-
-          {/* Content */}
-          <p className="text-[#0b1c30] font-inter text-sm leading-relaxed whitespace-pre-wrap">
-            {currentPost.content}
-          </p>
-
-          {/* Image Attachment */}
-          {currentPost.image_url && (
-            <div className="rounded-xl overflow-hidden border border-[#E2E8F0] bg-slate-50 aspect-video w-full relative">
-              <img 
-                src={getMediaUrl(currentPost.image_url) || ''} 
-                alt="Post media" 
-                className="w-full h-full object-contain"
-              />
-            </div>
-          )}
-
-          {/* Actions (Like, Save) */}
-          <div className="border-t border-[#E2E8F0]/80 pt-4 flex items-center justify-between text-slate-550">
-            <div className="flex items-center gap-6">
-              <button
-                onClick={() => likePost(currentPost.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-[#F1F5F9] transition-all ${
-                  currentPost.is_liked ? 'text-rose-500 font-semibold' : ''
-                }`}
-              >
-                <span className={`material-symbols-outlined text-lg ${currentPost.is_liked ? 'fill-current' : ''}`}>
-                  favorite
-                </span>
-                <span className="text-xs font-inter font-medium">{currentPost.like_count || 0} lượt thích</span>
-              </button>
-
-              <button
-                onClick={() => bookmarkPost(currentPost.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-[#F1F5F9] transition-all ${
-                  currentPost.is_bookmarked ? 'text-[#426657] font-semibold' : ''
-                }`}
-              >
-                <span className={`material-symbols-outlined text-lg ${currentPost.is_bookmarked ? 'fill-current' : ''}`}>
-                  bookmark
-                </span>
-                <span className="text-xs font-inter font-medium">{currentPost.is_bookmarked ? 'Đã lưu' : 'Lưu bài viết'}</span>
-              </button>
-            </div>
-
-            {!isAuthor && (
-              <button
-                onClick={handleReportPost}
-                className="flex items-center gap-1.5 text-slate-400 hover:text-rose-500 transition-colors"
-              >
-                <span className="material-symbols-outlined text-[16px]">report</span>
-                <span className="text-[10px] font-bold uppercase tracking-wider">Report</span>
-              </button>
-            )}
-          </div>
         </div>
 
-        {/* Comments Section Component (Light Theme matching styling) */}
-        <div className="bg-[#eff4ff]/20 border-t border-[#E2E8F0]/65 p-6 space-y-4">
+        {/* Right Panel: Comments Card (2/5 width on PC) */}
+        <div className="lg:col-span-2 bg-white border border-[#E2E8F0] rounded-2xl shadow-sm p-6 min-w-0">
           <PostCommentSection 
             postId={currentPost.id} 
             onReportCommentClick={handleReportComment}
           />
         </div>
+
       </div>
 
       {/* Report Modal */}

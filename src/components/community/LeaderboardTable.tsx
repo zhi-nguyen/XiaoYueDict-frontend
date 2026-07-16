@@ -54,13 +54,15 @@ export const LeaderboardTable: React.FC<LeaderboardTableProps> = ({ entries, myE
                 <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0] relative hover:translate-y-[-4px] hover:shadow-[0_15px_30px_-10px_rgba(0,0,0,0.08)] transition-all duration-300 overflow-hidden text-center shadow-sm">
                   <div className="absolute top-0 right-0 w-16 h-16 bg-slate-100 rounded-bl-full -mr-6 -mt-6"></div>
                   <div className="relative z-10 flex flex-col items-center">
-                    <div className="w-16 h-16 rounded-full border-4 border-slate-200 overflow-hidden relative shadow-sm mb-3">
-                      {rank2.avatar_url ? (
-                        <img src={getMediaUrl(rank2.avatar_url) || ''} alt={rank2.username} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="material-symbols-outlined text-slate-400 text-3xl flex items-center justify-center h-full">person</span>
-                      )}
-                      <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-slate-300 rounded-full flex items-center justify-center border-2 border-white shadow text-[10px] font-bold text-slate-800">
+                    <div className="w-16 h-16 rounded-full border-4 border-slate-200 relative shadow-sm mb-3">
+                      <div className="w-full h-full rounded-full overflow-hidden">
+                        {rank2.avatar_url ? (
+                          <img src={getMediaUrl(rank2.avatar_url) || ''} alt={rank2.username} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="material-symbols-outlined text-slate-400 text-3xl flex items-center justify-center h-full">person</span>
+                        )}
+                      </div>
+                      <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-slate-300 rounded-full flex items-center justify-center border-2 border-white shadow text-[10px] font-bold text-slate-800 z-10">
                         2
                       </div>
                     </div>
@@ -86,13 +88,15 @@ export const LeaderboardTable: React.FC<LeaderboardTableProps> = ({ entries, myE
                     <span className="material-symbols-outlined text-[24px] text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
                   </div>
                   <div className="relative z-10 flex flex-col items-center">
-                    <div className="w-20 h-20 rounded-full border-4 border-[#6366F1]/40 overflow-hidden relative shadow-md mb-4 ring-4 ring-[#6366F1]/10">
-                      {rank1.avatar_url ? (
-                        <img src={getMediaUrl(rank1.avatar_url) || ''} alt={rank1.username} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="material-symbols-outlined text-slate-400 text-4xl flex items-center justify-center h-full">person</span>
-                      )}
-                      <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-amber-500 rounded-full flex items-center justify-center border-2 border-white shadow-md text-xs font-bold text-white">
+                    <div className="w-20 h-20 rounded-full border-4 border-[#6366F1]/40 relative shadow-md mb-4 ring-4 ring-[#6366F1]/10">
+                      <div className="w-full h-full rounded-full overflow-hidden">
+                        {rank1.avatar_url ? (
+                          <img src={getMediaUrl(rank1.avatar_url) || ''} alt={rank1.username} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="material-symbols-outlined text-slate-400 text-4xl flex items-center justify-center h-full">person</span>
+                        )}
+                      </div>
+                      <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-amber-500 rounded-full flex items-center justify-center border-2 border-white shadow-md text-xs font-bold text-white z-10">
                         1
                       </div>
                     </div>
@@ -115,13 +119,15 @@ export const LeaderboardTable: React.FC<LeaderboardTableProps> = ({ entries, myE
                 <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0] relative hover:translate-y-[-4px] hover:shadow-[0_15px_30px_-10px_rgba(0,0,0,0.08)] transition-all duration-300 overflow-hidden text-center shadow-sm">
                   <div className="absolute top-0 right-0 w-16 h-16 bg-[#503D1E]/5 rounded-bl-full -mr-6 -mt-6"></div>
                   <div className="relative z-10 flex flex-col items-center">
-                    <div className="w-16 h-16 rounded-full border-4 border-orange-200 overflow-hidden relative shadow-sm mb-3">
-                      {rank3.avatar_url ? (
-                        <img src={getMediaUrl(rank3.avatar_url) || ''} alt={rank3.username} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="material-symbols-outlined text-slate-400 text-3xl flex items-center justify-center h-full">person</span>
-                      )}
-                      <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-orange-300 rounded-full flex items-center justify-center border-2 border-white shadow text-[10px] font-bold text-orange-850">
+                    <div className="w-16 h-16 rounded-full border-4 border-orange-200 relative shadow-sm mb-3">
+                      <div className="w-full h-full rounded-full overflow-hidden">
+                        {rank3.avatar_url ? (
+                          <img src={getMediaUrl(rank3.avatar_url) || ''} alt={rank3.username} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="material-symbols-outlined text-slate-400 text-3xl flex items-center justify-center h-full">person</span>
+                        )}
+                      </div>
+                      <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-orange-300 rounded-full flex items-center justify-center border-2 border-white shadow text-[10px] font-bold text-orange-850 z-10">
                         3
                       </div>
                     </div>
@@ -145,15 +151,17 @@ export const LeaderboardTable: React.FC<LeaderboardTableProps> = ({ entries, myE
             {rank2 && (
               <div className="flex flex-col items-center w-1/3">
                 <div className="relative mb-3">
-                  <div className="w-14 h-14 rounded-full border-4 border-slate-300 overflow-hidden relative shadow-md">
-                    {rank2.avatar_url ? (
-                      <img src={getMediaUrl(rank2.avatar_url) || ''} alt={rank2.username} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="material-symbols-outlined text-slate-400 text-2xl flex items-center justify-center h-full">person</span>
-                    )}
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-slate-300 rounded-full flex items-center justify-center border border-white text-[9px] font-bold text-slate-800">
-                    2
+                  <div className="w-14 h-14 rounded-full border-4 border-slate-300 relative shadow-md">
+                    <div className="w-full h-full rounded-full overflow-hidden">
+                      {rank2.avatar_url ? (
+                        <img src={getMediaUrl(rank2.avatar_url) || ''} alt={rank2.username} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="material-symbols-outlined text-slate-400 text-2xl flex items-center justify-center h-full">person</span>
+                      )}
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-slate-300 rounded-full flex items-center justify-center border border-white text-[9px] font-bold text-slate-800 z-10">
+                      2
+                    </div>
                   </div>
                 </div>
                 <div className="text-center">
@@ -170,15 +178,17 @@ export const LeaderboardTable: React.FC<LeaderboardTableProps> = ({ entries, myE
             {rank1 && (
               <div className="flex flex-col items-center w-1/3 z-10 -mt-6">
                 <div className="relative mb-3 scale-105">
-                  <div className="w-16 h-16 rounded-full border-4 border-amber-400 overflow-hidden relative shadow-lg ring-4 ring-amber-400/10">
-                    {rank1.avatar_url ? (
-                      <img src={getMediaUrl(rank1.avatar_url) || ''} alt={rank1.username} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="material-symbols-outlined text-slate-400 text-3xl flex items-center justify-center h-full">person</span>
-                    )}
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-amber-400 rounded-full flex items-center justify-center border border-white shadow text-[10px] font-bold text-white">
-                    1
+                  <div className="w-16 h-16 rounded-full border-4 border-amber-400 relative shadow-lg ring-4 ring-amber-400/10">
+                    <div className="w-full h-full rounded-full overflow-hidden">
+                      {rank1.avatar_url ? (
+                        <img src={getMediaUrl(rank1.avatar_url) || ''} alt={rank1.username} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="material-symbols-outlined text-slate-400 text-3xl flex items-center justify-center h-full">person</span>
+                      )}
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-amber-400 rounded-full flex items-center justify-center border border-white shadow text-[10px] font-bold text-white z-10">
+                      1
+                    </div>
                   </div>
                   <div className="absolute -top-5 left-1/2 -translate-x-1/2">
                     <span className="material-symbols-outlined text-amber-500 scale-125" style={{ fontVariationSettings: "'FILL' 1" }}>military_tech</span>
@@ -198,15 +208,17 @@ export const LeaderboardTable: React.FC<LeaderboardTableProps> = ({ entries, myE
             {rank3 && (
               <div className="flex flex-col items-center w-1/3">
                 <div className="relative mb-3">
-                  <div className="w-14 h-14 rounded-full border-4 border-orange-350 overflow-hidden relative shadow-md">
-                    {rank3.avatar_url ? (
-                      <img src={getMediaUrl(rank3.avatar_url) || ''} alt={rank3.username} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="material-symbols-outlined text-slate-400 text-2xl flex items-center justify-center h-full">person</span>
-                    )}
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-orange-300 rounded-full flex items-center justify-center border border-white text-[9px] font-bold text-orange-850">
-                    3
+                  <div className="w-14 h-14 rounded-full border-4 border-orange-350 relative shadow-md">
+                    <div className="w-full h-full rounded-full overflow-hidden">
+                      {rank3.avatar_url ? (
+                        <img src={getMediaUrl(rank3.avatar_url) || ''} alt={rank3.username} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="material-symbols-outlined text-slate-400 text-2xl flex items-center justify-center h-full">person</span>
+                      )}
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-orange-300 rounded-full flex items-center justify-center border border-white text-[9px] font-bold text-orange-850 z-10">
+                      3
+                    </div>
                   </div>
                 </div>
                 <div className="text-center">

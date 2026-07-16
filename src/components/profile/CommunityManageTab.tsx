@@ -7,6 +7,7 @@ import { vi } from 'date-fns/locale';
 import Link from 'next/link';
 import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
+import { getMediaUrl } from '@/lib/mediaUtils';
 
 interface CommunityManageTabProps {
   lang: string;
@@ -201,7 +202,7 @@ export const CommunityManageTab: React.FC<CommunityManageTabProps> = ({ lang }) 
     <>
       <div className="flex flex-col gap-6 text-[#0b1c30] pb-24 md:pb-6">
         {/* Navigation Sub-Tabs (Bottom bar on Mobile, Horizontal tabs on Desktop) */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-[#E2E8F0] px-2 py-2 flex justify-around shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.08)] md:relative md:bottom-auto md:left-auto md:right-auto md:bg-[#e5eeff]/45 md:p-1.5 md:border md:border-[#E2E8F0] md:rounded-2xl md:w-fit md:flex-wrap md:gap-1 md:justify-start md:shadow-none md:z-auto">
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-[#E2E8F0] px-2 py-2 flex justify-around shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.08)] md:relative md:bottom-auto md:left-auto md:right-auto md:bg-[#e5eeff]/45 md:p-1.5 md:border md:border-[#E2E8F0] md:rounded-2xl md:w-full md:flex-wrap md:gap-3 md:justify-between md:shadow-none md:z-auto">
           {SUB_TABS.map(tab => (
             <button
               key={tab.id}
@@ -259,7 +260,7 @@ export const CommunityManageTab: React.FC<CommunityManageTabProps> = ({ lang }) 
                           <Link href={`/${lang}/community/post/${post.id}`}>
                             <div className="rounded-xl overflow-hidden border border-[#E2E8F0] bg-slate-50 aspect-video w-full cursor-pointer relative group mb-1">
                               <img
-                                src={post.image_url}
+                                src={getMediaUrl(post.image_url) || ''}
                                 alt="Post attachment"
                                 className="w-full h-full object-cover group-hover:scale-[1.01] transition-transform duration-300"
                               />
@@ -370,10 +371,19 @@ export const CommunityManageTab: React.FC<CommunityManageTabProps> = ({ lang }) 
                       <Link href={`/${lang}/community/post/${post.id}`}>
                         <div className="flex flex-col gap-2 cursor-pointer">
                           <div className="flex justify-between items-center">
-                            <span className="text-[10px] text-slate-400 font-semibold font-inter">Đăng bởi {post.author?.username}</span>
+                            <span className="text-[10px] text-slate-400 font-semibold font-inter">Đăng bởi {post.author?.full_name || post.author?.username}</span>
                             <span className="text-[10px] text-slate-400 font-inter">{formatTime(post.created_at)}</span>
                           </div>
-                          <p className="text-[#44474c] font-inter text-xs line-clamp-3 leading-relaxed">{post.content}</p>
+                          <p className="text-[#44474c] font-inter text-xs line-clamp-3 leading-relaxed mb-1">{post.content}</p>
+                          {post.image_url && (
+                            <div className="rounded-xl overflow-hidden border border-[#E2E8F0] bg-slate-50 aspect-video w-full relative group mt-1">
+                              <img
+                                src={getMediaUrl(post.image_url) || ''}
+                                alt="Post attachment"
+                                className="w-full h-full object-cover group-hover:scale-[1.01] transition-transform duration-300"
+                              />
+                            </div>
+                          )}
                         </div>
                       </Link>
                     </div>
@@ -393,10 +403,19 @@ export const CommunityManageTab: React.FC<CommunityManageTabProps> = ({ lang }) 
                       <Link href={`/${lang}/community/post/${post.id}`}>
                         <div className="flex flex-col gap-2 cursor-pointer">
                           <div className="flex justify-between items-center">
-                            <span className="text-[10px] text-[#426657] font-extrabold font-inter">Đăng bởi {post.author?.username}</span>
+                            <span className="text-[10px] text-[#426657] font-extrabold font-inter">Đăng bởi {post.author?.full_name || post.author?.username}</span>
                             <span className="text-[10px] text-slate-400 font-inter">{formatTime(post.created_at)}</span>
                           </div>
-                          <p className="text-[#44474c] font-inter text-xs line-clamp-3 leading-relaxed">{post.content}</p>
+                          <p className="text-[#44474c] font-inter text-xs line-clamp-3 leading-relaxed mb-1">{post.content}</p>
+                          {post.image_url && (
+                            <div className="rounded-xl overflow-hidden border border-[#E2E8F0] bg-slate-50 aspect-video w-full relative group mt-1">
+                              <img
+                                src={getMediaUrl(post.image_url) || ''}
+                                alt="Post attachment"
+                                className="w-full h-full object-cover group-hover:scale-[1.01] transition-transform duration-300"
+                              />
+                            </div>
+                          )}
                         </div>
                       </Link>
                     </div>

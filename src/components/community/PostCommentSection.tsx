@@ -119,13 +119,13 @@ export const PostCommentSection: React.FC<PostCommentSectionProps> = ({ postId, 
             <span className="material-symbols-outlined text-slate-400 text-sm">person</span>
           )}
         </div>
-        <div className="flex-1 flex gap-2">
+        <div className="flex-1 flex gap-2 min-w-0">
           <input
             type="text"
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Viết phản hồi của bạn..."
-            className="flex-1 bg-white border border-[#E2E8F0] focus:border-[#1d2b3e] rounded-xl px-4 py-2 text-xs text-[#0b1c30] placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#1d2b3e]/30 font-inter"
+            className="w-full min-w-0 flex-1 bg-white border border-[#E2E8F0] focus:border-[#1d2b3e] rounded-xl px-4 py-2 text-xs text-[#0b1c30] placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#1d2b3e]/30 font-inter"
           />
           <button
             type="submit"

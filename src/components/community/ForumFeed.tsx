@@ -7,6 +7,7 @@ import { PostCard } from './PostCard';
 import { CreatePostModal } from './CreatePostModal';
 import { CommunityReportModal } from './CommunityReportModal';
 import { getMediaUrl } from '@/lib/mediaUtils';
+import { getLeaderboard } from '@/lib/api/community';
 
 interface ForumFeedProps {
   lang: string;
@@ -37,6 +38,26 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ lang }) => {
   useEffect(() => {
     fetchPosts(lang);
   }, [lang, fetchPosts]);
+
+  const [likesLeaderboard, setLikesLeaderboard] = useState<any[]>([]);
+  const [likesLoading, setLikesLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchLikesRank = async () => {
+      setLikesLoading(true);
+      try {
+        const data = await getLeaderboard('total_likes', lang);
+        if (data && data.entries) {
+          setLikesLeaderboard(data.entries.slice(0, 5)); // Show Top 5
+        }
+      } catch (err) {
+        console.error('Failed to fetch likes leaderboard in feed:', err);
+      } finally {
+        setLikesLoading(false);
+      }
+    };
+    fetchLikesRank();
+  }, [lang]);
 
   const handleReportClick = (postId: string) => {
     setReportConfig({
@@ -95,23 +116,9 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ lang }) => {
             Tiếng Anh (English)
           </button>
         </div>
-
-        {/* Search Input */}
-        <div className="relative w-full md:w-64">
-          <span className="material-symbols-outlined text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 text-lg">
-            search
-          </span>
-          <input
-            type="text"
-            placeholder="Tìm bài viết, tác giả..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white border border-[#E2E8F0] rounded-full pl-9 pr-4 py-2 text-xs text-[#0b1c30] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1d2b3e]/20 transition-all font-inter"
-          />
-        </div>
       </div>
 
-      {/* Grid Layout PC: 3 Columns (Feed: 2 Col, Sidebar: 1 Col) */}
+      {/* Grid Layout PC: 3 Columns */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Feed Column */}
         <div className="lg:col-span-2 space-y-6">
@@ -174,6 +181,58 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ lang }) => {
                   onReportClick={handleReportClick}
                 />
               ))
+            )}
+          </div>
+        </div>
+
+        {/* Sidebar Column (Fixed/Sticky on the right on PC, hidden on mobile) */}
+        <div className="hidden lg:block lg:col-span-1">
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 shadow-sm sticky top-[96px] flex flex-col gap-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-sm font-bold text-[#1d2b3e] font-lexend flex items-center gap-2">
+                <span className="material-symbols-outlined text-rose-500 fill-current text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>favorite</span>
+                Cao thủ Tương tác
+              </h3>
+              <span className="text-[10px] text-slate-400 font-inter">Lượt thích</span>
+            </div>
+
+            {likesLoading ? (
+              <div className="flex flex-col items-center justify-center py-8 gap-2">
+                <div className="w-5 h-5 border-2 border-slate-100 border-t-rose-500 rounded-full animate-spin" />
+                <span className="text-[10px] text-slate-400 font-inter">Đang tải...</span>
+              </div>
+            ) : likesLeaderboard.length === 0 ? (
+              <p className="text-slate-400 text-xs font-inter text-center py-4">Chưa có dữ liệu.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {likesLeaderboard.map((entry, index) => {
+                  const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}`;
+                  const isTop3 = index < 3;
+                  return (
+                    <div key={entry.username} className="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-b-0">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className={`w-5 text-center text-xs font-bold ${isTop3 ? '' : 'text-slate-400 font-inter'}`}>
+                          {medal}
+                        </span>
+                        <div className="w-7 h-7 rounded-full overflow-hidden border border-slate-100 bg-slate-50 flex-shrink-0 flex items-center justify-center">
+                          {entry.avatar_url ? (
+                            <img src={getMediaUrl(entry.avatar_url) || ''} alt={entry.username} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="material-symbols-outlined text-slate-400 text-sm">person</span>
+                          )}
+                        </div>
+                        <span className="text-xs font-semibold text-[#0b1c30] truncate max-w-[100px] font-inter">
+                          {entry.username}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs font-bold text-slate-700">
+                        <span>{entry.score}</span>
+                        <span className="material-symbols-outlined text-rose-500 text-xs fill-current" style={{ fontVariationSettings: "'FILL' 1" }}>favorite</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         </div>

@@ -59,7 +59,7 @@ export const LeaderboardPanel: React.FC<LeaderboardPanelProps> = ({ lang }) => {
     <>
       <div className="flex flex-col gap-6 w-full max-w-4xl mx-auto pb-10 text-[#0b1c30]">
       {/* Category Segmented Control Tabs */}
-      <div className="flex overflow-x-auto gap-2 bg-[#e5eeff]/45 p-1.5 border border-[#E2E8F0] rounded-2xl w-full md:w-max mx-auto no-scrollbar shadow-sm">
+      <div className="flex overflow-x-auto gap-3 bg-[#e5eeff]/45 p-1.5 border border-[#E2E8F0] rounded-2xl w-full no-scrollbar shadow-sm">
         {BOARDS.map((board) => (
           <button
             key={board.id}

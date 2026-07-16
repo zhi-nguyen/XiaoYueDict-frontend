@@ -7,6 +7,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
+import { getMediaUrl } from '@/lib/mediaUtils';
 
 interface WordCommentSectionProps {
   wordId: string;
@@ -123,7 +124,7 @@ export const WordCommentSection: React.FC<WordCommentSectionProps> = ({ wordId, 
         <form onSubmit={handleSubmit} className="flex gap-2.5 items-start">
           <div className="w-7 h-7 rounded-full overflow-hidden border border-slate-800 bg-slate-950 flex-shrink-0 flex items-center justify-center">
             {user?.avatar ? (
-              <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+              <img src={getMediaUrl(user.avatar) || ''} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
               <span className="material-symbols-outlined text-slate-500 text-xs">person</span>
             )}

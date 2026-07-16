@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
+import { getMediaUrl } from '@/lib/mediaUtils';
 
 interface PostDetailProps {
   postId: string;
@@ -166,7 +167,7 @@ export const PostDetail: React.FC<PostDetailProps> = ({ postId, lang }) => {
             <div className="flex gap-3">
               <div className="w-11 h-11 rounded-full overflow-hidden border border-[#E2E8F0] bg-slate-50 flex-shrink-0 flex items-center justify-center">
                 {currentPost.author?.avatar ? (
-                  <img src={currentPost.author.avatar} alt={currentPost.author.full_name || currentPost.author.username} className="w-full h-full object-cover" />
+                  <img src={getMediaUrl(currentPost.author.avatar) || ''} alt={currentPost.author.full_name || currentPost.author.username} className="w-full h-full object-cover" />
                 ) : (
                   <span className="material-symbols-outlined text-slate-400 text-2xl">person</span>
                 )}
@@ -236,7 +237,7 @@ export const PostDetail: React.FC<PostDetailProps> = ({ postId, lang }) => {
           {currentPost.image_url && (
             <div className="rounded-xl overflow-hidden border border-[#E2E8F0] bg-slate-50 aspect-video w-full relative">
               <img 
-                src={currentPost.image_url} 
+                src={getMediaUrl(currentPost.image_url) || ''} 
                 alt="Post media" 
                 className="w-full h-full object-contain"
               />

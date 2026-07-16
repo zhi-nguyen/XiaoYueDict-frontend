@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { PostCard } from './PostCard';
 import { CreatePostModal } from './CreatePostModal';
 import { CommunityReportModal } from './CommunityReportModal';
+import { getMediaUrl } from '@/lib/mediaUtils';
 
 interface ForumFeedProps {
   lang: string;
@@ -123,7 +124,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ lang }) => {
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-100 shrink-0 border border-slate-200 flex items-center justify-center">
                 {user?.avatar ? (
-                  <img src={user.avatar} alt="My avatar" className="w-full h-full object-cover" />
+                  <img src={getMediaUrl(user.avatar) || ''} alt="My avatar" className="w-full h-full object-cover" />
                 ) : (
                   <span className="material-symbols-outlined text-slate-400 text-sm">person</span>
                 )}

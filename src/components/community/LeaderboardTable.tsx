@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
+import { getMediaUrl } from '@/lib/mediaUtils';
 
 interface LeaderboardEntry {
   rank: number;
@@ -55,7 +56,7 @@ export const LeaderboardTable: React.FC<LeaderboardTableProps> = ({ entries, myE
                   <div className="relative z-10 flex flex-col items-center">
                     <div className="w-16 h-16 rounded-full border-4 border-slate-200 overflow-hidden relative shadow-sm mb-3">
                       {rank2.avatar_url ? (
-                        <img src={rank2.avatar_url} alt={rank2.username} className="w-full h-full object-cover" />
+                        <img src={getMediaUrl(rank2.avatar_url) || ''} alt={rank2.username} className="w-full h-full object-cover" />
                       ) : (
                         <span className="material-symbols-outlined text-slate-400 text-3xl flex items-center justify-center h-full">person</span>
                       )}
@@ -87,7 +88,7 @@ export const LeaderboardTable: React.FC<LeaderboardTableProps> = ({ entries, myE
                   <div className="relative z-10 flex flex-col items-center">
                     <div className="w-20 h-20 rounded-full border-4 border-[#6366F1]/40 overflow-hidden relative shadow-md mb-4 ring-4 ring-[#6366F1]/10">
                       {rank1.avatar_url ? (
-                        <img src={rank1.avatar_url} alt={rank1.username} className="w-full h-full object-cover" />
+                        <img src={getMediaUrl(rank1.avatar_url) || ''} alt={rank1.username} className="w-full h-full object-cover" />
                       ) : (
                         <span className="material-symbols-outlined text-slate-400 text-4xl flex items-center justify-center h-full">person</span>
                       )}
@@ -116,7 +117,7 @@ export const LeaderboardTable: React.FC<LeaderboardTableProps> = ({ entries, myE
                   <div className="relative z-10 flex flex-col items-center">
                     <div className="w-16 h-16 rounded-full border-4 border-orange-200 overflow-hidden relative shadow-sm mb-3">
                       {rank3.avatar_url ? (
-                        <img src={rank3.avatar_url} alt={rank3.username} className="w-full h-full object-cover" />
+                        <img src={getMediaUrl(rank3.avatar_url) || ''} alt={rank3.username} className="w-full h-full object-cover" />
                       ) : (
                         <span className="material-symbols-outlined text-slate-400 text-3xl flex items-center justify-center h-full">person</span>
                       )}
@@ -146,7 +147,7 @@ export const LeaderboardTable: React.FC<LeaderboardTableProps> = ({ entries, myE
                 <div className="relative mb-3">
                   <div className="w-14 h-14 rounded-full border-4 border-slate-300 overflow-hidden relative shadow-md">
                     {rank2.avatar_url ? (
-                      <img src={rank2.avatar_url} alt={rank2.username} className="w-full h-full object-cover" />
+                      <img src={getMediaUrl(rank2.avatar_url) || ''} alt={rank2.username} className="w-full h-full object-cover" />
                     ) : (
                       <span className="material-symbols-outlined text-slate-400 text-2xl flex items-center justify-center h-full">person</span>
                     )}
@@ -171,7 +172,7 @@ export const LeaderboardTable: React.FC<LeaderboardTableProps> = ({ entries, myE
                 <div className="relative mb-3 scale-105">
                   <div className="w-16 h-16 rounded-full border-4 border-amber-400 overflow-hidden relative shadow-lg ring-4 ring-amber-400/10">
                     {rank1.avatar_url ? (
-                      <img src={rank1.avatar_url} alt={rank1.username} className="w-full h-full object-cover" />
+                      <img src={getMediaUrl(rank1.avatar_url) || ''} alt={rank1.username} className="w-full h-full object-cover" />
                     ) : (
                       <span className="material-symbols-outlined text-slate-400 text-3xl flex items-center justify-center h-full">person</span>
                     )}
@@ -199,7 +200,7 @@ export const LeaderboardTable: React.FC<LeaderboardTableProps> = ({ entries, myE
                 <div className="relative mb-3">
                   <div className="w-14 h-14 rounded-full border-4 border-orange-350 overflow-hidden relative shadow-md">
                     {rank3.avatar_url ? (
-                      <img src={rank3.avatar_url} alt={rank3.username} className="w-full h-full object-cover" />
+                      <img src={getMediaUrl(rank3.avatar_url) || ''} alt={rank3.username} className="w-full h-full object-cover" />
                     ) : (
                       <span className="material-symbols-outlined text-slate-400 text-2xl flex items-center justify-center h-full">person</span>
                     )}
@@ -243,7 +244,7 @@ export const LeaderboardTable: React.FC<LeaderboardTableProps> = ({ entries, myE
                 {/* Avatar */}
                 <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-50 flex-shrink-0 mx-3 border border-[#E2E8F0]">
                   {entry.avatar_url ? (
-                    <img src={entry.avatar_url} alt={entry.username} className="w-full h-full object-cover" />
+                    <img src={getMediaUrl(entry.avatar_url) || ''} alt={entry.username} className="w-full h-full object-cover" />
                   ) : (
                     <span className="material-symbols-outlined text-slate-400 text-xl flex items-center justify-center h-full">person</span>
                   )}
@@ -284,7 +285,7 @@ export const LeaderboardTable: React.FC<LeaderboardTableProps> = ({ entries, myE
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-full overflow-hidden border border-white/20 bg-slate-800 flex-shrink-0 flex items-center justify-center">
                   {myEntry.avatar_url ? (
-                    <img src={myEntry.avatar_url} alt="My avatar" className="w-full h-full object-cover" />
+                    <img src={getMediaUrl(myEntry.avatar_url) || ''} alt="My avatar" className="w-full h-full object-cover" />
                   ) : (
                     <span className="material-symbols-outlined text-white/50 text-base">person</span>
                   )}

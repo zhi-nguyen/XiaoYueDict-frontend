@@ -12,7 +12,8 @@ export const uploadCommunityImage = async (file: File, lang: string = 'zh') => {
   formData.append('file', file);
   formData.append('lang', lang);
 
-  const response = await axios.post('/api/image/community/upload', formData, {
+  const gatewayUrl = process.env.NEXT_PUBLIC_API_URL || '';
+  const response = await axios.post(`${gatewayUrl}/api/image/community/upload`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
       'Authorization': `Bearer ${token}`

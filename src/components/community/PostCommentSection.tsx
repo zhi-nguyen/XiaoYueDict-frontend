@@ -7,6 +7,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
+import { getMediaUrl } from '@/lib/mediaUtils';
 
 interface PostCommentSectionProps {
   postId: string;
@@ -111,9 +112,9 @@ export const PostCommentSection: React.FC<PostCommentSectionProps> = ({ postId, 
 
       {/* Write Comment Form */}
       <form onSubmit={handleSubmit} className="flex gap-3">
-        <div className="w-8 h-8 rounded-full overflow-hidden border border-[#E2E8F0] bg-slate-50 flex-shrink-0 flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full overflow-hidden border border-[#E2E8F0] bg-slate-55 flex-shrink-0 flex items-center justify-center">
           {user?.avatar ? (
-            <img src={user.avatar} alt="My avatar" className="w-full h-full object-cover" />
+            <img src={getMediaUrl(user.avatar) || ''} alt="My avatar" className="w-full h-full object-cover" />
           ) : (
             <span className="material-symbols-outlined text-slate-400 text-sm">person</span>
           )}
@@ -154,7 +155,7 @@ export const PostCommentSection: React.FC<PostCommentSectionProps> = ({ postId, 
               <div key={comment.id} className="flex gap-3 items-start">
                 <div className="w-8 h-8 rounded-full overflow-hidden border border-[#E2E8F0] bg-slate-55 flex-shrink-0 flex items-center justify-center">
                   {comment.user?.avatar ? (
-                    <img src={comment.user.avatar} alt={comment.user.full_name || comment.user.username} className="w-full h-full object-cover" />
+                    <img src={getMediaUrl(comment.user.avatar) || ''} alt={comment.user.full_name || comment.user.username} className="w-full h-full object-cover" />
                   ) : (
                     <span className="material-symbols-outlined text-slate-400 text-sm">person</span>
                   )}

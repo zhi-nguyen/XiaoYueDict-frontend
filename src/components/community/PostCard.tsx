@@ -8,6 +8,7 @@ import { useCommunityStore } from '@/store/useCommunityStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
+import { getMediaUrl } from '@/lib/mediaUtils';
 
 interface PostCardProps {
   post: any;
@@ -106,7 +107,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, lang, onReportClick, o
           <div className="flex gap-3">
             <div className="w-11 h-11 rounded-full overflow-hidden border border-[#E2E8F0] bg-slate-50 flex-shrink-0 flex items-center justify-center">
               {post.author?.avatar ? (
-                <img src={post.author.avatar} alt={post.author.full_name || post.author.username} className="w-full h-full object-cover" />
+                <img src={getMediaUrl(post.author.avatar) || ''} alt={post.author.full_name || post.author.username} className="w-full h-full object-cover" />
               ) : (
                 <span className="material-symbols-outlined text-slate-400 text-2xl">person</span>
               )}
@@ -201,7 +202,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, lang, onReportClick, o
           <Link href={`/${lang}/community/post/${post.id}`}>
             <div className="rounded-xl overflow-hidden border border-[#E2E8F0] bg-slate-50 aspect-video w-full cursor-pointer relative group">
               <img
-                src={post.image_url}
+                src={getMediaUrl(post.image_url) || ''}
                 alt="Post attachment"
                 className="w-full h-full object-cover group-hover:scale-[1.01] transition-transform duration-300"
               />

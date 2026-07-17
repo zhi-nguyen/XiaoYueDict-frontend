@@ -205,6 +205,10 @@ async function connectGlobal(isAuthenticated: boolean, user: any, isAuthLoading:
             window.dispatchEvent(new CustomEvent('writing_check_complete', { detail: message.payload }));
           } else if (message.type === 'writing_check_failed') {
             window.dispatchEvent(new CustomEvent('writing_check_failed', { detail: message.payload }));
+          } else if (message.type === 'general_writing_check_complete') {
+            window.dispatchEvent(new CustomEvent('general_writing_check_complete', { detail: message.payload }));
+          } else if (message.type === 'general_writing_check_failed') {
+            window.dispatchEvent(new CustomEvent('general_writing_check_failed', { detail: message.payload }));
           }
         }
       } catch (err) {

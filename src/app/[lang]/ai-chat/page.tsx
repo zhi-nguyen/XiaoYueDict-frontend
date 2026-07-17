@@ -11,6 +11,8 @@ import TutorListView from './_components/TutorListView';
 import TutorSetupModal from './_components/TutorSetupModal';
 import ChatView from './_components/ChatView';
 import { useCoinStore } from '@/store/useCoinStore';
+import AlertModal from '@/components/AlertModal';
+import ConfirmModal from '@/components/ConfirmModal';
 
 
 export default function AIChatPage() {
@@ -18,10 +20,35 @@ export default function AIChatPage() {
   const lang = (params?.lang as string) || 'zh';
 
   const { user } = useAuthStore();
+  const userId = user?.id;
 
   // Navigation states (Zalo-style 3-view layout)
   const [currentView, setCurrentView] = useState<'list' | 'chat'>('list');
   const [isSetupModalOpen, setIsSetupModalOpen] = useState<boolean>(false);
+
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    type: 'success' | 'error' | 'info';
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
+
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   // Data states
   const [personas, setPersonas] = useState<Persona[]>([]);
@@ -110,40 +137,54 @@ export default function AIChatPage() {
     if (!blob) return;
 
     isPlayingRef.current = true;
-    if (!audioRef.current) {
+    
+    // Detach previous event handlers before changing source to avoid abort errors
+    if (audioRef.current) {
+      audioRef.current.onended = null;
+      audioRef.current.onerror = null;
+      try {
+        audioRef.current.pause();
+      } catch (e) {}
+    } else {
       audioRef.current = new Audio();
     }
-
+ 
     const url = URL.createObjectURL(blob);
     audioRef.current.src = url;
-
+ 
     audioRef.current.onended = () => {
       URL.revokeObjectURL(url);
       isPlayingRef.current = false;
       playNextSentence();
     };
-
+ 
     audioRef.current.onerror = (e) => {
-      console.error('Audio playback error:', e);
+      // Only log true errors, ignore abort events when src is cleared/empty
+      if (audioRef.current && audioRef.current.src && audioRef.current.src !== window.location.href) {
+        console.error('Audio playback error:', e);
+      }
       URL.revokeObjectURL(url);
       isPlayingRef.current = false;
       playNextSentence();
     };
-
+ 
     audioRef.current.play().catch((err) => {
       console.warn('Playback play failed:', err);
       isPlayingRef.current = false;
       playNextSentence();
     });
   }, []);
-
+ 
   const appendAudioBuffer = useCallback((buffer: ArrayBuffer) => {
     currentSentenceChunksRef.current.push(buffer);
   }, []);
-
+ 
   const stopAudio = useCallback(() => {
     if (audioRef.current) {
       try {
+        // Clear event handlers first to prevent abort/empty src errors
+        audioRef.current.onended = null;
+        audioRef.current.onerror = null;
         audioRef.current.pause();
         audioRef.current.src = '';
       } catch (e) {}
@@ -236,6 +277,32 @@ export default function AIChatPage() {
 
       const response = payload.response;
 
+      // Handle AI/server errors (like 429 rate limits or 500 exceptions)
+      if (payload.error_code) {
+        setIsSending(false);
+        
+        // Show AlertModal with error message and refund notice
+        setAlertConfig({
+          isOpen: true,
+          type: 'error',
+          title: payload.error_code === '429' ? 'Hệ thống bận (429)' : 'Lỗi hệ thống',
+          message: response.translation_hint || 'Giao tiếp với hệ thống AI thất bại. Điểm của bạn đã được hoàn trả!',
+        });
+
+        // Delete the sent message and streaming placeholder from local messages list
+        setMessages((prev) => {
+          const filtered = prev.filter((m) => m.id !== 'stream-placeholder');
+          if (filtered.length > 0 && filtered[filtered.length - 1].sender === 'user') {
+            return filtered.slice(0, -1);
+          }
+          return filtered;
+        });
+
+        // Sync coin wallet balance after refund
+        useCoinStore.getState().fetchWalletBalances(true);
+        return;
+      }
+
       setMessages((prev) => {
         const lastMsg = prev[prev.length - 1];
         const baseMsg = {
@@ -276,7 +343,7 @@ export default function AIChatPage() {
     stopAudio();
     setIsConnected(false);
 
-    if (!user) {
+    if (!userId) {
       isConnectingRef.current = false;
       return;
     }
@@ -313,7 +380,6 @@ export default function AIChatPage() {
       socket.onopen = () => {
         setIsConnected(true);
         isConnectingRef.current = false;
-        console.log('✅ WS Gateway connected for AI Chat');
       };
 
       socket.onmessage = handleWsMessage;
@@ -322,7 +388,6 @@ export default function AIChatPage() {
         setIsConnected(false);
         isConnectingRef.current = false;
         wsRef.current = null;
-        console.log('❌ WS Gateway connection closed');
       };
 
       socket.onerror = (err) => {
@@ -334,12 +399,11 @@ export default function AIChatPage() {
       console.error('Failed to establish WebSocket connection:', err);
       isConnectingRef.current = false;
     }
-  }, [user, stopAudio, handleWsMessage]);
+  }, [userId, stopAudio, handleWsMessage]);
 
   // Delete the current tutor persona and all related messages
-  const handleDeletePersona = async () => {
+  const executeDeletePersona = async () => {
     if (!activePersona) return;
-    if (!confirm('Bạn có chắc chắn muốn xoá kết nối với Gia sư này? Toàn bộ thiết lập gia sư và lịch sử tin nhắn liên quan sẽ bị xoá vĩnh viễn.')) return;
     try {
       stopAudio();
       await djangoClient.delete('/xiaoyue-chat/persona/', {
@@ -349,11 +413,30 @@ export default function AIChatPage() {
       setActivePersona(null);
       setMessages([]);
       setCurrentView('list');
-      alert('Đã xoá kết nối với gia sư.');
+      setAlertConfig({
+        isOpen: true,
+        type: 'success',
+        title: 'Thành công',
+        message: 'Đã xoá kết nối với gia sư.',
+      });
     } catch (err) {
       console.error('Failed to delete persona:', err);
-      alert('Không thể xoá kết nối gia sư.');
+      setAlertConfig({
+        isOpen: true,
+        type: 'error',
+        title: 'Lỗi',
+        message: 'Không thể xoá kết nối gia sư.',
+      });
     }
+  };
+
+  const handleDeletePersona = () => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Xoá gia sư',
+      message: 'Bạn có chắc chắn muốn xoá kết nối với Gia sư này? Toàn bộ thiết lập gia sư và lịch sử tin nhắn liên quan sẽ bị xoá vĩnh viễn.',
+      onConfirm: executeDeletePersona,
+    });
   };
 
 
@@ -406,10 +489,20 @@ export default function AIChatPage() {
       setMessages((prev) => prev.filter((m) => m.id !== 'stream-placeholder'));
       
       if (err.response?.status === 403) {
-        alert('Không đủ Linh thạch/Coin để gửi tin nhắn. Vui lòng học thêm Flashcard!');
+        setAlertConfig({
+          isOpen: true,
+          type: 'error',
+          title: 'Không đủ số dư',
+          message: 'Không đủ Linh thạch/Coin để gửi tin nhắn. Vui lòng học thêm Flashcard!',
+        });
         useCoinStore.getState().fetchWalletBalances(true);
       } else {
-        alert('Gửi tin nhắn thất bại. Điểm của bạn đã được hoàn lại!');
+        setAlertConfig({
+          isOpen: true,
+          type: 'error',
+          title: 'Lỗi',
+          message: 'Gửi tin nhắn thất bại. Điểm của bạn đã được hoàn lại!',
+        });
       }
     }
   };
@@ -418,7 +511,7 @@ export default function AIChatPage() {
 
   // Initialize view and websocket on mount
   useEffect(() => {
-    if (user) {
+    if (userId) {
       fetchPersonas();
       connectSocket();
       fetchWalletBalances();
@@ -433,7 +526,7 @@ export default function AIChatPage() {
       }
       isConnectingRef.current = false;
     };
-  }, [connectSocket, stopAudio, user, fetchWalletBalances, fetchCoinConfig]);
+  }, [connectSocket, stopAudio, userId, fetchWalletBalances, fetchCoinConfig]);
 
   // Load chat history when active tutor changes
   useEffect(() => {
@@ -534,6 +627,26 @@ export default function AIChatPage() {
         onCreated={handlePersonaCreated}
         lang={lang}
         defaultName={user.first_name || user.username || ''}
+      />
+
+      <AlertModal
+        isOpen={alertConfig.isOpen}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onClose={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))}
+      />
+
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        isDestructive={true}
+        onConfirm={() => {
+          setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+          confirmConfig.onConfirm();
+        }}
+        onCancel={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
       />
     </div>
   );

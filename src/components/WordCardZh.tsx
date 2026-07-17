@@ -13,6 +13,8 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 import { getGuestId } from '@/lib/guest';
 import VocabularyImage from './dictionary/VocabularyImage';
 import ReportModal from '@/components/ReportModal';
+import WordCommentSection from './community/WordCommentSection';
+import CommunityReportModal from './community/CommunityReportModal';
 
 // Mapping from tags_vi.json
 import tagsVi from '@/data/tags_vi.json';
@@ -132,6 +134,17 @@ export default function WordCardZh({ word, onPracticeClick, onCharClick }: WordC
   const [visibleExamplesCount, setVisibleExamplesCount] = useState(5);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [activeReportType, setActiveReportType] = useState<'image' | 'translation' | 'pinyin' | 'example' | 'exam_question' | 'audio' | 'other'>('other');
+  const [reportCommentConfig, setReportCommentConfig] = useState({
+    isOpen: false,
+    commentId: ''
+  });
+
+  const handleReportComment = (commentId: string) => {
+    setReportCommentConfig({
+      isOpen: true,
+      commentId
+    });
+  };
 
   const handleOpenReport = (type: typeof activeReportType) => {
     setActiveReportType(type);
@@ -443,6 +456,23 @@ export default function WordCardZh({ word, onPracticeClick, onCharClick }: WordC
         objectId={word.id}
         defaultReportType={activeReportType}
       />
+
+      {word.id && isUUID(word.id) && (
+        <WordCommentSection
+          wordId={word.id}
+          lang="zh"
+          onReportCommentClick={handleReportComment}
+        />
+      )}
+
+      {reportCommentConfig.isOpen && (
+        <CommunityReportModal
+          isOpen={reportCommentConfig.isOpen}
+          onClose={() => setReportCommentConfig({ isOpen: false, commentId: '' })}
+          contentType="word_comment"
+          objectId={reportCommentConfig.commentId}
+        />
+      )}
     </div>
   );
 }

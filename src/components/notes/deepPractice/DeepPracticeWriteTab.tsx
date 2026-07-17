@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { checkDeepPracticeWritingExercise } from '@/lib/api/deepPractice';
 import { Loader2 } from 'lucide-react';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import { useCoinStore } from '@/store/useCoinStore';
+import { getPendingWritingTask, getWritingTaskDetail } from '@/lib/api/coins';
 
 interface DeepPracticeWriteTabProps {
   vocabulary: string;
@@ -17,12 +19,17 @@ export default function DeepPracticeWriteTab({
   onSkip,
 }: DeepPracticeWriteTabProps) {
   const tier = useSubscriptionStore((state) => state.tier);
-  const isFree = !tier || tier === 'Free';
+  const { wallets, config: coinConfig, fetchWalletBalances, fetchCoinConfig } = useCoinStore();
+  
+  const targetLang = lang === 'en' ? 'en' : 'zh';
+  const balance = targetLang === 'zh' ? wallets.zh.total : wallets.en.total;
+  const langName = targetLang === 'zh' ? 'Linh Thạch' : 'Coin';
 
   const [text, setText] = useState('');
   const [isChecking, setIsChecking] = useState(false);
   const [result, setResult] = useState<any | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
 
   const getWordCount = (val: string) => {
     if (!val.trim()) return 0;
@@ -34,7 +41,102 @@ export default function DeepPracticeWriteTab({
   };
   const wordCount = getWordCount(text);
 
-  const targetLang = lang === 'en' ? 'en' : 'zh';
+  useEffect(() => {
+    fetchWalletBalances();
+    fetchCoinConfig();
+  }, [fetchWalletBalances, fetchCoinConfig]);
+
+  // Check for pending task matching this word on mount
+  useEffect(() => {
+    const checkPending = async () => {
+      try {
+        const res = await getPendingWritingTask(targetLang, 'deep_practice');
+        if (res.has_pending && res.task_id && res.target_word === vocabulary) {
+          setPendingTaskId(res.task_id);
+          setIsChecking(true);
+          if (res.sentence) setText(res.sentence);
+        }
+      } catch (err) {
+        console.error("Lỗi khi kiểm tra tác vụ pending deep practice:", err);
+      }
+    };
+    checkPending();
+  }, [vocabulary, targetLang]);
+
+  // Fallback Polling
+  useEffect(() => {
+    if (!pendingTaskId) return;
+    let isMounted = true;
+    const interval = setInterval(async () => {
+      try {
+        const res = await getWritingTaskDetail(pendingTaskId);
+        if (!isMounted) return;
+        if (res.status === 'SUCCESS') {
+          setResult(res.result);
+          onAnswered(res.result.is_correct, res.result.score);
+          setIsChecking(false);
+          setPendingTaskId(null);
+          clearInterval(interval);
+          fetchWalletBalances(true);
+        } else if (res.status === 'FAILED') {
+          setErrorMsg(res.error || "Kiểm tra câu viết thất bại.");
+          setIsChecking(false);
+          setPendingTaskId(null);
+          clearInterval(interval);
+          fetchWalletBalances(true);
+        }
+      } catch (err) {
+        console.error("Error polling deep practice task:", err);
+      }
+    }, 3000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [pendingTaskId, onAnswered, fetchWalletBalances]);
+
+  // WebSocket / CustomEvents integration
+  useEffect(() => {
+    const handleCompleted = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.target_word === vocabulary && (detail.task_id === pendingTaskId || detail.sentence === text.trim())) {
+        setResult(detail.result);
+        onAnswered(detail.result.is_correct, detail.result.score);
+        setIsChecking(false);
+        setPendingTaskId(null);
+        fetchWalletBalances(true);
+      }
+    };
+
+    const handleFailed = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.target_word === vocabulary && (detail.task_id === pendingTaskId)) {
+        setErrorMsg(detail.error || "Kiểm tra câu viết thất bại.");
+        setIsChecking(false);
+        setPendingTaskId(null);
+        fetchWalletBalances(true);
+      }
+    };
+
+    window.addEventListener('writing_check_complete', handleCompleted);
+    window.addEventListener('writing_check_failed', handleFailed);
+
+    return () => {
+      window.removeEventListener('writing_check_complete', handleCompleted);
+      window.removeEventListener('writing_check_failed', handleFailed);
+    };
+  }, [text, vocabulary, onAnswered, pendingTaskId, fetchWalletBalances]);
+
+  const calculateCost = () => {
+    if (!text.trim()) return 0;
+    if (tier && tier !== 'Free') return 0; // VIP is free
+
+    return targetLang === 'zh'
+      ? (coinConfig?.writing_base_cost_zh ?? 1)
+      : (coinConfig?.writing_base_cost_en ?? 1);
+  };
+  const cost = calculateCost();
 
   const handleCheck = async () => {
     if (!text.trim()) return;
@@ -88,70 +190,20 @@ export default function DeepPracticeWriteTab({
 
     try {
       const response = await checkDeepPracticeWritingExercise(text.trim(), vocabulary, targetLang);
-      if (response.status === 'SUCCESS') {
+      if (response.status === 'PENDING' && response.task_id) {
+        setPendingTaskId(response.task_id);
+      } else if (response.status === 'SUCCESS') {
         setResult(response.result);
         onAnswered(response.result.is_correct, response.result.score);
         setIsChecking(false);
+        fetchWalletBalances(true);
       }
-      // If status is PENDING, we wait for WebSocket notification
     } catch (err: any) {
       console.error(err);
-      setErrorMsg("Gặp lỗi khi gửi yêu cầu chấm điểm.");
+      setErrorMsg(err.response?.data?.error || "Gặp lỗi khi gửi yêu cầu chấm điểm.");
       setIsChecking(false);
     }
   };
-
-  useEffect(() => {
-    const handleCompleted = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      // Match by word
-      if (detail && detail.target_word === vocabulary && detail.sentence === text.trim()) {
-        setResult(detail.result);
-        onAnswered(detail.result.is_correct, detail.result.score);
-        setIsChecking(false);
-      }
-    };
-
-    const handleFailed = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail && detail.target_word === vocabulary) {
-        setErrorMsg(detail.error || "Kiểm tra câu viết thất bại.");
-        setIsChecking(false);
-      }
-    };
-
-    window.addEventListener('writing_check_complete', handleCompleted);
-    window.addEventListener('writing_check_failed', handleFailed);
-
-    return () => {
-      window.removeEventListener('writing_check_complete', handleCompleted);
-      window.removeEventListener('writing_check_failed', handleFailed);
-    };
-  }, [text, vocabulary, onAnswered]);
-
-  if (isFree) {
-    return (
-      <div className="py-6 flex flex-col items-center justify-center text-center">
-        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4 animate-pulse">
-          <span className="material-symbols-outlined text-primary text-3xl font-bold">lock</span>
-        </div>
-        <h3 className="text-xl font-bold text-primary mb-2">Tính năng dành cho thành viên VIP</h3>
-        <p className="text-sm text-secondary max-w-sm mb-6 leading-relaxed">
-          Tính năng Đặt câu và Nhận xét ngữ pháp chi tiết bằng AI chỉ dành cho tài khoản VIP. Hãy nâng cấp để trải nghiệm!
-        </p>
-
-        <button
-          onClick={() => {
-            onAnswered(true, 100);
-            onSkip?.();
-          }}
-          className="px-6 py-3.5 bg-secondary hover:bg-secondary/90 text-white font-bold text-sm rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 focus:outline-none"
-        >
-          Bỏ Qua
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div className="py-4">
@@ -182,20 +234,50 @@ export default function DeepPracticeWriteTab({
         </p>
       )}
 
-      <button
-        onClick={handleCheck}
-        disabled={isChecking || !text.trim() || wordCount > 30}
-        className="w-full py-3.5 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary-hover transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
-      >
-        {isChecking ? (
-          <>
-            <Loader2 className="w-5 h-5 animate-spin" />
-            Đang chấm điểm câu viết...
-          </>
-        ) : (
-          'Kiểm tra ngữ pháp (AI)'
-        )}
-      </button>
+      <div className="flex flex-col gap-4 mt-2">
+        {cost > 0 ? (
+          <div className="text-xs text-secondary flex items-center gap-1.5 font-medium">
+            <span className="material-symbols-outlined text-primary text-base">payments</span>
+            Chi phí: <span className="font-bold text-primary">{cost} {langName}</span>
+            <span className="opacity-60">•</span>
+            Số dư: <span className={`font-bold ${balance >= cost ? 'text-emerald-600' : 'text-red-500'}`}>{balance} {langName}</span>
+          </div>
+        ) : tier && tier !== 'Free' ? (
+          <div className="text-xs text-secondary flex items-center gap-1.5 font-medium">
+            <span className="material-symbols-outlined text-emerald-600 text-base">workspace_premium</span>
+            VIP: Miễn phí chấm điểm
+          </div>
+        ) : null}
+
+        <div className="flex items-center gap-3">
+          {onSkip && (
+            <button
+              onClick={() => {
+                onAnswered(true, 100);
+                onSkip();
+              }}
+              disabled={isChecking}
+              className="px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-secondary font-bold text-sm rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 focus:outline-none disabled:opacity-50"
+            >
+              Bỏ Qua
+            </button>
+          )}
+          <button
+            onClick={handleCheck}
+            disabled={isChecking || !text.trim() || wordCount > 30 || (cost > 0 && balance < cost)}
+            className="flex-1 py-3.5 rounded-xl bg-primary text-white font-bold text-sm hover:opacity-90 transition-opacity shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {isChecking ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin mr-1" />
+                Đang chấm điểm...
+              </>
+            ) : (
+              'Kiểm tra ngữ pháp (AI)'
+            )}
+          </button>
+        </div>
+      </div>
 
       {result && (
         <div className="mt-6 p-5 bg-surface-container-low border border-outline rounded-xl animate-in fade-in slide-in-from-top-3">

@@ -4,16 +4,11 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import ImageCropper from '@/components/profile/ImageCropper';
 import { getMediaUrl } from '@/lib/mediaUtils';
+import UserAvatarContainer from '@/components/UserAvatarContainer';
+import { User } from '@/store/useAuthStore';
 
 interface ProfileInfoTabProps {
-  user: {
-    username: string;
-    email: string;
-    first_name?: string | null;
-    last_name?: string | null;
-    bio?: string | null;
-    avatar?: string | null;
-  };
+  user: User;
   tier: string | null;
   onUpdateProfile: (formData: FormData) => Promise<void>;
 }
@@ -65,31 +60,36 @@ export default function ProfileInfoTab({ user, tier, onUpdateProfile }: ProfileI
       <div className="animate-in fade-in slide-in-from-bottom-2">
         <div className="flex items-center gap-4 mb-8">
           <div className="relative group flex-shrink-0">
-            <label htmlFor="avatar-upload" className="cursor-pointer relative w-24 h-24 rounded-full bg-primary flex items-center justify-center text-white text-4xl font-bold overflow-hidden shadow-sm hover:ring-2 hover:ring-primary/50 transition-all">
-              {previewAvatar ? (
-                <Image
-                  src={previewAvatar}
-                  alt="Avatar"
-                  width={96}
-                  height={96}
-                  unoptimized
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                user.first_name && user.last_name
-                  ? (user.first_name.charAt(0) + user.last_name.charAt(0)).toUpperCase()
-                  : (user.first_name || user.username).substring(0, 2).toUpperCase()
-              )}
-              {isEditingInfo && (
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <span className="material-symbols-outlined text-white">photo_camera</span>
-                </div>
-              )}
-            </label>
-            {isEditingInfo && (
-              <label htmlFor="avatar-upload" className="absolute bottom-0 right-0 cursor-pointer w-8 h-8 rounded-full bg-primary border-2 border-white flex items-center justify-center text-white shadow-md hover:scale-105 transition-transform">
-                <span className="material-symbols-outlined text-[16px]">photo_camera</span>
-              </label>
+            {!isEditingInfo ? (
+              <UserAvatarContainer 
+                user={user as any} 
+                sizeClass="w-24 h-24" 
+              />
+            ) : (
+              <>
+                <label htmlFor="avatar-upload" className="cursor-pointer relative w-24 h-24 rounded-full bg-primary flex items-center justify-center text-white text-4xl font-bold overflow-hidden shadow-sm hover:ring-2 hover:ring-primary/50 transition-all">
+                  {previewAvatar ? (
+                    <Image
+                      src={previewAvatar}
+                      alt="Avatar"
+                      width={96}
+                      height={96}
+                      unoptimized
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    user.first_name && user.last_name
+                      ? (user.first_name.charAt(0) + user.last_name.charAt(0)).toUpperCase()
+                      : (user.first_name || user.username).substring(0, 2).toUpperCase()
+                  )}
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="material-symbols-outlined text-white">photo_camera</span>
+                  </div>
+                </label>
+                <label htmlFor="avatar-upload" className="absolute bottom-0 right-0 cursor-pointer w-8 h-8 rounded-full bg-primary border-2 border-white flex items-center justify-center text-white shadow-md hover:scale-105 transition-transform">
+                  <span className="material-symbols-outlined text-[16px]">photo_camera</span>
+                </label>
+              </>
             )}
             <input
               id="avatar-upload"
@@ -105,8 +105,20 @@ export default function ProfileInfoTab({ user, tier, onUpdateProfile }: ProfileI
               {user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user.username}
             </h2>
             <p className="text-secondary truncate" title={user.email}>{user.email}</p>
-            <div className="mt-2 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-surface border border-outline text-xs font-bold text-primary">
-              <span className="text-yellow-600 uppercase tracking-wider">{tier || 'Free'}</span>
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-surface border border-outline text-xs font-bold text-primary">
+                <span className="text-yellow-600 uppercase tracking-wider">{tier || 'Free'}</span>
+              </div>
+              {user.levels?.zh && (
+                <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-xs font-bold text-indigo-700 dark:bg-indigo-950/20 dark:border-indigo-900/30 dark:text-indigo-400">
+                  <span>🇨🇳 Cấp {user.levels.zh.level}</span>
+                </div>
+              )}
+              {user.levels?.en && (
+                <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-xs font-bold text-indigo-700 dark:bg-indigo-950/20 dark:border-indigo-900/30 dark:text-indigo-400">
+                  <span>🇬🇧 Cấp {user.levels.en.level}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -16,6 +16,8 @@ import NotificationPanel from '@/components/NotificationPanel';
 import ToastContainer from '@/components/ToastContainer';
 import ScoreResultModal from '@/components/ScoreResultModal';
 import { getMediaUrl } from '@/lib/mediaUtils';
+import UserAvatarContainer from '@/components/UserAvatarContainer';
+import LevelProgressBar from '@/components/LevelProgressBar';
 
 export default function Header() {
   const params = useParams();
@@ -33,7 +35,7 @@ export default function Header() {
       window.location.href = targetUrl;
     }
   };
-  
+
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -45,7 +47,7 @@ export default function Header() {
   // Initialize notification WebSocket
   useNotificationWebSocket();
   const unreadCount = useNotificationStore((state) => state.unreadCount);
-  
+
   const language = isMounted ? ((params?.lang as string) || 'zh') : 'zh';
   const { currentStreak, fetchGamificationData, isInitialized: isGamificationInit } = useGamificationStore();
   const { tier: subscriptionTier, fetchSubscription, isInitialized: isSubInit } = useSubscriptionStore();
@@ -75,26 +77,10 @@ export default function Header() {
   }
 
   return (
-    <header className="h-[72px] bg-surface border-b border-outline px-4 md:px-6 flex items-center justify-between shrink-0 top-0 sticky z-40">
-      {/* Mobile Search Overlay */}
-      {isMobileSearchOpen && (
-        <div className="absolute inset-0 bg-surface z-20 flex items-center px-4">
-          <button onClick={() => setIsMobileSearchOpen(false)} className="p-2 mr-2 rounded-full hover:bg-hover-bg text-secondary">
-            <span className="material-symbols-outlined">arrow_back</span>
-          </button>
-          <div className="relative w-full">
-            <input
-              type="text"
-              autoFocus
-              placeholder={language === 'zh' ? "Nhập từ cần tra..." : "Nhập từ cần tra..."}
-              className="w-full pl-4 pr-4 py-2.5 bg-hover-bg rounded-full border border-transparent focus:border-sage focus:outline-none focus:ring-0 text-sm font-lexend text-primary placeholder:text-secondary"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Search Bar section */}
-      <div className="flex items-center flex-1 max-w-[600px] gap-2">
+    <div className="sticky top-0 z-40 flex flex-col w-full shrink-0">
+      <header className="h-[72px] bg-surface border-b border-outline px-4 md:px-6 flex items-center justify-between shrink-0">
+      {/* Left section: Toggle Menu & Brand Name on Mobile */}
+      <div className="flex items-center gap-2">
         <button id="sidebar-toggle-btn" onClick={toggleSidebar} className="p-2 -ml-2 rounded-full hover:bg-hover-bg text-primary md:hidden flex items-center justify-center shrink-0">
           <span className="material-symbols-outlined">menu</span>
         </button>
@@ -103,51 +89,49 @@ export default function Header() {
         <div className="font-lexend font-bold text-lg text-primary tracking-tight md:hidden shrink-0">
           CnenDict
         </div>
-        
-        <div className="relative w-full hidden md:block ml-2">
-          <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-secondary text-xl">
-            search
-          </span>
-          <input
-            type="text"
-            placeholder={language === 'zh' ? "Nhập từ cần tra (Trung - Việt)..." : "Nhập từ cần tra (Anh - Việt)..."}
-            className="w-full pl-12 pr-4 py-2.5 bg-hover-bg rounded-full border border-transparent focus:border-sage focus:outline-none focus:ring-0 text-sm font-lexend text-primary placeholder:text-secondary"
-          />
-        </div>
       </div>
 
       {/* Right Actions section */}
       <div className="flex items-center space-x-2 md:space-x-4 ml-2 md:ml-6">
-        {/* Mobile Search Trigger */}
-        <button onClick={() => setIsMobileSearchOpen(true)} className="w-10 h-10 rounded-full hover:bg-hover-bg text-primary md:hidden flex items-center justify-center shrink-0">
-          <span className="material-symbols-outlined">search</span>
-        </button>
-
         {/* Language Toggle */}
         <div className="flex bg-hover-bg rounded-full p-1 border border-outline shrink-0">
           <button
             onClick={() => switchLanguage('zh')}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${
-              language === 'zh'
-                ? 'bg-primary text-white shadow-sm'
-                : 'text-secondary hover:text-primary'
-            }`}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${language === 'zh'
+              ? 'bg-primary text-white shadow-sm'
+              : 'text-secondary hover:text-primary'
+              }`}
           >
             <span>🇨🇳</span>
             <span className="hidden sm:inline">Trung</span>
           </button>
           <button
             onClick={() => switchLanguage('en')}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${
-              language === 'en'
-                ? 'bg-primary text-white shadow-sm'
-                : 'text-secondary hover:text-primary'
-            }`}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${language === 'en'
+              ? 'bg-primary text-white shadow-sm'
+              : 'text-secondary hover:text-primary'
+              }`}
           >
             <span>🇬🇧</span>
             <span className="hidden sm:inline">Anh</span>
           </button>
         </div>
+
+        {/* Level Badge */}
+        {isMounted && isAuthenticated && user?.levels?.[language as 'zh' | 'en'] && (
+          <div 
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline hover:bg-hover-bg cursor-pointer transition-colors"
+            title={`Kinh nghiệm: ${user.levels[language as 'zh' | 'en'].current_exp}/${user.levels[language as 'zh' | 'en'].exp_required} EXP`}
+            id="header-level-badge"
+          >
+            <span className="material-symbols-outlined filled text-[18px] text-amber-500 select-none">
+              star
+            </span>
+            <span className="font-bold text-sm text-primary">
+              Cấp {user.levels[language as 'zh' | 'en'].level}
+            </span>
+          </div>
+        )}
 
         {/* Gamification Streak */}
         {isMounted && isAuthenticated && isGamificationInit && (
@@ -200,31 +184,17 @@ export default function Header() {
               </div>
             )}
             <div className="relative">
-              <button 
-                className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold tracking-tight shadow-sm hover:opacity-90 overflow-hidden"
+              <UserAvatarContainer
+                user={user}
+                sizeClass="w-10 h-10"
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              >
-                {user.avatar ? (
-                  <Image 
-                    src={getMediaUrl(user.avatar) || ''} 
-                    alt="Avatar" 
-                    width={40} 
-                    height={40} 
-                    unoptimized
-                    className="w-full h-full object-cover" 
-                  />
-                ) : (
-                  user.first_name && user.last_name
-                    ? (user.first_name.charAt(0) + user.last_name.charAt(0)).toUpperCase()
-                    : (user.first_name || user.username).substring(0, 2).toUpperCase()
-                )}
-              </button>
-              
+              />
+
               {/* Dropdown Menu */}
               {isDropdownOpen && (
                 <>
-                  <div 
-                    className="fixed inset-0 z-40" 
+                  <div
+                    className="fixed inset-0 z-40"
                     onClick={() => setIsDropdownOpen(false)}
                   ></div>
                   <div className="absolute right-0 mt-2 w-56 bg-surface rounded-xl shadow-lg border border-outline py-2 z-50 animate-in fade-in slide-in-from-top-2">
@@ -237,9 +207,16 @@ export default function Header() {
 
                     {/* Linh Thach Section */}
                     <div className="px-4 py-2 border-b border-outline/50">
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-secondary uppercase tracking-wider">
-                        <span>💎</span>
-                        <span>Linh Thạch (ZH)</span>
+                      <div className="flex items-center justify-between text-[10px] font-bold text-secondary uppercase tracking-wider">
+                        <div className="flex items-center gap-1.5">
+                          <span>💎</span>
+                          <span>Linh Thạch (ZH)</span>
+                        </div>
+                        {user.levels?.zh && (
+                          <span className="text-[#6366F1] font-black normal-case">
+                            Cấp {user.levels.zh.level}
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center justify-between mt-1">
                         <span className="text-xl font-black text-primary leading-none">
@@ -261,9 +238,16 @@ export default function Header() {
 
                     {/* Coin Section */}
                     <div className="px-4 py-2 border-b border-outline/50 mb-1">
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-secondary uppercase tracking-wider">
-                        <span>🪙</span>
-                        <span>Coin (EN)</span>
+                      <div className="flex items-center justify-between text-[10px] font-bold text-secondary uppercase tracking-wider">
+                        <div className="flex items-center gap-1.5">
+                          <span>🪙</span>
+                          <span>Coin (EN)</span>
+                        </div>
+                        {user.levels?.en && (
+                          <span className="text-[#6366F1] font-black normal-case">
+                            Cấp {user.levels.en.level}
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center justify-between mt-1">
                         <span className="text-xl font-black text-primary leading-none">
@@ -283,7 +267,7 @@ export default function Header() {
                       </div>
                     </div>
 
-                    <Link 
+                    <Link
                       href={`/${language}/profile`}
                       onClick={() => setIsDropdownOpen(false)}
                       className="w-full text-left px-4 py-2 text-sm text-primary hover:bg-hover-bg flex items-center gap-2 transition-colors"
@@ -291,7 +275,7 @@ export default function Header() {
                       <span className="material-symbols-outlined text-[18px]">person</span>
                       Hồ sơ cá nhân
                     </Link>
-                    <button 
+                    <button
                       onClick={() => {
                         setIsDropdownOpen(false);
                         logout();
@@ -308,7 +292,7 @@ export default function Header() {
           </div>
         ) : (
           <div className="relative">
-            <button 
+            <button
               className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center hover:opacity-90 transition-opacity shadow-sm"
               onClick={() => setIsAuthModalOpen(true)}
               title="Đăng nhập"
@@ -336,7 +320,7 @@ export default function Header() {
                 <p className="text-xs font-bold leading-snug pr-3">
                   Đăng ký tài khoản mới để nhận ngay <strong>3 ngày trải nghiệm gói PRO miễn phí</strong>!
                 </p>
-                <button 
+                <button
                   onClick={() => setIsAuthModalOpen(true)}
                   className="mt-2.5 w-full py-1.5 bg-white font-extrabold text-[11px] rounded-lg shadow hover:bg-orange-50 transition-colors flex items-center justify-center gap-1"
                   style={{ color: '#ea580c' }}
@@ -357,6 +341,8 @@ export default function Header() {
         onClose={() => setScoreModalData(null)}
         data={scoreModalData}
       />
-    </header>
+      </header>
+      <LevelProgressBar language={language} />
+    </div>
   );
 }

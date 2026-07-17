@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
@@ -8,6 +8,9 @@ import { useAuthStore } from '@/store/useAuthStore';
 import AuthModal from '@/components/auth/AuthModal';
 import { checkGeneralWriting } from '@/lib/api/deepPractice';
 import { Loader2 } from 'lucide-react';
+import { useCoinStore } from '@/store/useCoinStore';
+import { useWebSocket } from '@/hooks/useWebSocket';
+import { getPendingWritingTask, getWritingTaskDetail } from '@/lib/api/coins';
 
 export default function WritingPage() {
   const params = useParams();
@@ -17,12 +20,120 @@ export default function WritingPage() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const tier = useSubscriptionStore((state) => state.tier);
-  const isFree = !tier || tier === 'Free';
+  const { wallets, config: coinConfig, fetchWalletBalances, fetchCoinConfig } = useCoinStore();
+  const balance = language === 'zh' ? wallets.zh.total : wallets.en.total;
+  const langName = language === 'zh' ? 'Linh Thạch' : 'Coin';
 
   const [text, setText] = useState('');
   const [isChecking, setIsChecking] = useState(false);
   const [result, setResult] = useState<any | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchWalletBalances();
+      fetchCoinConfig();
+    }
+  }, [isAuthenticated, fetchWalletBalances, fetchCoinConfig]);
+
+  // State recovery on mount: check if there's an active pending task
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const checkPending = async () => {
+      try {
+        const res = await getPendingWritingTask(language, 'general');
+        if (res.has_pending && res.task_id) {
+          setPendingTaskId(res.task_id);
+          setIsChecking(true);
+          if (res.sentence) setText(res.sentence);
+        }
+      } catch (err) {
+        console.error("Lỗi khi kiểm tra tác vụ pending:", err);
+      }
+    };
+    checkPending();
+  }, [isAuthenticated, language]);
+
+  // Polling fallback to check status periodically if we have a pending task
+  useEffect(() => {
+    if (!pendingTaskId) return;
+    let isMounted = true;
+    const interval = setInterval(async () => {
+      try {
+        const res = await getWritingTaskDetail(pendingTaskId);
+        if (!isMounted) return;
+        if (res.status === 'SUCCESS') {
+          setResult(res.result);
+          setIsChecking(false);
+          setPendingTaskId(null);
+          clearInterval(interval);
+          fetchWalletBalances(true);
+        } else if (res.status === 'FAILED') {
+          setErrorMsg(res.error || "Gặp lỗi khi chấm điểm bài viết.");
+          setIsChecking(false);
+          setPendingTaskId(null);
+          clearInterval(interval);
+          fetchWalletBalances(true);
+        }
+      } catch (err) {
+        console.error("Error polling writing task:", err);
+      }
+    }, 3000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [pendingTaskId, fetchWalletBalances]);
+
+  // WebSocket message receiver
+  useWebSocket({
+    onMessage: (msg) => {
+      if (msg.type === 'general_writing_check_complete') {
+        const payload = msg.payload as any;
+        if (payload && (payload.task_id === pendingTaskId || payload.sentence === text.trim())) {
+          setResult(payload.result);
+          setIsChecking(false);
+          setPendingTaskId(null);
+          fetchWalletBalances(true);
+        }
+      } else if (msg.type === 'general_writing_check_failed') {
+        const payload = msg.payload as any;
+        if (payload && (payload.task_id === pendingTaskId)) {
+          setErrorMsg(payload.error || "Gặp lỗi khi gửi yêu cầu chấm điểm.");
+          setIsChecking(false);
+          setPendingTaskId(null);
+          fetchWalletBalances(true);
+        }
+      }
+    }
+  });
+
+  const getLength = (val: string) => {
+    if (language === 'zh') {
+      return val.replace(/\s/g, '').length;
+    } else {
+      return val.trim().split(/\s+/).filter(Boolean).length;
+    }
+  };
+  const currentLength = getLength(text);
+
+  const calculateCost = () => {
+    if (currentLength === 0) return 0;
+    if (tier && tier !== 'Free') return 0; // VIP is free
+
+    const baseCost = language === 'zh'
+      ? (coinConfig?.writing_base_cost_zh ?? 1)
+      : (coinConfig?.writing_base_cost_en ?? 1);
+    const incrementCost = language === 'zh'
+      ? (coinConfig?.writing_increment_cost_zh ?? 1)
+      : (coinConfig?.writing_increment_cost_en ?? 1);
+
+    if (currentLength < 50) return baseCost;
+    return baseCost + (Math.floor((currentLength - 50) / 50) + 1) * incrementCost;
+  };
+  const cost = calculateCost();
 
   const handleCheck = async () => {
     if (!text.trim()) return;
@@ -57,10 +168,15 @@ export default function WritingPage() {
 
     try {
       const response = await checkGeneralWriting(text.trim(), language);
-      if (response.status === 'SUCCESS') {
+      if (response.status === 'PENDING' && response.task_id) {
+        setPendingTaskId(response.task_id);
+      } else if (response.status === 'SUCCESS') {
         setResult(response.result);
+        setIsChecking(false);
+        fetchWalletBalances(true);
       } else {
         setErrorMsg("Không thể nhận diện kết quả từ hệ thống.");
+        setIsChecking(false);
       }
     } catch (err: any) {
       console.error(err);
@@ -69,7 +185,6 @@ export default function WritingPage() {
       } else {
         setErrorMsg("Gặp lỗi khi gửi yêu cầu chấm điểm.");
       }
-    } finally {
       setIsChecking(false);
     }
   };
@@ -108,25 +223,6 @@ export default function WritingPage() {
                 Đăng nhập / Đăng ký
               </button>
             </div>
-          ) : isFree ? (
-            <div className="py-12 flex flex-col items-center justify-center text-center">
-              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 animate-pulse">
-                <span className="material-symbols-outlined text-primary text-4xl font-bold">lock</span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-primary mb-3">
-                {language === 'zh' ? 'Luyện Viết Tiếng Trung' : 'Luyện Viết Tiếng Anh'}
-              </h1>
-              <p className="text-secondary text-sm max-w-md mb-8 leading-relaxed">
-                Tính năng Luyện viết đoạn văn tự do và Nhận xét ngữ pháp chi tiết bằng AI chỉ dành cho tài khoản trả phí. Hãy nâng cấp tài khoản để bắt đầu học tập!
-              </p>
-              <Link
-                href={`/${language}/pricing`}
-                className="px-8 py-3 bg-primary text-white font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2 shadow-sm"
-              >
-                <span className="material-symbols-outlined text-base">workspace_premium</span>
-                Nâng cấp tài khoản
-              </Link>
-            </div>
           ) : (
             <>
               <div className="flex flex-col items-center mb-6 text-center">
@@ -161,20 +257,36 @@ export default function WritingPage() {
                 </div>
               )}
 
-              <button
-                onClick={handleCheck}
-                disabled={isChecking || !text.trim()}
-                className="w-full sm:w-auto self-end px-8 py-3 bg-primary text-white font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isChecking ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Đang chấm điểm bài viết...
-                  </>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-2 mb-4">
+                {cost > 0 ? (
+                  <div className="text-xs text-secondary flex items-center gap-1.5 font-medium">
+                    <span className="material-symbols-outlined text-primary text-base">payments</span>
+                    Chi phí: <span className="font-bold text-primary">{cost} {langName}</span>
+                    <span className="opacity-60">•</span>
+                    Số dư: <span className={`font-bold ${balance >= cost ? 'text-emerald-600' : 'text-red-500'}`}>{balance} {langName}</span>
+                  </div>
                 ) : (
-                  'Gửi để chấm điểm'
+                  <div className="text-xs text-secondary flex items-center gap-1.5 font-medium">
+                    <span className="material-symbols-outlined text-emerald-600 text-base">workspace_premium</span>
+                    VIP: Miễn phí chấm điểm
+                  </div>
                 )}
-              </button>
+                
+                <button
+                  onClick={handleCheck}
+                  disabled={isChecking || !text.trim() || (cost > 0 && balance < cost)}
+                  className="w-full sm:w-auto px-8 py-3 bg-primary text-white font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isChecking ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+                      Đang chấm điểm bài viết...
+                    </>
+                  ) : (
+                    'Gửi để chấm điểm'
+                  )}
+                </button>
+              </div>
 
               {result && (
                 <div className="mt-8 p-6 bg-surface-container-low border border-outline rounded-2xl animate-in fade-in slide-in-from-top-3">

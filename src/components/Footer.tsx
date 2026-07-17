@@ -9,7 +9,7 @@ export default function Footer() {
   const pathname = usePathname();
   const language = (params?.lang as string) || 'zh';
 
-  if (pathname && (pathname.includes('/exam/take/') || pathname.includes('/ai-chat'))) {
+  if (pathname && (pathname.includes('/exam/take/') || pathname.includes('/ai-chat') || pathname.includes('/community/post/'))) {
     return null;
   }
 
@@ -36,6 +36,9 @@ export default function Footer() {
             </Link>
             <Link href={`/${language}/terms`} className="hover:text-primary transition-colors">
               Điều khoản dịch vụ
+            </Link>
+            <Link href={`/${language}/community-rules`} className="hover:text-primary transition-colors">
+              Điều khoản cộng đồng
             </Link>
             <Link href={`/${language}/privacy`} className="hover:text-primary transition-colors">
               Chính sách bảo mật

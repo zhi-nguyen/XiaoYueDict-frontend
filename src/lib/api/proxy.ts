@@ -16,7 +16,8 @@ export async function handleProxy(
   // Django API endpoints expect a trailing slash. Next.js router automatically
   // strips trailing slashes, which breaks POST/PUT/PATCH/DELETE requests.
   // We append a trailing slash if it doesn't already have one, and it's not a file.
-  if (pathname.startsWith('/api') && !relativePath.endsWith('/') && !relativePath.includes('.')) {
+  // We exclude /api/image routes as FastAPI does not require trailing slashes.
+  if (pathname.startsWith('/api') && !pathname.startsWith('/api/image') && !relativePath.endsWith('/') && !relativePath.includes('.')) {
     relativePath += '/';
   }
 

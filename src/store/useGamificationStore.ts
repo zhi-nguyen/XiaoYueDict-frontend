@@ -35,6 +35,12 @@ interface GamificationState {
   // --- Raw history (kept for totalWords calculation in badge logic) ---
   rawHistory: StudyHistoryResponse[];
 
+  // --- Levels progress ---
+  levels: {
+    zh: { level: number; current_exp: number; exp_required: number; total_exp: number; };
+    en: { level: number; current_exp: number; exp_required: number; total_exp: number; };
+  } | null;
+
   // --- Loading / init flags ---
   /** True while the initial streak fetch is in progress (used by StreakCard). */
   isLoading: boolean;
@@ -67,6 +73,7 @@ export const useGamificationStore = create<GamificationState>((set, get) => ({
   todayDuration: 0,
   weeklyHistory: [],
   rawHistory: [],
+  levels: null,
   isLoading: false,
   isLoadingDashboard: false,
   isInitialized: false,
@@ -110,8 +117,8 @@ export const useGamificationStore = create<GamificationState>((set, get) => ({
 
       if (data.wallets) {
         useCoinStore.getState().setWallets({
-          zh: { paid: data.wallets.zh.paid, free: data.wallets.zh.free, total: data.wallets.zh.total },
-          en: { paid: data.wallets.en.paid, free: data.wallets.en.free, total: data.wallets.en.total }
+          zh: { paid: data.wallets.zh.paid, free: data.wallets.zh.free, shop: data.wallets.zh.shop, total: data.wallets.zh.total },
+          en: { paid: data.wallets.en.paid, free: data.wallets.en.free, shop: data.wallets.en.shop, total: data.wallets.en.total }
         });
       }
 
@@ -123,6 +130,7 @@ export const useGamificationStore = create<GamificationState>((set, get) => ({
         weeklyHistory: mapHistoryToWeeklyChart(data.history),
         todayWords: todayRecord?.vocabulary_learned ?? 0,
         todayDuration: todayRecord ? Math.floor(todayRecord.study_duration_seconds / 60) : 0,
+        levels: data.levels ?? null,
         isInitialized: true,
         isLoadingDashboard: false,
       });
@@ -185,6 +193,7 @@ export const useGamificationStore = create<GamificationState>((set, get) => ({
       todayDuration: 0,
       weeklyHistory: [],
       rawHistory: [],
+      levels: null,
       isInitialized: false,
       isLoading: false,
       isLoadingDashboard: false,

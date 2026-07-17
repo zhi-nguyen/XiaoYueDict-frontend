@@ -64,8 +64,12 @@ export interface GamificationDashboardResponse {
   target: GamificationTarget;
   history: StudyHistoryResponse[];
   wallets?: {
-    zh: { name: string; paid: number; free: number; total: number; };
-    en: { name: string; paid: number; free: number; total: number; };
+    zh: { name: string; paid: number; free: number; shop: number; total: number; };
+    en: { name: string; paid: number; free: number; shop: number; total: number; };
+  };
+  levels?: {
+    zh: { level: number; current_exp: number; exp_required: number; total_exp: number; };
+    en: { level: number; current_exp: number; exp_required: number; total_exp: number; };
   };
 }
 

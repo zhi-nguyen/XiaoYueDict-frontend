@@ -9,6 +9,7 @@ import { useGamificationStore } from '@/store/useGamificationStore';
 import { createStudySession, finishStudySession, CardResult } from '@/lib/api/coins';
 import { useCoinStore } from '@/store/useCoinStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
 
 
 interface FlashcardPlayModalProps {
@@ -67,6 +68,11 @@ export default function FlashcardPlayModal({
   const [cardResults, setCardResults] = useState<CardResult[]>([]);
   const [coinsEarned, setCoinsEarned] = useState(0);
   const [isCapped, setIsCapped] = useState(false);
+  const [expEarned, setExpEarned] = useState(0);
+  const [isExpCapped, setIsExpCapped] = useState(false);
+  const [levelUp, setLevelUp] = useState(false);
+  const [levelAfter, setLevelAfter] = useState<number | null>(null);
+  const [rewardsGranted, setRewardsGranted] = useState<any[]>([]);
   const { wallets } = useCoinStore();
   const staggeredTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -321,6 +327,22 @@ export default function FlashcardPlayModal({
             setCoinsEarned(finishRes.coins_earned);
             setIsCapped(!!finishRes.is_capped);
             useCoinStore.getState().setWallets(finishRes.wallet_balances);
+            setExpEarned(finishRes.exp_earned || 0);
+            setIsExpCapped(!!finishRes.exp_capped);
+            setLevelUp(!!finishRes.level_up);
+            setLevelAfter(finishRes.level_after || null);
+            const rewards = finishRes.rewards_granted || [];
+            setRewardsGranted(rewards);
+
+            // Gửi thông báo Toast cho từng phần thưởng nhận được
+            if (rewards.length > 0) {
+              const { addToast } = useNotificationStore.getState();
+              rewards.forEach((r: any) => {
+                const rarityLabel = r.rarity === 'common' ? 'Phổ thông' : r.rarity === 'rare' ? 'Hiếm' : r.rarity === 'epic' ? 'Sử thi' : 'Huyền thoại';
+                const typeLabel = r.reward_type === 'avatar_frame' ? 'Khung đại diện' : r.reward_type === 'title' ? 'Danh hiệu' : 'Vật phẩm';
+                addToast(`🎁 Nhận được: ${r.quantity}x ${r.reward_name} (${typeLabel} - ${rarityLabel})`, 'achievement');
+              });
+            }
           }
         } catch (err) {
           console.error('Failed to finish study session in backend:', err);
@@ -787,6 +809,17 @@ export default function FlashcardPlayModal({
                       </span>
                     </div>
                   )}
+                  {expEarned > 0 && (
+                    <div className="grid grid-cols-2 px-4 py-3 text-left bg-indigo-50/30 font-bold">
+                      <span className="text-indigo-600 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs">trending_up</span>
+                        Kinh nghiệm nhận được
+                      </span>
+                      <span className="text-right text-indigo-700 font-black">
+                        +{expEarned} EXP
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -796,6 +829,36 @@ export default function FlashcardPlayModal({
                   <div>
                     <strong>Đạt giới hạn hàng ngày:</strong> Bạn đã đạt mức trần nhận Linh Thạch/Coin miễn phí cho ngày hôm nay. Hãy tiếp tục học vào ngày mai để tích lũy thêm điểm thưởng!
                   </div>
+                </div>
+              )}
+
+              {isExpCapped && (
+                <div className="w-full max-w-sm p-3.5 bg-indigo-50 border border-indigo-200/60 rounded-2xl text-xs text-indigo-800 text-left flex items-start gap-2 shrink-0 mt-2">
+                  <span className="material-symbols-outlined text-indigo-600 text-base shrink-0 select-none mt-0.5 animate-pulse">info</span>
+                  <div>
+                    <strong>Đạt giới hạn EXP:</strong> Bạn đã đạt trần nhận EXP miễn phí cho ngày hôm nay (5/5 phiên). Hãy tiếp tục học vào ngày mai để thăng cấp nhé!
+                  </div>
+                </div>
+              )}
+
+              {levelUp && (
+                <div className="w-full max-w-sm p-4 bg-gradient-to-br from-yellow-50 to-amber-50 border border-amber-200 rounded-2xl text-left flex flex-col gap-2 shrink-0 mt-2 shadow-sm animate-bounce">
+                  <div className="flex items-center gap-2 text-amber-800 font-bold">
+                    <span className="material-symbols-outlined text-amber-500 text-xl animate-pulse">workspace_premium</span>
+                    <span>TĂNG CẤP! Level mới: {levelAfter}</span>
+                  </div>
+                  {rewardsGranted.length > 0 && (
+                    <div className="text-xs text-secondary mt-1">
+                      <p className="font-semibold text-amber-700">Phần thưởng nhận được:</p>
+                      <ul className="list-disc list-inside mt-1 space-y-1">
+                        {rewardsGranted.map((r, i) => (
+                          <li key={i} className="truncate">
+                            {r.quantity}x {r.reward_name} ({r.rarity === 'common' ? 'Thường' : r.rarity === 'rare' ? 'Hiếm' : r.rarity === 'epic' ? 'Sử thi' : 'Huyền thoại'})
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -16,6 +16,7 @@ const navItems = [
   { href: '/ai-chat', icon: 'forum', label: 'Trò chuyện AI' },
   { href: '/exam', icon: 'emoji_events', label: 'Luyện Thi' },
   { href: '/notes', icon: 'menu_book', label: 'Sổ Tay' },
+  { href: '/shop', icon: 'storefront', label: 'Cửa Hàng' },
   { href: '/community', icon: 'groups', label: 'Cộng đồng' },
 ];
 
@@ -89,13 +90,6 @@ function SidebarNav({
 
       {/* Secondary Menu (Upcoming) */}
       <div className="space-y-1 opacity-50 px-3">
-        <div className={`flex items-center h-12 text-secondary/70 ${isDesktopSidebarCollapsed ? 'md:justify-center md:px-0' : ''}`}>
-          <span className="material-symbols-outlined w-6 flex justify-center shrink-0">headphones</span>
-          <div className={`flex flex-col justify-center whitespace-nowrap transition-all duration-300 ml-3 ${isDesktopSidebarCollapsed ? 'md:opacity-0 md:w-0 md:ml-0 overflow-hidden' : 'md:opacity-100 md:w-auto'}`}>
-            <span className="font-medium text-[17px] leading-tight">Cửa Hàng</span>
-            <span className="text-[12px] font-bold uppercase tracking-wider">Sắp ra mắt</span>
-          </div>
-        </div>
         <div className={`flex items-center h-12 text-secondary/70 ${isDesktopSidebarCollapsed ? 'md:justify-center md:px-0' : ''}`}>
           <span className="material-symbols-outlined w-6 flex justify-center shrink-0">videogame_asset</span>
           <div className={`flex flex-col justify-center whitespace-nowrap transition-all duration-300 ml-3 ${isDesktopSidebarCollapsed ? 'md:opacity-0 md:w-0 md:ml-0 overflow-hidden' : 'md:opacity-100 md:w-auto'}`}>

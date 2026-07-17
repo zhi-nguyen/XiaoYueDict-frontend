@@ -3,6 +3,7 @@ import { apiClient, djangoClient } from '@/lib/apiClient';
 export interface WalletBalance {
   paid: number;
   free: number;
+  shop: number;
   total: number;
 }
 
@@ -128,5 +129,51 @@ export async function getPendingWritingTask(lang: string, taskType: string): Pro
 
 export async function getWritingTaskDetail(taskId: string): Promise<{ task_id: string; status: 'PENDING' | 'SUCCESS' | 'FAILED'; sentence: string; target_word: string; lang: string; task_type: string; result?: any; error?: string }> {
   const response = await djangoClient.get(`/flashcard/writing-tasks/${taskId}/`);
+  return response.data;
+}
+
+export interface ShopItem {
+  id: string;
+  name: string;
+  reward_type: 'avatar_frame' | 'title' | 'bonus_coins' | 'item' | 'badge';
+  description: string;
+  image_url: string;
+  title_text: string;
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  ui_metadata: any;
+  is_sellable: boolean;
+  price_free: number;
+  price_paid: number;
+  price_shop: number;
+}
+
+export interface PurchaseShopItemResponse {
+  status: 'success';
+  message: string;
+  inventory: {
+    id: string;
+    reward_item: ShopItem;
+    quantity: number;
+    is_equipped: boolean;
+    acquired_at: string;
+  };
+  wallet_balances: AllWalletBalances;
+}
+
+export async function getShopItems(): Promise<ShopItem[]> {
+  const response = await apiClient.get('/gamification/shop/items/');
+  return response.data;
+}
+
+export async function purchaseShopItem(
+  rewardItemId: string,
+  lang: 'zh' | 'en',
+  paymentMethod: 'free' | 'paid' | 'shop'
+): Promise<PurchaseShopItemResponse> {
+  const response = await apiClient.post('/gamification/shop/purchase/', {
+    reward_item_id: rewardItemId,
+    lang,
+    payment_method: paymentMethod,
+  });
   return response.data;
 }

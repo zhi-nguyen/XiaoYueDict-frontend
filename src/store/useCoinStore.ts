@@ -3,25 +3,31 @@ import { useAuthStore } from '@/store/useAuthStore';
 import {
   getWalletBalance,
   getCoinConfig,
+  getShopItems,
   WalletBalance,
   AllWalletBalances,
   CoinConfig,
+  ShopItem,
 } from '@/lib/api/coins';
 
 interface CoinState {
   wallets: AllWalletBalances;
   config: CoinConfig | null;
+  shopItems: ShopItem[];
   isInitialized: boolean;
   isLoading: boolean;
+  isLoadingShopItems: boolean;
+  isShopItemsInitialized: boolean;
 
   fetchWalletBalances: (force?: boolean) => Promise<void>;
   fetchCoinConfig: () => Promise<void>;
+  fetchShopItems: (force?: boolean) => Promise<void>;
   setWallets: (data: AllWalletBalances) => void;
   optimisticSpend: (lang: string, amount: number) => void;
   resetStore: () => void;
 }
 
-const DEFAULT_BALANCE: WalletBalance = { paid: 0, free: 0, total: 0 };
+const DEFAULT_BALANCE: WalletBalance = { paid: 0, free: 0, shop: 0, total: 0 };
 const DEFAULT_WALLETS: AllWalletBalances = {
   zh: { ...DEFAULT_BALANCE },
   en: { ...DEFAULT_BALANCE },
@@ -30,8 +36,11 @@ const DEFAULT_WALLETS: AllWalletBalances = {
 export const useCoinStore = create<CoinState>((set, get) => ({
   wallets: DEFAULT_WALLETS,
   config: null,
+  shopItems: [],
   isInitialized: false,
   isLoading: false,
+  isLoadingShopItems: false,
+  isShopItemsInitialized: false,
 
   fetchWalletBalances: async (force?: boolean) => {
     if (!force && get().isInitialized) return;
@@ -60,6 +69,21 @@ export const useCoinStore = create<CoinState>((set, get) => ({
     }
   },
 
+  fetchShopItems: async (force?: boolean) => {
+    if (!force && get().isShopItemsInitialized) return;
+    if (!useAuthStore.getState().isAuthenticated) return;
+
+    set({ isLoadingShopItems: true });
+    try {
+      const data = await getShopItems();
+      set({ shopItems: data, isShopItemsInitialized: true });
+    } catch (error) {
+      console.error('Failed to fetch shop items:', error);
+    } finally {
+      set({ isLoadingShopItems: false });
+    }
+  },
+
   setWallets: (data: AllWalletBalances) => {
     set({ wallets: data, isInitialized: true });
   },
@@ -82,6 +106,7 @@ export const useCoinStore = create<CoinState>((set, get) => ({
       wallets[lang as 'zh' | 'en'] = {
         paid: newPaid,
         free: newFree,
+        shop: current.shop,
         total: newPaid + newFree,
       };
 
@@ -93,8 +118,11 @@ export const useCoinStore = create<CoinState>((set, get) => ({
     set({
       wallets: DEFAULT_WALLETS,
       config: null,
+      shopItems: [],
       isInitialized: false,
       isLoading: false,
+      isLoadingShopItems: false,
+      isShopItemsInitialized: false,
     });
   },
 }));
@@ -107,6 +135,7 @@ useAuthStore.subscribe((state) => {
     if (state.isAuthenticated) {
       useCoinStore.getState().fetchWalletBalances();
       useCoinStore.getState().fetchCoinConfig();
+      useCoinStore.getState().fetchShopItems();
     } else {
       useCoinStore.getState().resetStore();
     }

@@ -504,20 +504,18 @@ export default function ChatView({
               onChange={(e) => setInputValue(e.target.value)}
               disabled={isSending || !isConnected || balance < chatCost}
               placeholder={balance < chatCost ? `Vui lòng nạp thêm ${currentLang === 'zh' ? 'Linh Thạch' : 'Coin'}...` : isConnected ? 'Nhập tin nhắn...' : 'Đang kết nối...'}
-              className="flex-1 border-none focus:ring-0 bg-transparent text-sm md:text-body-base py-3 px-1 md:px-2 placeholder:text-on-surface-variant/40 outline-none focus:outline-none text-slate-800 disabled:opacity-50"
+              className="flex-1 min-w-0 border-none focus:ring-0 bg-transparent text-sm md:text-body-base py-3 px-1 md:px-2 placeholder:text-on-surface-variant/40 outline-none focus:outline-none text-slate-800 disabled:opacity-50"
               style={chineseFontStyle}
             />
 
-            <div className="shrink-0">
-              <button
-                type="submit"
-                disabled={isSending || !inputValue.trim() || !isConnected || balance < chatCost}
-                className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-primary text-white hover:bg-[#334155] active:scale-95 flex items-center justify-center shadow-lg transition-all disabled:opacity-50 focus:outline-none shrink-0"
-                title="Gửi"
-              >
-                <span className="material-symbols-outlined text-[18px] md:text-[20px]">send</span>
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={isSending || !inputValue.trim() || !isConnected || balance < chatCost}
+              className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-primary text-white hover:bg-[#334155] active:scale-95 flex items-center justify-center shadow-lg transition-all disabled:opacity-50 focus:outline-none shrink-0"
+              title="Gửi"
+            >
+              <span className="material-symbols-outlined text-[18px] md:text-[20px]">send</span>
+            </button>
           </div>
           
           {/* Cost Indicator & Balance details */}

@@ -16,6 +16,7 @@ import NotificationPanel from '@/components/NotificationPanel';
 import ToastContainer from '@/components/ToastContainer';
 import ScoreResultModal from '@/components/ScoreResultModal';
 import { getMediaUrl } from '@/lib/mediaUtils';
+import UserAvatarContainer from '@/components/UserAvatarContainer';
 
 export default function Header() {
   const params = useParams();
@@ -165,25 +166,11 @@ export default function Header() {
               </div>
             )}
             <div className="relative">
-              <button
-                className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold tracking-tight shadow-sm hover:opacity-90 overflow-hidden"
+              <UserAvatarContainer
+                user={user}
+                sizeClass="w-10 h-10"
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              >
-                {user.avatar ? (
-                  <Image
-                    src={getMediaUrl(user.avatar) || ''}
-                    alt="Avatar"
-                    width={40}
-                    height={40}
-                    unoptimized
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  user.first_name && user.last_name
-                    ? (user.first_name.charAt(0) + user.last_name.charAt(0)).toUpperCase()
-                    : (user.first_name || user.username).substring(0, 2).toUpperCase()
-                )}
-              </button>
+              />
 
               {/* Dropdown Menu */}
               {isDropdownOpen && (
@@ -202,9 +189,16 @@ export default function Header() {
 
                     {/* Linh Thach Section */}
                     <div className="px-4 py-2 border-b border-outline/50">
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-secondary uppercase tracking-wider">
-                        <span>💎</span>
-                        <span>Linh Thạch (ZH)</span>
+                      <div className="flex items-center justify-between text-[10px] font-bold text-secondary uppercase tracking-wider">
+                        <div className="flex items-center gap-1.5">
+                          <span>💎</span>
+                          <span>Linh Thạch (ZH)</span>
+                        </div>
+                        {user.levels?.zh && (
+                          <span className="text-[#6366F1] font-black normal-case">
+                            Cấp {user.levels.zh.level}
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center justify-between mt-1">
                         <span className="text-xl font-black text-primary leading-none">
@@ -226,9 +220,16 @@ export default function Header() {
 
                     {/* Coin Section */}
                     <div className="px-4 py-2 border-b border-outline/50 mb-1">
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-secondary uppercase tracking-wider">
-                        <span>🪙</span>
-                        <span>Coin (EN)</span>
+                      <div className="flex items-center justify-between text-[10px] font-bold text-secondary uppercase tracking-wider">
+                        <div className="flex items-center gap-1.5">
+                          <span>🪙</span>
+                          <span>Coin (EN)</span>
+                        </div>
+                        {user.levels?.en && (
+                          <span className="text-[#6366F1] font-black normal-case">
+                            Cấp {user.levels.en.level}
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center justify-between mt-1">
                         <span className="text-xl font-black text-primary leading-none">

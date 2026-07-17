@@ -35,6 +35,12 @@ interface GamificationState {
   // --- Raw history (kept for totalWords calculation in badge logic) ---
   rawHistory: StudyHistoryResponse[];
 
+  // --- Levels progress ---
+  levels: {
+    zh: { level: number; current_exp: number; exp_required: number; total_exp: number; };
+    en: { level: number; current_exp: number; exp_required: number; total_exp: number; };
+  } | null;
+
   // --- Loading / init flags ---
   /** True while the initial streak fetch is in progress (used by StreakCard). */
   isLoading: boolean;
@@ -67,6 +73,7 @@ export const useGamificationStore = create<GamificationState>((set, get) => ({
   todayDuration: 0,
   weeklyHistory: [],
   rawHistory: [],
+  levels: null,
   isLoading: false,
   isLoadingDashboard: false,
   isInitialized: false,
@@ -123,6 +130,7 @@ export const useGamificationStore = create<GamificationState>((set, get) => ({
         weeklyHistory: mapHistoryToWeeklyChart(data.history),
         todayWords: todayRecord?.vocabulary_learned ?? 0,
         todayDuration: todayRecord ? Math.floor(todayRecord.study_duration_seconds / 60) : 0,
+        levels: data.levels ?? null,
         isInitialized: true,
         isLoadingDashboard: false,
       });
@@ -185,6 +193,7 @@ export const useGamificationStore = create<GamificationState>((set, get) => ({
       todayDuration: 0,
       weeklyHistory: [],
       rawHistory: [],
+      levels: null,
       isInitialized: false,
       isLoading: false,
       isLoadingDashboard: false,

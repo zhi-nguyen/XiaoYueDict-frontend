@@ -67,6 +67,10 @@ export interface GamificationDashboardResponse {
     zh: { name: string; paid: number; free: number; total: number; };
     en: { name: string; paid: number; free: number; total: number; };
   };
+  levels?: {
+    zh: { level: number; current_exp: number; exp_required: number; total_exp: number; };
+    en: { level: number; current_exp: number; exp_required: number; total_exp: number; };
+  };
 }
 
 export const getGamificationDashboard = async (): Promise<GamificationDashboardResponse> => {

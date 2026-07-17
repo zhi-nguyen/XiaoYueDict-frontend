@@ -8,6 +8,7 @@ import { vi } from 'date-fns/locale';
 import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
 import { getMediaUrl } from '@/lib/mediaUtils';
+import UserAvatarContainer from '@/components/UserAvatarContainer';
 
 interface PostCommentSectionProps {
   postId: string;
@@ -112,13 +113,10 @@ export const PostCommentSection: React.FC<PostCommentSectionProps> = ({ postId, 
 
       {/* Write Comment Form */}
       <form onSubmit={handleSubmit} className="flex gap-3">
-        <div className="w-8 h-8 rounded-full overflow-hidden border border-[#E2E8F0] bg-slate-55 flex-shrink-0 flex items-center justify-center">
-          {user?.avatar ? (
-            <img src={getMediaUrl(user.avatar) || ''} alt="My avatar" className="w-full h-full object-cover" />
-          ) : (
-            <span className="material-symbols-outlined text-slate-400 text-sm">person</span>
-          )}
-        </div>
+        <UserAvatarContainer 
+          user={user} 
+          sizeClass="w-8 h-8"
+        />
         <div className="flex-1 flex gap-2 min-w-0">
           <input
             type="text"
@@ -153,13 +151,10 @@ export const PostCommentSection: React.FC<PostCommentSectionProps> = ({ postId, 
             const isCommentAuthor = user?.id === comment.user?.id;
             return (
               <div key={comment.id} className="flex gap-3 items-start">
-                <div className="w-8 h-8 rounded-full overflow-hidden border border-[#E2E8F0] bg-slate-55 flex-shrink-0 flex items-center justify-center">
-                  {comment.user?.avatar ? (
-                    <img src={getMediaUrl(comment.user.avatar) || ''} alt={comment.user.full_name || comment.user.username} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="material-symbols-outlined text-slate-400 text-sm">person</span>
-                  )}
-                </div>
+                <UserAvatarContainer 
+                  user={comment.user} 
+                  sizeClass="w-8 h-8"
+                />
                 {/* Individual comment balloon similar to examples.html */}
                 <div className="flex-1 bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-sm flex flex-col gap-1 min-w-0">
                   <div className="flex items-center justify-between">

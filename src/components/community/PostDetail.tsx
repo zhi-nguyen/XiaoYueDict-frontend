@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
 import { getMediaUrl } from '@/lib/mediaUtils';
+import UserAvatarContainer from '@/components/UserAvatarContainer';
 
 interface PostDetailProps {
   postId: string;
@@ -168,13 +169,10 @@ export const PostDetail: React.FC<PostDetailProps> = ({ postId, lang }) => {
             {/* Author Header */}
             <div className="flex justify-between items-start">
               <div className="flex gap-3">
-                <div className="w-11 h-11 rounded-full overflow-hidden border border-[#E2E8F0] bg-slate-50 flex-shrink-0 flex items-center justify-center">
-                  {currentPost.author?.avatar ? (
-                    <img src={getMediaUrl(currentPost.author.avatar) || ''} alt={currentPost.author.full_name || currentPost.author.username} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="material-symbols-outlined text-slate-400 text-2xl">person</span>
-                  )}
-                </div>
+                <UserAvatarContainer 
+                  user={currentPost.author} 
+                  sizeClass="w-11 h-11"
+                />
                 <div className="flex flex-col">
                   <span className="text-sm font-bold text-[#0b1c30] font-lexend">
                     {currentPost.author?.full_name || currentPost.author?.username || 'Cộng đồng viên'}

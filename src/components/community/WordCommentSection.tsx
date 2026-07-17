@@ -8,6 +8,7 @@ import { vi } from 'date-fns/locale';
 import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
 import { getMediaUrl } from '@/lib/mediaUtils';
+import UserAvatarContainer from '@/components/UserAvatarContainer';
 
 interface WordCommentSectionProps {
   wordId: string;
@@ -122,13 +123,10 @@ export const WordCommentSection: React.FC<WordCommentSectionProps> = ({ wordId, 
       {/* Form viết bình luận (chỉ hiển thị nếu user chưa comment từ này) */}
       {!hasUserCommented ? (
         <form onSubmit={handleSubmit} className="flex gap-2.5 items-start">
-          <div className="w-7 h-7 rounded-full overflow-hidden border border-slate-800 bg-slate-950 flex-shrink-0 flex items-center justify-center">
-            {user?.avatar ? (
-              <img src={getMediaUrl(user.avatar) || ''} alt="Avatar" className="w-full h-full object-cover" />
-            ) : (
-              <span className="material-symbols-outlined text-slate-500 text-xs">person</span>
-            )}
-          </div>
+          <UserAvatarContainer 
+            user={user} 
+            sizeClass="w-7 h-7"
+          />
           <div className="flex-1 flex gap-2">
             <input
               type="text"

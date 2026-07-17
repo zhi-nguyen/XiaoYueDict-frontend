@@ -9,6 +9,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import AlertModal from '@/components/AlertModal';
 import ConfirmModal from '@/components/ConfirmModal';
 import { getMediaUrl } from '@/lib/mediaUtils';
+import UserAvatarContainer from '@/components/UserAvatarContainer';
 
 interface PostCardProps {
   post: any;
@@ -105,13 +106,10 @@ export const PostCard: React.FC<PostCardProps> = ({ post, lang, onReportClick, o
         {/* Header Info */}
         <div className="flex justify-between items-start">
           <div className="flex gap-3">
-            <div className="w-11 h-11 rounded-full overflow-hidden border border-[#E2E8F0] bg-slate-50 flex-shrink-0 flex items-center justify-center">
-              {post.author?.avatar ? (
-                <img src={getMediaUrl(post.author.avatar) || ''} alt={post.author.full_name || post.author.username} className="w-full h-full object-cover" />
-              ) : (
-                <span className="material-symbols-outlined text-slate-400 text-2xl">person</span>
-              )}
-            </div>
+            <UserAvatarContainer 
+              user={post.author} 
+              sizeClass="w-11 h-11"
+            />
             <div className="flex flex-col">
               <h4 className="text-sm font-bold text-[#0b1c30] font-lexend">
                 {post.author?.full_name || post.author?.username || 'Cộng đồng viên'}

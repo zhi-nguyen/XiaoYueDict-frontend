@@ -1,15 +1,19 @@
 "use client";
 
 import React, { useEffect, useMemo } from 'react';
+import { useParams } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useGamificationStore } from '@/store/useGamificationStore';
 import DailyTargetCard from '@/components/dashboard/DailyTargetCard';
 import StreakCard from '@/components/dashboard/StreakCard';
 import BadgesCard from '@/components/dashboard/BadgesCard';
+import LevelCard from '@/components/dashboard/LevelCard';
 import WeeklyChart from '@/components/dashboard/WeeklyChart';
 
 export default function Dashboard() {
-  const { user } = useAuthStore();
+  const params = useParams();
+  const language = (params?.lang as string) === 'en' ? 'en' : 'zh';
+  const { user, isAuthenticated } = useAuthStore();
   const {
     currentStreak,
     maxStreak,
@@ -18,16 +22,17 @@ export default function Dashboard() {
     todayDuration,
     weeklyHistory,
     rawHistory,
+    levels,
     isLoadingDashboard,
     fetchDashboardData,
   } = useGamificationStore();
 
-  // Fetch all dashboard data once on mount.
-  // fetchDashboardData is stable (defined inside Zustand store), so the
-  // dependency array is safe — this runs exactly once per mount.
+  // Fetch all dashboard data once authenticated.
   useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
+    if (isAuthenticated) {
+      fetchDashboardData();
+    }
+  }, [isAuthenticated, fetchDashboardData]);
 
   // Compute total words across entire history for badge unlock logic.
   // Memoized to avoid summation on every render; only recalculates when
@@ -62,7 +67,8 @@ export default function Dashboard() {
               Theo dõi tiến độ và thành tựu của bạn, {user ? (user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user.username) : ''}!
             </p>
           </div>
-
+          {/* Level progress */}
+          <LevelCard levels={levels} lang={language} isLoading={isLoadingDashboard} />
           {/* Stats cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <DailyTargetCard
@@ -74,6 +80,8 @@ export default function Dashboard() {
             <StreakCard currentStreak={currentStreak} maxStreak={maxStreak} />
             <BadgesCard maxStreak={maxStreak} totalWords={totalWords} />
           </div>
+
+
 
           {/* Weekly bar chart */}
           <WeeklyChart data={weeklyHistory} isLoading={isLoadingDashboard} />

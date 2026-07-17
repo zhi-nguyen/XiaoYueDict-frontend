@@ -20,6 +20,7 @@ export default function AIChatPage() {
   const lang = (params?.lang as string) || 'zh';
 
   const { user } = useAuthStore();
+  const userId = user?.id;
 
   // Navigation states (Zalo-style 3-view layout)
   const [currentView, setCurrentView] = useState<'list' | 'chat'>('list');
@@ -342,7 +343,7 @@ export default function AIChatPage() {
     stopAudio();
     setIsConnected(false);
 
-    if (!user) {
+    if (!userId) {
       isConnectingRef.current = false;
       return;
     }
@@ -398,7 +399,7 @@ export default function AIChatPage() {
       console.error('Failed to establish WebSocket connection:', err);
       isConnectingRef.current = false;
     }
-  }, [user, stopAudio, handleWsMessage]);
+  }, [userId, stopAudio, handleWsMessage]);
 
   // Delete the current tutor persona and all related messages
   const executeDeletePersona = async () => {
@@ -510,7 +511,7 @@ export default function AIChatPage() {
 
   // Initialize view and websocket on mount
   useEffect(() => {
-    if (user) {
+    if (userId) {
       fetchPersonas();
       connectSocket();
       fetchWalletBalances();
@@ -525,7 +526,7 @@ export default function AIChatPage() {
       }
       isConnectingRef.current = false;
     };
-  }, [connectSocket, stopAudio, user, fetchWalletBalances, fetchCoinConfig]);
+  }, [connectSocket, stopAudio, userId, fetchWalletBalances, fetchCoinConfig]);
 
   // Load chat history when active tutor changes
   useEffect(() => {

@@ -17,6 +17,7 @@ const PERSISTENT_EVENT_TYPES = new Set([
   'subscription_change',
   'achievement',
   'system',
+  'level_up',
 ]);
 
 /**
@@ -71,6 +72,35 @@ export function useNotificationWebSocket() {
         });
 
         addToast(msg.title || 'Thông báo mới', msg.type);
+
+        // Hiển thị chi tiết từng phần thưởng khi lên cấp qua WebSocket
+        if (msg.type === 'level_up' && msg.payload?.rewards) {
+          msg.payload.rewards.forEach((r: any) => {
+            const rarityLabel = r.rarity === 'common' ? 'Phổ thông' : r.rarity === 'rare' ? 'Hiếm' : r.rarity === 'epic' ? 'Sử thi' : 'Huyền thoại';
+            const typeLabel = r.reward_type === 'avatar_frame' ? 'Khung đại diện' : r.reward_type === 'title' ? 'Danh hiệu' : 'Vật phẩm';
+            addToast(`🎁 Nhận được: ${r.quantity}x ${r.reward_name} (${typeLabel} - ${rarityLabel})`, 'achievement');
+          });
+        }
+      } else if (msg.type === 'exp_gain' || msg.type === 'exp_deduct') {
+        addToast(msg.title || 'Thay đổi EXP', msg.type);
+      } else if (msg.type === 'reward_granted' || msg.type === 'item_acquired') {
+        const r = msg.payload;
+        if (r) {
+          const rarityLabel = r.rarity === 'common' ? 'Phổ thông' : r.rarity === 'rare' ? 'Hiếm' : r.rarity === 'epic' ? 'Sử thi' : 'Huyền thoại';
+          const typeLabel = r.reward_type === 'avatar_frame' ? 'Khung đại diện' : r.reward_type === 'title' ? 'Danh hiệu' : 'Vật phẩm';
+          addToast(`🎁 Nhận được: ${r.quantity || 1}x ${r.reward_name || r.name} (${typeLabel} - ${rarityLabel})`, 'achievement');
+        }
+      }
+
+      // Tự động refetch profile để đồng bộ level và exp ở frontend
+      if (msg.type === 'level_up' || msg.type === 'exp_gain' || msg.type === 'exp_deduct') {
+        axios.get('/api/auth/me')
+          .then(({ data }) => {
+            if (data) {
+              useAuthStore.getState().updateProfile(data);
+            }
+          })
+          .catch((err) => console.error('Failed to sync profile after level/exp change:', err));
       }
     },
     [isAuthenticated, addNotification, addToast, setLastMessage]

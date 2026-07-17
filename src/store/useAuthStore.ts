@@ -4,7 +4,19 @@ import { auth as firebaseAuth } from '@/lib/firebase';
 import { onAuthStateChanged, signOut as fbSignOut } from 'firebase/auth';
 import { clearGuestId } from '@/lib/guest';
 
-interface User {
+export interface LevelProgress {
+  level: number;
+  current_exp: number;
+  exp_required: number;
+  total_exp: number;
+}
+
+export interface UserLevels {
+  zh: LevelProgress;
+  en: LevelProgress;
+}
+
+export interface User {
   id: string;
   username: string;
   email: string;
@@ -12,6 +24,22 @@ interface User {
   last_name: string;
   bio: string | null;
   avatar: string | null;
+  equipped_frame?: {
+    image_url: string;
+    ui_metadata?: {
+      frame_type?: string;
+      assets?: {
+        overlay_svg_url?: string;
+      };
+      style?: any;
+    };
+  } | null;
+  equipped_title?: {
+    id: string;
+    name: string;
+    title_text: string;
+  } | null;
+  levels?: UserLevels;
 }
 
 interface AuthState {

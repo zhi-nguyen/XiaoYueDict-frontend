@@ -39,6 +39,11 @@ export interface FinishSessionResponse {
   coins_earned: number;
   is_capped?: boolean;
   wallet_balances: AllWalletBalances;
+  exp_earned?: number;
+  exp_capped?: boolean;
+  level_up?: boolean;
+  level_after?: number | null;
+  rewards_granted?: any[];
 }
 
 export interface CoinPurchaseResponse {

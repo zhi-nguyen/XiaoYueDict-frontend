@@ -11,6 +11,7 @@ import {
   ShopItem
 } from '@/lib/api/coins';
 import { apiClient } from '@/lib/apiClient';
+import AlertModal from '@/components/AlertModal';
 
 // --- Custom Confetti Effect ---
 interface Particle {
@@ -150,6 +151,28 @@ export default function ShopPage() {
   const [successItem, setSuccessItem] = useState<any>(null);
   const [isEquipping, setIsEquipping] = useState(false);
 
+  // AlertModal state
+  const [alertState, setAlertState] = useState<{
+    isOpen: boolean;
+    type: 'success' | 'error' | 'info';
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: ''
+  });
+
+  const showAlert = (type: 'success' | 'error' | 'info', title: string, message: string) => {
+    setAlertState({
+      isOpen: true,
+      type,
+      title,
+      message
+    });
+  };
+
   // Localization labels
   const coinLabel = lang === 'zh' ? 'Linh Thạch' : 'Coin';
   const paidCoinLabel = lang === 'zh' ? 'Linh Thạch Paid' : 'Coin Paid';
@@ -208,7 +231,7 @@ export default function ShopPage() {
           return;
         } else {
           // Thiếu hoàn toàn
-          alert(`Bạn không đủ số dư. Cần ${price} ${coinLabel} (Hiện có: Free=${balance.free}, Paid=${balance.paid})`);
+          showAlert('error', 'Không đủ số dư', `Bạn không đủ số dư. Cần ${price} ${coinLabel} (Hiện có: Free=${balance.free}, Paid=${balance.paid})`);
           return;
         }
       }
@@ -237,12 +260,15 @@ export default function ShopPage() {
       // Cập nhật lại số dư ví trong Zustand store
       useCoinStore.getState().setWallets(res.wallet_balances);
 
+      // Làm mới danh sách vật phẩm trong cửa hàng để cập nhật trạng thái sở hữu
+      fetchShopItems();
+
       // Lưu lại item mua thành công để hiển thị popup chúc mừng
       setSuccessItem(res.inventory);
 
     } catch (err: any) {
       console.error(err);
-      alert(err.response?.data?.error || 'Giao dịch thất bại. Vui lòng kiểm tra lại số dư.');
+      showAlert('error', 'Giao dịch thất bại', err.response?.data?.error || 'Giao dịch thất bại. Vui lòng kiểm tra lại số dư.');
     } finally {
       setIsBuyingItemId(null);
       setConfirmItem(null);
@@ -256,14 +282,14 @@ export default function ShopPage() {
     setIsEquipping(true);
     try {
       await apiClient.post(`/gamification/inventory/${successItem.id}/equip/`);
-      alert(`Đã trang bị thành công: ${successItem.reward_item.name}`);
+      showAlert('success', 'Trang bị thành công', `Đã trang bị thành công: ${successItem.reward_item.name}`);
 
       // Reload lại route/sidebar để hiển thị thay đổi avatar/danh hiệu
       router.refresh();
       setSuccessItem(null);
     } catch (err: any) {
       console.error(err);
-      alert('Không thể trang bị vật phẩm lúc này.');
+      showAlert('error', 'Lỗi trang bị', 'Không thể trang bị vật phẩm lúc này.');
     } finally {
       setIsEquipping(false);
     }
@@ -277,7 +303,7 @@ export default function ShopPage() {
       setQrData(data);
     } catch (err) {
       console.error(err);
-      alert('Không thể khởi tạo thanh toán. Thử lại sau.');
+      showAlert('error', 'Lỗi thanh toán', 'Không thể khởi tạo thanh toán. Thử lại sau.');
     } finally {
       setIsGeneratingQR(false);
     }
@@ -300,8 +326,15 @@ export default function ShopPage() {
       <div className="max-w-7xl mx-auto px-4 pt-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-surface border border-outline p-6 rounded-3xl shadow-sm gap-6">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent flex items-center gap-2">
               Cửa Hàng XiaoYue
+              <button
+                onClick={() => { fetchShopItems(); fetchWalletBalances(true); }}
+                className="text-secondary-text hover:text-foreground transition-colors p-1 flex items-center justify-center rounded-lg hover:bg-hover-bg/50"
+                title="Làm mới cửa hàng"
+              >
+                <span className={`material-symbols-outlined text-lg ${isLoadingItems ? 'animate-spin' : ''}`}>refresh</span>
+              </button>
             </h1>
             <p className="text-sm text-secondary-text mt-1">
               Trang bị khung avatar và danh hiệu độc quyền để khẳng định bản thân!
@@ -800,6 +833,15 @@ export default function ShopPage() {
           </div>
         </div>
       )}
+
+      {/* --- ALERT MODAL --- */}
+      <AlertModal
+        isOpen={alertState.isOpen}
+        type={alertState.type}
+        title={alertState.title}
+        message={alertState.message}
+        onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

@@ -17,6 +17,7 @@ import ToastContainer from '@/components/ToastContainer';
 import ScoreResultModal from '@/components/ScoreResultModal';
 import { getMediaUrl } from '@/lib/mediaUtils';
 import UserAvatarContainer from '@/components/UserAvatarContainer';
+import LevelProgressBar from '@/components/LevelProgressBar';
 
 export default function Header() {
   const params = useParams();
@@ -76,7 +77,8 @@ export default function Header() {
   }
 
   return (
-    <header className="h-[72px] bg-surface border-b border-outline px-4 md:px-6 flex items-center justify-between shrink-0 top-0 sticky z-40">
+    <div className="sticky top-0 z-40 flex flex-col w-full shrink-0">
+      <header className="h-[72px] bg-surface border-b border-outline px-4 md:px-6 flex items-center justify-between shrink-0">
       {/* Left section: Toggle Menu & Brand Name on Mobile */}
       <div className="flex items-center gap-2">
         <button id="sidebar-toggle-btn" onClick={toggleSidebar} className="p-2 -ml-2 rounded-full hover:bg-hover-bg text-primary md:hidden flex items-center justify-center shrink-0">
@@ -114,6 +116,22 @@ export default function Header() {
             <span className="hidden sm:inline">Anh</span>
           </button>
         </div>
+
+        {/* Level Badge */}
+        {isMounted && isAuthenticated && user?.levels?.[language as 'zh' | 'en'] && (
+          <div 
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline hover:bg-hover-bg cursor-pointer transition-colors"
+            title={`Kinh nghiệm: ${user.levels[language as 'zh' | 'en'].current_exp}/${user.levels[language as 'zh' | 'en'].exp_required} EXP`}
+            id="header-level-badge"
+          >
+            <span className="material-symbols-outlined filled text-[18px] text-amber-500 select-none">
+              star
+            </span>
+            <span className="font-bold text-sm text-primary">
+              Cấp {user.levels[language as 'zh' | 'en'].level}
+            </span>
+          </div>
+        )}
 
         {/* Gamification Streak */}
         {isMounted && isAuthenticated && isGamificationInit && (
@@ -323,6 +341,8 @@ export default function Header() {
         onClose={() => setScoreModalData(null)}
         data={scoreModalData}
       />
-    </header>
+      </header>
+      <LevelProgressBar language={language} />
+    </div>
   );
 }

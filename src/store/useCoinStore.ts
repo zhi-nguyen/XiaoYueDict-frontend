@@ -71,7 +71,6 @@ export const useCoinStore = create<CoinState>((set, get) => ({
 
   fetchShopItems: async (force?: boolean) => {
     if (!force && get().isShopItemsInitialized) return;
-    if (!useAuthStore.getState().isAuthenticated) return;
 
     set({ isLoadingShopItems: true });
     try {

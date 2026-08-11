@@ -179,11 +179,10 @@ export default function ShopPage() {
   const shopQuotaLabel = lang === 'zh' ? 'Thần thạch' : 'Đá quý';
 
   useEffect(() => {
+    // Cho phép Guest xem catalog cửa hàng, chỉ fetch ví khi đã đăng nhập
+    fetchShopItems();
     if (isAuthenticated) {
       fetchWalletBalances(true);
-      fetchShopItems();
-    } else {
-      router.push(`/${lang}/dashboard`);
     }
   }, [isAuthenticated, lang]);
 
@@ -205,6 +204,11 @@ export default function ShopPage() {
 
   // Nhấn mua vật phẩm
   const handleBuyClick = (item: ShopItem, defaultMethod?: 'free' | 'paid' | 'shop') => {
+    // Chặn Guest: yêu cầu đăng nhập để mua
+    if (!isAuthenticated) {
+      showAlert('info', 'Yêu cầu đăng nhập', 'Bạn cần đăng nhập để mua vật phẩm trong cửa hàng.');
+      return;
+    }
     setConfirmItem(item);
 
     // Đặt method mặc định dựa theo Tab và rarity
